@@ -120,3 +120,11 @@ h1,h2,h3{text-wrap:balance}p{text-wrap:pretty}
 .legal-doc h1{margin-bottom:var(--s-2)}.legal-doc h2{font-size:var(--t-lg);margin:var(--s-5) 0 var(--s-1)}.legal-doc section p{font-size:var(--t-md);color:var(--muted);line-height:1.6;margin:0;max-width:65ch}
 .auth-switch .link-btn:disabled{color:var(--muted);cursor:default}
 @media(max-width:560px){.form-grid{grid-template-columns:1fr}.otp input{width:42px}}
+.form-grid .afield:has(.wide-field){grid-column:1/-1}
+.pw-rules{background:var(--soft);border:1px solid var(--border);border-radius:var(--r-ctl);padding:var(--s-3) var(--s-4);margin-top:var(--s-3);display:grid;gap:var(--s-2)}
+.pw-head{display:flex;justify-content:space-between;font-size:var(--t-sm)}.pw-head small{font-weight:700}
+.pw-meter{height:6px;background:#E6EEFB;border-radius:6px;overflow:hidden}.pw-meter span{display:block;height:100%;border-radius:6px;transition:width .2s linear}
+.pw-rules ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:4px var(--s-4)}
+.pw-rules li{display:flex;align-items:center;gap:6px;font-size:var(--t-sm);color:var(--muted)}.pw-rules li.ok{color:#0E7A60;font-weight:600}
+.pw-rules>small,.pw-match{font-size:var(--t-sm);color:var(--muted)}.pw-match{color:#C0264F}.pw-match.ok{color:#0E7A60}
+@media(max-width:560px){.pw-rules ul{grid-template-columns:1fr}}

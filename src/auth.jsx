@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, BrainCircuit, GraduationCap, MailCheck, KeyRound, PartyPopper, AlertCircle, Camera } from 'lucide-react';
+import { Eye, EyeOff, BrainCircuit, GraduationCap, MailCheck, KeyRound, PartyPopper, AlertCircle, Camera, Check, Circle } from 'lucide-react';
 import { toast } from './materials.jsx';
 import { logEvent } from './data.js';
 
 const store = { get: k => { try { return sessionStorage.getItem(k) || ''; } catch { return ''; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch { /* ignore */ } } };
-const COLLEGES = ['College of Computer Studies', 'College of Engineering', 'College of Business', 'College of Education', 'College of Arts and Sciences', 'College of Nursing', 'Other'];
 const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'];
 
 function Shell({ children, wide }) {
@@ -21,6 +20,14 @@ function Password({ value, onChange, placeholder = 'Enter your password', name, 
   const [show, setShow] = useState(false);
   return <div className="password-field"><input className="field" name={name} autoComplete={autoComplete} type={show ? 'text' : 'password'} required placeholder={placeholder} value={value} onChange={onChange} /><button type="button" aria-label={show ? 'Hide password' : 'Show password'} onClick={() => setShow(!show)}>{show ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>;
 }
+const RULES = [['At least 8 characters', p => p.length >= 8], ['One uppercase letter (A–Z)', p => /[A-Z]/.test(p)], ['One lowercase letter (a–z)', p => /[a-z]/.test(p)], ['One number (0–9)', p => /\d/.test(p)], ['One symbol such as ! @ # $ (recommended)', p => /[^A-Za-z0-9]/.test(p), true]];
+const pwOk = p => RULES.every(([, t, opt]) => opt || t(p));
+function PasswordRules({ pw }) {
+  const n = RULES.filter(([, t]) => t(pw)).length; const label = !pw ? '' : n < 4 ? 'Weak' : n === 4 ? 'Good' : 'Strong'; const color = n < 4 ? '#E0455A' : n === 4 ? '#F5B942' : '#16A37F';
+  return <div className="pw-rules" aria-live="polite"><div className="pw-head"><b>Password requirements</b>{label && <small style={{ color }}>{label}</small>}</div><div className="pw-meter"><span style={{ width: (pw ? n / RULES.length * 100 : 0) + '%', background: color }} /></div>
+    <ul>{RULES.map(([l, t]) => <li key={l} className={t(pw) ? 'ok' : ''}>{t(pw) ? <Check size={14} /> : <Circle size={14} />}{l}</li>)}</ul><small>Tip: a passphrase of 3–4 random words is easy to remember and hard to guess. Avoid your name, birthday or common words.</small></div>;
+}
+const Match = ({ a, b }) => b ? <small className={`pw-match ${a === b ? 'ok' : ''}`}>{a === b ? 'Passwords match' : 'Passwords do not match yet'}</small> : null;
 const useFake = (done) => { const [busy, setBusy] = useState(false); return [busy, () => { setBusy(true); setTimeout(() => { setBusy(false); done(); }, 700); }]; };
 
 export function Login() {
@@ -28,7 +35,7 @@ export function Login() {
   const [busy, go] = useFake(() => { try { localStorage.setItem('knoxia-remember', remember ? '1' : ''); } catch { /* ignore */ } nav('/dashboard'); });
   return <Shell><Card icon={BrainCircuit} title="Welcome back!" sub="Sign in to continue learning and growing.">
     <form onSubmit={e => { e.preventDefault(); if (!busy) go(); }}>
-      <Field label="Email address"><input className="field" type="email" required autoComplete="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} /></Field>
+      <Field label="Email address"><input className="field" type="email" required autoComplete="email" placeholder="juan.delacruz@university.edu.ph" value={email} onChange={e => setEmail(e.target.value)} /></Field>
       <Field label="Password"><Password value={pw} onChange={e => setPw(e.target.value)} autoComplete="current-password" /></Field>
       <div className="login-opts"><label className="check-inline"><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} /> Remember me</label><Link to="/forgot-password">Forgot password?</Link></div>
       <Submit busy={busy}>Log in</Submit></form>
@@ -37,13 +44,13 @@ export function Login() {
 }
 
 export function Register() {
-  const nav = useNavigate(); const blank = { first: '', middle: '', last: '', suffix: '', email: '', username: '', pw: '', pw2: '', sid: '', college: COLLEGES[0], course: '', year: YEARS[0], section: '', terms: false, privacy: false };
+  const nav = useNavigate(); const blank = { first: '', middle: '', last: '', suffix: '', email: '', username: '', pw: '', pw2: '', sid: '', school: '', college: '', course: '', year: YEARS[0], section: '', terms: false, privacy: false };
   const [f, setF] = useState(blank); const [err, setErr] = useState(''); const [photo, setPhoto] = useState('');
   const set = k => e => setF(x => ({ ...x, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
   const [busy, go] = useFake(() => { store.set('knoxia-email', f.email); store.set('knoxia-name', f.first); logEvent(`New user registered: ${f.first} ${f.last}`); nav('/verify-email'); });
   const submit = e => { e.preventDefault(); if (busy) return;
     if (!/^[a-zA-Z0-9_.]{3,20}$/.test(f.username)) return setErr('Username must be 3–20 characters: letters, numbers, dots or underscores.');
-    if (f.pw.length < 8) return setErr('Password must be at least 8 characters.');
+    if (!pwOk(f.pw)) return setErr('Your password doesn’t meet all the requirements listed under the password fields.');
     if (f.pw !== f.pw2) return setErr('Passwords do not match.');
     if (!f.terms || !f.privacy) return setErr('Please agree to the Terms and Conditions and the Privacy Policy.');
     setErr(''); go(); };
@@ -51,15 +58,16 @@ export function Register() {
     <form onSubmit={submit}>
       <fieldset><legend>Personal information</legend>
         <label className="photo-pick">{photo ? <img src={photo} alt="Profile preview" /> : <Camera size={22} />}<input type="file" accept="image/png,image/jpeg" hidden onChange={e => { const x = e.target.files[0]; if (x) setPhoto(URL.createObjectURL(x)); }} /><span>Profile picture <em>(optional)</em></span></label>
-        <div className="form-grid"><Field label="First name"><input className="field" required autoComplete="given-name" value={f.first} onChange={set('first')} /></Field><Field label="Middle name" optional><input className="field" autoComplete="additional-name" value={f.middle} onChange={set('middle')} /></Field>
-          <Field label="Last name"><input className="field" required autoComplete="family-name" value={f.last} onChange={set('last')} /></Field><Field label="Suffix" optional><input className="field" placeholder="Jr., III" value={f.suffix} onChange={set('suffix')} /></Field></div></fieldset>
+        <div className="form-grid"><Field label="First name"><input className="field" required autoComplete="given-name" placeholder="Juan" value={f.first} onChange={set('first')} /></Field><Field label="Middle name" optional><input className="field" autoComplete="additional-name" placeholder="Santos" value={f.middle} onChange={set('middle')} /></Field>
+          <Field label="Last name"><input className="field" required autoComplete="family-name" placeholder="Dela Cruz" value={f.last} onChange={set('last')} /></Field><Field label="Suffix" optional><input className="field" placeholder="Jr., III, Sr." value={f.suffix} onChange={set('suffix')} /></Field></div></fieldset>
       <fieldset><legend>Account information</legend>
-        <div className="form-grid"><Field label="Email address"><input className="field" type="email" required autoComplete="email" value={f.email} onChange={set('email')} /></Field><Field label="Username"><input className="field" required autoComplete="username" value={f.username} onChange={set('username')} /></Field>
-          <Field label="Password"><Password value={f.pw} onChange={set('pw')} placeholder="At least 8 characters" autoComplete="new-password" /></Field><Field label="Confirm password"><Password value={f.pw2} onChange={set('pw2')} placeholder="Re-enter password" autoComplete="new-password" /></Field></div></fieldset>
+        <div className="form-grid"><Field label="Email address"><input className="field" type="email" required autoComplete="email" placeholder="juan.delacruz@university.edu.ph" value={f.email} onChange={set('email')} /></Field><Field label="Username"><input className="field" required autoComplete="username" placeholder="juandelacruz" value={f.username} onChange={set('username')} /></Field>
+          <Field label="Password"><Password value={f.pw} onChange={set('pw')} placeholder="Create a strong password" autoComplete="new-password" /></Field><Field label="Confirm password"><Password value={f.pw2} onChange={set('pw2')} placeholder="Re-enter your password" autoComplete="new-password" /><Match a={f.pw} b={f.pw2} /></Field></div><PasswordRules pw={f.pw} /></fieldset>
       <fieldset><legend>Academic information</legend>
-        <div className="form-grid"><Field label="Student ID number"><input className="field" required value={f.sid} onChange={set('sid')} /></Field><Field label="College / Department"><select className="field" value={f.college} onChange={set('college')}>{COLLEGES.map(c => <option key={c}>{c}</option>)}</select></Field>
-          <Field label="Course / Program"><input className="field" required placeholder="BS Computer Science" value={f.course} onChange={set('course')} /></Field><Field label="Year level"><select className="field" value={f.year} onChange={set('year')}>{YEARS.map(c => <option key={c}>{c}</option>)}</select></Field>
-          <Field label="Section" optional><input className="field" value={f.section} onChange={set('section')} /></Field></div></fieldset>
+        <div className="form-grid"><Field label="University / School"><input className="field wide-field" required autoComplete="organization" placeholder="e.g. University of the Philippines Diliman" value={f.school} onChange={set('school')} /></Field>
+          <Field label="Student ID number"><input className="field" required placeholder="e.g. 2023-00123" value={f.sid} onChange={set('sid')} /></Field><Field label="College / Department"><input className="field" required placeholder="e.g. College of Computer Studies" value={f.college} onChange={set('college')} /></Field>
+          <Field label="Course / Program"><input className="field" required placeholder="e.g. BS Computer Science" value={f.course} onChange={set('course')} /></Field><Field label="Year level"><select className="field" value={f.year} onChange={set('year')}>{YEARS.map(c => <option key={c}>{c}</option>)}</select></Field>
+          <Field label="Section" optional><input className="field" placeholder="e.g. 3A" value={f.section} onChange={set('section')} /></Field></div></fieldset>
       <div className="agree"><label className="check-inline"><input type="checkbox" checked={f.terms} onChange={set('terms')} /> I agree to the <Link to="/terms" target="_blank">Terms and Conditions</Link></label><label className="check-inline"><input type="checkbox" checked={f.privacy} onChange={set('privacy')} /> I agree to the <Link to="/privacy" target="_blank">Privacy Policy</Link></label></div>
       <Err msg={err} /><Submit busy={busy}>Create account</Submit></form>
     <div className="auth-switch">Already have an account? <Link to="/login">Log in</Link></div></Card></Shell>;
@@ -69,7 +77,7 @@ export function Forgot() {
   const [email, setEmail] = useState(''); const [sent, setSent] = useState(false);
   const [busy, go] = useFake(() => { store.set('knoxia-email', email); setSent(true); });
   return <Shell><Card icon={KeyRound} title="Forgot password?" sub="Enter your registered email and we’ll send you a link to reset it.">
-    <form onSubmit={e => { e.preventDefault(); if (!busy) go(); }}><Field label="Registered email address"><input className="field" type="email" required placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} /></Field><Submit busy={busy}>Send reset link</Submit>
+    <form onSubmit={e => { e.preventDefault(); if (!busy) go(); }}><Field label="Registered email address"><input className="field" type="email" required autoComplete="email" placeholder="juan.delacruz@university.edu.ph" value={email} onChange={e => setEmail(e.target.value)} /></Field><Submit busy={busy}>Send reset link</Submit>
       {sent && <p className="auth-sent">If an account exists for {email}, a reset link is on its way. <Link to="/reset-password">Open reset page (demo)</Link></p>}</form>
     <div className="auth-switch"><Link to="/login">Back to login</Link></div></Card></Shell>;
 }
@@ -78,8 +86,8 @@ export function ResetPassword() {
   const nav = useNavigate(); const [pw, setPw] = useState(''); const [pw2, setPw2] = useState(''); const [err, setErr] = useState('');
   const [busy, go] = useFake(() => { toast('Password updated'); nav('/login'); });
   return <Shell><Card icon={KeyRound} title="Set a new password" sub="Choose a password you haven’t used before.">
-    <form onSubmit={e => { e.preventDefault(); if (busy) return; if (pw.length < 8) return setErr('Password must be at least 8 characters.'); if (pw !== pw2) return setErr('Passwords do not match.'); setErr(''); go(); }}>
-      <Field label="New password"><Password value={pw} onChange={e => setPw(e.target.value)} placeholder="At least 8 characters" autoComplete="new-password" /></Field><Field label="Confirm new password"><Password value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Re-enter password" autoComplete="new-password" /></Field>
+    <form onSubmit={e => { e.preventDefault(); if (busy) return; if (!pwOk(pw)) return setErr('Your password doesn’t meet all the requirements listed below.'); if (pw !== pw2) return setErr('Passwords do not match.'); setErr(''); go(); }}>
+      <Field label="New password"><Password value={pw} onChange={e => setPw(e.target.value)} placeholder="Create a new password" autoComplete="new-password" /></Field><Field label="Confirm new password"><Password value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Re-enter your new password" autoComplete="new-password" /><Match a={pw} b={pw2} /></Field><PasswordRules pw={pw} />
       <Err msg={err} /><Submit busy={busy}>Update password</Submit></form><div className="auth-switch"><Link to="/login">Back to login</Link></div></Card></Shell>;
 }
 
