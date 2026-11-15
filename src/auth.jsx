@@ -1,0 +1,122 @@
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, BrainCircuit, GraduationCap, MailCheck, KeyRound, PartyPopper, AlertCircle, Camera } from 'lucide-react';
+import { toast } from './materials.jsx';
+import { logEvent } from './data.js';
+
+const store = { get: k => { try { return sessionStorage.getItem(k) || ''; } catch { return ''; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch { /* ignore */ } } };
+const COLLEGES = ['College of Computer Studies', 'College of Engineering', 'College of Business', 'College of Education', 'College of Arts and Sciences', 'College of Nursing', 'Other'];
+const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'];
+
+function Shell({ children, wide }) {
+  return <div className={`auth-screen ${wide ? 'auth-long' : ''}`}><div className="auth-brand"><Link to="/" className="brand"><img className="brand-logo" src="/logo.png" alt="" width="36" height="36" /><span>KNOXIA</span></Link></div>{children}<div className="auth-footer">© 2026 KNOXIA. Learn smarter. Grow together.</div></div>;
+}
+const Card = ({ icon: I, title, sub, wide, children }) => <div className={`auth-card ${wide ? 'wide' : ''}`}><div className="auth-icon"><I size={24} /></div><h1>{title}</h1><p>{sub}</p>{children}</div>;
+const Submit = ({ busy, children }) => <button type="submit" disabled={busy} className="btn primary">{busy ? <i className="spin" aria-hidden="true" /> : null}<span>{children}</span></button>;
+const Err = ({ msg }) => msg ? <div className="notice error" role="alert"><AlertCircle size={16} />{msg}</div> : null;
+const Field = ({ label, optional, children }) => <label className="afield"><span className="field-label">{label}{optional && <em> (optional)</em>}</span>{children}</label>;
+const Legal = () => <>By continuing you agree to the <Link to="/terms">Terms and Conditions</Link> and <Link to="/privacy">Privacy Policy</Link>.</>;
+
+function Password({ value, onChange, placeholder = 'Enter your password', name, autoComplete }) {
+  const [show, setShow] = useState(false);
+  return <div className="password-field"><input className="field" name={name} autoComplete={autoComplete} type={show ? 'text' : 'password'} required placeholder={placeholder} value={value} onChange={onChange} /><button type="button" aria-label={show ? 'Hide password' : 'Show password'} onClick={() => setShow(!show)}>{show ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>;
+}
+const useFake = (done) => { const [busy, setBusy] = useState(false); return [busy, () => { setBusy(true); setTimeout(() => { setBusy(false); done(); }, 700); }]; };
+
+export function Login() {
+  const nav = useNavigate(); const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [remember, setRemember] = useState(true);
+  const [busy, go] = useFake(() => { try { localStorage.setItem('knoxia-remember', remember ? '1' : ''); } catch { /* ignore */ } nav('/dashboard'); });
+  return <Shell><Card icon={BrainCircuit} title="Welcome back!" sub="Sign in to continue learning and growing.">
+    <form onSubmit={e => { e.preventDefault(); if (!busy) go(); }}>
+      <Field label="Email address"><input className="field" type="email" required autoComplete="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} /></Field>
+      <Field label="Password"><Password value={pw} onChange={e => setPw(e.target.value)} autoComplete="current-password" /></Field>
+      <div className="login-opts"><label className="check-inline"><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} /> Remember me</label><Link to="/forgot-password">Forgot password?</Link></div>
+      <Submit busy={busy}>Log in</Submit></form>
+    <div className="auth-switch">New to KNOXIA? <Link to="/register">Sign up</Link></div>
+    <p className="auth-legal"><Legal /></p></Card></Shell>;
+}
+
+export function Register() {
+  const nav = useNavigate(); const blank = { first: '', middle: '', last: '', suffix: '', email: '', username: '', pw: '', pw2: '', sid: '', college: COLLEGES[0], course: '', year: YEARS[0], section: '', terms: false, privacy: false };
+  const [f, setF] = useState(blank); const [err, setErr] = useState(''); const [photo, setPhoto] = useState('');
+  const set = k => e => setF(x => ({ ...x, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
+  const [busy, go] = useFake(() => { store.set('knoxia-email', f.email); store.set('knoxia-name', f.first); logEvent(`New user registered: ${f.first} ${f.last}`); nav('/verify-email'); });
+  const submit = e => { e.preventDefault(); if (busy) return;
+    if (!/^[a-zA-Z0-9_.]{3,20}$/.test(f.username)) return setErr('Username must be 3–20 characters: letters, numbers, dots or underscores.');
+    if (f.pw.length < 8) return setErr('Password must be at least 8 characters.');
+    if (f.pw !== f.pw2) return setErr('Passwords do not match.');
+    if (!f.terms || !f.privacy) return setErr('Please agree to the Terms and Conditions and the Privacy Policy.');
+    setErr(''); go(); };
+  return <Shell wide><Card wide icon={GraduationCap} title="Create your account" sub="Tell us about yourself so KNOXIA can personalize your study space.">
+    <form onSubmit={submit}>
+      <fieldset><legend>Personal information</legend>
+        <label className="photo-pick">{photo ? <img src={photo} alt="Profile preview" /> : <Camera size={22} />}<input type="file" accept="image/png,image/jpeg" hidden onChange={e => { const x = e.target.files[0]; if (x) setPhoto(URL.createObjectURL(x)); }} /><span>Profile picture <em>(optional)</em></span></label>
+        <div className="form-grid"><Field label="First name"><input className="field" required autoComplete="given-name" value={f.first} onChange={set('first')} /></Field><Field label="Middle name" optional><input className="field" autoComplete="additional-name" value={f.middle} onChange={set('middle')} /></Field>
+          <Field label="Last name"><input className="field" required autoComplete="family-name" value={f.last} onChange={set('last')} /></Field><Field label="Suffix" optional><input className="field" placeholder="Jr., III" value={f.suffix} onChange={set('suffix')} /></Field></div></fieldset>
+      <fieldset><legend>Account information</legend>
+        <div className="form-grid"><Field label="Email address"><input className="field" type="email" required autoComplete="email" value={f.email} onChange={set('email')} /></Field><Field label="Username"><input className="field" required autoComplete="username" value={f.username} onChange={set('username')} /></Field>
+          <Field label="Password"><Password value={f.pw} onChange={set('pw')} placeholder="At least 8 characters" autoComplete="new-password" /></Field><Field label="Confirm password"><Password value={f.pw2} onChange={set('pw2')} placeholder="Re-enter password" autoComplete="new-password" /></Field></div></fieldset>
+      <fieldset><legend>Academic information</legend>
+        <div className="form-grid"><Field label="Student ID number"><input className="field" required value={f.sid} onChange={set('sid')} /></Field><Field label="College / Department"><select className="field" value={f.college} onChange={set('college')}>{COLLEGES.map(c => <option key={c}>{c}</option>)}</select></Field>
+          <Field label="Course / Program"><input className="field" required placeholder="BS Computer Science" value={f.course} onChange={set('course')} /></Field><Field label="Year level"><select className="field" value={f.year} onChange={set('year')}>{YEARS.map(c => <option key={c}>{c}</option>)}</select></Field>
+          <Field label="Section" optional><input className="field" value={f.section} onChange={set('section')} /></Field></div></fieldset>
+      <div className="agree"><label className="check-inline"><input type="checkbox" checked={f.terms} onChange={set('terms')} /> I agree to the <Link to="/terms" target="_blank">Terms and Conditions</Link></label><label className="check-inline"><input type="checkbox" checked={f.privacy} onChange={set('privacy')} /> I agree to the <Link to="/privacy" target="_blank">Privacy Policy</Link></label></div>
+      <Err msg={err} /><Submit busy={busy}>Create account</Submit></form>
+    <div className="auth-switch">Already have an account? <Link to="/login">Log in</Link></div></Card></Shell>;
+}
+
+export function Forgot() {
+  const [email, setEmail] = useState(''); const [sent, setSent] = useState(false);
+  const [busy, go] = useFake(() => { store.set('knoxia-email', email); setSent(true); });
+  return <Shell><Card icon={KeyRound} title="Forgot password?" sub="Enter your registered email and we’ll send you a link to reset it.">
+    <form onSubmit={e => { e.preventDefault(); if (!busy) go(); }}><Field label="Registered email address"><input className="field" type="email" required placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} /></Field><Submit busy={busy}>Send reset link</Submit>
+      {sent && <p className="auth-sent">If an account exists for {email}, a reset link is on its way. <Link to="/reset-password">Open reset page (demo)</Link></p>}</form>
+    <div className="auth-switch"><Link to="/login">Back to login</Link></div></Card></Shell>;
+}
+
+export function ResetPassword() {
+  const nav = useNavigate(); const [pw, setPw] = useState(''); const [pw2, setPw2] = useState(''); const [err, setErr] = useState('');
+  const [busy, go] = useFake(() => { toast('Password updated'); nav('/login'); });
+  return <Shell><Card icon={KeyRound} title="Set a new password" sub="Choose a password you haven’t used before.">
+    <form onSubmit={e => { e.preventDefault(); if (busy) return; if (pw.length < 8) return setErr('Password must be at least 8 characters.'); if (pw !== pw2) return setErr('Passwords do not match.'); setErr(''); go(); }}>
+      <Field label="New password"><Password value={pw} onChange={e => setPw(e.target.value)} placeholder="At least 8 characters" autoComplete="new-password" /></Field><Field label="Confirm new password"><Password value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Re-enter password" autoComplete="new-password" /></Field>
+      <Err msg={err} /><Submit busy={busy}>Update password</Submit></form><div className="auth-switch"><Link to="/login">Back to login</Link></div></Card></Shell>;
+}
+
+export function VerifyEmail() {
+  const nav = useNavigate(); const email = store.get('knoxia-email') || 'your email'; const [code, setCode] = useState(Array(6).fill('')); const [err, setErr] = useState(''); const [wait, setWait] = useState(30);
+  const [busy, go] = useFake(() => nav('/welcome'));
+  useEffect(() => { if (wait <= 0) return; const t = setTimeout(() => setWait(w => w - 1), 1000); return () => clearTimeout(t); }, [wait]);
+  const put = (i, v) => { const d = v.replace(/\D/g, '').slice(-1); setCode(c => c.map((x, k) => k === i ? d : x)); if (d && i < 5) document.getElementById('otp' + (i + 1))?.focus(); };
+  const paste = e => { const d = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6); if (d) { e.preventDefault(); setCode(Array.from({ length: 6 }, (_, k) => d[k] || '')); } };
+  return <Shell><Card icon={MailCheck} title="Verify your email" sub={`Enter the 6-digit code we sent to ${email}.`}>
+    <form onSubmit={e => { e.preventDefault(); if (busy) return; if (code.join('').length < 6) return setErr('Enter all 6 digits.'); setErr(''); go(); }}>
+      <div className="otp" onPaste={paste}>{code.map((c, i) => <input key={i} id={'otp' + i} aria-label={`Digit ${i + 1}`} inputMode="numeric" autoComplete={i ? 'off' : 'one-time-code'} maxLength={1} value={c} onChange={e => put(i, e.target.value)} onKeyDown={e => { if (e.key === 'Backspace' && !c && i > 0) document.getElementById('otp' + (i - 1))?.focus(); }} />)}</div>
+      <Err msg={err} /><Submit busy={busy}>Verify account</Submit></form>
+    <div className="auth-switch"><button type="button" className="link-btn" disabled={wait > 0} onClick={() => { setWait(30); toast('Code resent'); }}>{wait > 0 ? `Resend code in ${wait}s` : 'Resend code'}</button> · <Link to="/register">Change email</Link></div>
+    <p className="auth-legal">Demo mode: any 6 digits will verify. Real codes need an email service.</p></Card></Shell>;
+}
+
+export function Welcome() {
+  const nav = useNavigate(); const name = store.get('knoxia-name');
+  return <Shell><Card icon={PartyPopper} title={`Account created${name ? ', ' + name : ''}!`} sub="Your email is verified. Upload your first material to build a reviewer, flashcards or a quiz.">
+    <div className="welcome-actions"><button className="btn primary" onClick={() => nav('/materials/upload')}>Upload your first file</button><button className="btn outline" onClick={() => nav('/dashboard')}>Go to dashboard</button></div></Card></Shell>;
+}
+
+const LEGAL = {
+  '/terms': ['Terms and Conditions', [['Using KNOXIA', 'KNOXIA is a study platform for students. You agree to use it for lawful learning purposes and to keep your account details accurate.'], ['Your content', 'You own the materials you upload. You give KNOXIA permission to process them to create reviewers, flashcards and quizzes for you.'], ['Community conduct', 'Do not post harmful, misleading or infringing content. Reported content may be removed by moderators.'], ['Changes', 'We may update these terms. Continued use after an update means you accept it.']]],
+  '/privacy': ['Privacy Policy', [['What we collect', 'Account details (name, email, username), academic details (student ID, college, program, year level) and the materials you upload.'], ['How we use it', 'To run your account, personalize your dashboard, study groups and leaderboards, and generate study tools from your materials.'], ['Sharing', 'Your materials are private by default. Profile details are shown to others only as your privacy settings allow.'], ['Your choices', 'You can edit or delete your data from Settings, or contact support.']]],
+};
+export function Legal_({ path }) {
+  const [title, secs] = LEGAL[path];
+  return <Shell wide><div className="auth-card wide legal-doc"><h1>{title}</h1><p className="auth-legal">Draft for the prototype. Have it reviewed before launch.</p>{secs.map(([h, t]) => <section key={h}><h2>{h}</h2><p>{t}</p></section>)}<div className="auth-switch"><button type="button" className="link-btn" onClick={() => history.length > 1 ? history.back() : (location.href = '/login')}>Go back</button></div></div></Shell>;
+}
+
+export function authPage(path) {
+  switch (path) {
+    case '/login': return <Login />; case '/register': return <Register />; case '/forgot-password': return <Forgot />;
+    case '/reset-password': return <ResetPassword />; case '/verify-email': return <VerifyEmail />; case '/welcome': return <Welcome />;
+    case '/terms': case '/privacy': return <Legal_ path={path} />;
+    default: return null;
+  }
+}

@@ -102,3 +102,21 @@ h1,h2,h3{text-wrap:balance}p{text-wrap:pretty}
 
 .brand-logo{width:36px;height:36px;object-fit:contain;flex-shrink:0}
 .brand-logo.small{width:28px;height:28px}
+
+/* ===== Auth flow ===== */
+.auth-long{justify-content:flex-start;padding:96px 20px 72px}.auth-long .auth-footer{position:static;margin-top:24px}
+.auth-card.wide{width:min(100%,680px)}
+.afield{display:grid;gap:4px;min-width:0}.afield .field-label em,.photo-pick em{font-style:normal;font-weight:400;color:var(--muted)}
+.auth-card fieldset{border:0;padding:0;margin:0 0 var(--s-4);min-width:0}.auth-card legend{font-weight:700;font-size:var(--t-md);padding:0;margin-bottom:var(--s-3)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-3)}
+.photo-pick{display:flex;align-items:center;gap:var(--s-3);margin-bottom:var(--s-3);cursor:pointer;font-size:var(--t-sm);font-weight:600}
+.photo-pick>img,.photo-pick>svg{width:56px;height:56px;border-radius:50%;object-fit:cover;background:var(--soft);padding:16px;color:var(--muted);border:1px solid var(--border)}.photo-pick>img{padding:0}
+.login-opts{display:flex;justify-content:space-between;align-items:center;font-size:var(--t-sm)}.login-opts a,.auth-legal a,.check-inline a{color:var(--blue);font-weight:600}
+.check-inline{display:flex;align-items:center;gap:8px;font-size:var(--t-sm)}.agree{display:grid;gap:var(--s-2);margin-bottom:var(--s-3)}
+.auth-legal{font-size:var(--t-sm);color:var(--muted);text-align:center;margin:var(--s-4) 0 0!important}
+.auth-card form .notice{margin:0 0 var(--s-3)}
+.otp{display:flex;gap:var(--s-2);justify-content:center;margin-bottom:var(--s-4)}.otp input{width:48px;height:56px;text-align:center;font-size:22px;font-weight:700;border:1px solid var(--border);border-radius:var(--r-ctl);color:var(--text)}
+.welcome-actions{display:grid;gap:var(--s-2)}
+.legal-doc h1{margin-bottom:var(--s-2)}.legal-doc h2{font-size:var(--t-lg);margin:var(--s-5) 0 var(--s-1)}.legal-doc section p{font-size:var(--t-md);color:var(--muted);line-height:1.6;margin:0;max-width:65ch}
+.auth-switch .link-btn:disabled{color:var(--muted);cursor:default}
+@media(max-width:560px){.form-grid{grid-template-columns:1fr}.otp input{width:42px}}

@@ -3,6 +3,7 @@ import { Routes, Route, NavLink, useLocation, useNavigate, useParams } from 'rea
 import { useMaterials, toast, previews, colorOf, fmtSize, fmtDate, SUBJECTS } from './materials.jsx';
 import { ReviewerEditor, SavedReviewers, FlashStudy, QuizTake, QuizResults, StudyRooms, RoomDetail, Challenges, ChallengePlay, Leaderboards, Achievements, Analytics, Planner, Notifications, SettingsPage, Moderation, Logs } from './pages.jsx';
 import { saveReviewer } from './data.js';
+import { authPage } from './auth.jsx';
 
 let navTo = (p) => { location.href = p; };
 const go = (p) => navTo(p);
@@ -210,6 +211,7 @@ function NotFound() { return <div className="not-found"><Logo/><h1>404</h1><h2>L
 
 export default function App() {
  navTo=useNavigate(); const loc=useLocation(); const path=loc.pathname;
+ const ap=authPage(path); if(ap) return ap;
  if(path==='/') return <Landing/>;
  if(['/login','/register','/forgot-password'].includes(path)) return <AuthPage mode={path==='/register'?'register':path==='/forgot-password'?'forgot':'login'}/>;
  if(path==='/onboarding') return <Onboarding/>;
