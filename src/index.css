@@ -7,9 +7,9 @@
 
 .upload-main{display:grid;gap:16px;min-width:0}
 .upload-form{display:grid;gap:14px}.upload-form h3,.detail-grid h3{margin:0}
-.field{display:grid;gap:6px;font-size:14px}.field>span{font-weight:600}
-.field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--card);color:var(--text)}
-.field input:disabled{background:var(--soft)}
+.ufield{display:grid;gap:6px;font-size:14px}.ufield>span{font-weight:600}
+.ufield input,.ufield select,.ufield textarea{width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--card);color:var(--text)}
+.ufield input:disabled{background:var(--soft)}
 .form-actions,.head-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
 .notice{display:flex;gap:8px;align-items:center;margin-top:12px;padding:9px 12px;border-radius:10px;background:var(--highlight);color:var(--text);font-size:14px}
 .notice.error{background:#FDECEF;color:#C0264F}
@@ -23,3 +23,4 @@
 .link-btn{border:0;background:none;color:var(--blue);font-weight:600;display:inline-flex;align-items:center;gap:4px}
 .empty-state button{margin-top:12px}
 @media(max-width:900px){.detail-grid{grid-template-columns:1fr}}
+.auth-sent{margin:12px 0 0;padding:10px 12px;border-radius:10px;background:var(--highlight);font-size:14px}
