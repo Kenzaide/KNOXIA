@@ -4,6 +4,7 @@ import { useMaterials, toast, previews, colorOf, fmtSize, fmtDate, SUBJECTS } fr
 import { ReviewerEditor, SavedReviewers, RecentAttempts, FlashStudy, QuizTake, QuizResults, StudyRooms, RoomDetail, Challenges, ChallengePlay, Leaderboards, Achievements, Analytics, Planner, Notifications, SettingsPage, Moderation, Logs } from './pages.jsx';
 import { saveReviewer, useLocal, NOTES } from './data.js';
 import { authPage } from './auth.jsx';
+import { Knowl } from './knowl.jsx';
 
 let navTo = (p) => { location.href = p; };
 const go = (p) => navTo(p);
@@ -141,15 +142,61 @@ function Shell({children,admin=false,title}) {
   return <div className="app-shell"><Sidebar admin={admin} close={()=>setOpen(false)}/>{open&&<div className="mobile-shade" onClick={()=>setOpen(false)}/>}<div className={`mobile-sidebar ${open?'show':''}`}><Sidebar admin={admin} close={()=>setOpen(false)}/></div><main className="main-area"><Topbar title={title} admin={admin} onMenu={()=>setOpen(true)}/><div className="page-content">{children}</div><Toaster/></main></div>;
 }
 
+const TIPS=[
+  'Quiz yourself before rereading. Recalling beats reviewing.',
+  'Study in 25-minute blocks, then take a 5-minute break.',
+  'Explain a topic out loud as if teaching it. Gaps show up fast.',
+  'Review tonight what you learned today. It sticks longer.',
+];
+const greetingFor=h=>h<5?'Still up':h<12?'Good morning':h<18?'Good afternoon':'Good evening';
 function Dashboard() {
-  const {items}=useMaterials(); const loading=usePending(); const today=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}); 
+  const {items}=useMaterials(); const loading=usePending();
+  const [said,setSaid]=useState(null); const [clicks,setClicks]=useState(0); const [focusing,setFocusing]=useState(false);
+  const hour=new Date().getHours(); const night=hour>=22||hour<5;
+  const goal={done:45,total:60}; const left=Math.max(0,goal.total-goal.done); const pct=Math.round(goal.done/goal.total*100);
+  const streak=7; const first=items[0];
+  const resting=night?{pose:'sleepy',text:"It's late, Kenneth. Review something short, then get some sleep."}
+    :left===0?{pose:'happy',text:"Goal reached! Great work today."}
+    :items.length===0?{pose:'think',text:"Upload a file and I'll help you turn it into a reviewer."}
+    :{pose:'default',text:`Hoot! ${left} more minutes and today's goal is done.`};
+  // Clicking Knowl cycles through a few reactions.
+  const poke=()=>{
+    const tip=TIPS[Math.floor(clicks/4)%TIPS.length];
+    const reactions=[
+      {pose:'happy',text:`${streak}-day streak. Keep it going!`},
+      {pose:'think',text:tip},
+      {pose:'study',text:first?`Want to review "${first.name}"?`:'Upload a file and we can study it together.'},
+      {pose:'default',text:"Hoot! I'm here when you need me."},
+    ];
+    setSaid(reactions[clicks%4]); setClicks(c=>c+1);
+  };
+  const shown=focusing?{pose:'study',text:"Let's focus. I'll keep you company."}:(said||resting);
   if(loading) return <PageSkeleton/>;
-  return <><div className="welcome-row"><div><small className="date-line">{today}</small><h1>Welcome back, Kenneth</h1><p>{items.length} {items.length===1?'material is':'materials are'} ready to study.</p></div><Button icon={Plus} onClick={()=>go('/materials/upload')}>Add materials</Button></div>
-    <div className="stats-grid"><StatCard label="Total study time" value="18h 42m" change="↑ 12% this week" icon={Clock3}/><StatCard label="Materials uploaded" value={String(items.length)} change="in your library" icon={FolderOpen} tone="purple"/><StatCard label="Quiz average" value="86.5%" change="↑ 4.2% this month" icon={Target} tone="green"/><StatCard label="Current streak" value="7 days" change="Personal best: 12 days" icon={Flame} tone="orange"/></div>
-    <div className="dashboard-grid"><section className="panel continue-panel"><SectionTitle title="Recent materials" subtitle="Your latest uploads." action={<button className="link-btn" onClick={()=>go('/materials')}>View all <ArrowUpRight size={16}/></button>}/>{items.slice(0,3).map(m=><div className="continue-item" key={m.id}><div className={`file-tile ${m.color||colorOf(m.type)}`}><FileText size={20}/></div><div className="continue-info"><b>{m.name}</b><small>{m.subject} · {m.type} · {m.size}</small><small>Uploaded {fmtDate(m.uploaded)}</small></div><button className="round-arrow" aria-label={`Open ${m.name}`} onClick={()=>go('/materials/'+m.id)}><ArrowUpRight size={18}/></button></div>)}{items.length===0&&<div className="empty-state"><FolderOpen size={32}/><b>No materials yet</b><p>Upload your first file to get started.</p></div>}</section>
-    <section className="panel weekly-panel"><SectionTitle title="Weekly activity" subtitle="Your learning consistency." action={<span className="select-label">This week <ChevronDown size={16}/></span>}/><div className="weekly-total"><b>8h 35m</b><span className="positive">+18.4%</span></div><div className="bar-chart">{[['M',42],['T',68],['W',52],['T',88],['F',64],['S',100],['S',28]].map(([d,v],i)=><div className="bar-column" key={i}><div className="bar-bg"><span style={{height:v+'%'}}/></div><small>{d}</small></div>)}</div></section>
-    <section className="panel activity-panel"><SectionTitle title="Recent activity" subtitle="A little progress adds up." action={<a href="/analytics">See all</a>}/>{[['Completed a quiz','Machine Learning Basics','12 min ago','green'],['Uploaded new material',items[0]?items[0].name:'No uploads yet',items[0]?fmtDate(items[0].uploaded):'','blue'],['Earned an achievement','7-Day Study Streak','Yesterday','orange']].map((x,i)=><div className="activity-row" key={i}><div className={`activity-dot ${x[3]}`}>{i===0?<CheckCircle2 size={16}/>:i===1?<Upload size={16}/>:<Trophy size={16}/>}</div><div><b>{x[0]}</b><small>{x[1]}</small></div><time>{x[2]}</time></div>)}</section>
-    <section className="panel goal-panel"><div className="goal-head"><div><h3>Daily goal: 45 of 60 minutes</h3><p>15 minutes to reach it.</p></div><div className="goal-ring"><div><b>75%</b><small>complete</small></div></div></div><div className="goal-progress"><span style={{width:'75%'}}/></div><Button variant="soft" icon={Zap} onClick={()=>go('/study-companion')}>Start a focus session</Button></section></div>
+  return <>
+    <section className="kn-hero">
+      <div className="kn-hero-copy">
+        <h1>{greetingFor(hour)}, Kenneth</h1>
+        <p className="kn-sub">{items.length} {items.length===1?'material is':'materials are'} ready to study.</p>
+        <div className="kn-goal"><div className="kn-goal-top"><b>Today's goal</b><span>{goal.done} of {goal.total} min</span></div><div className="goal-progress" role="progressbar" aria-valuenow={pct} aria-valuemin="0" aria-valuemax="100" aria-label="Daily goal"><span style={{width:pct+'%'}}/></div></div>
+        <div className="kn-actions">
+          <button type="button" className="btn primary" onClick={()=>go('/study-companion')} onMouseEnter={()=>setFocusing(true)} onMouseLeave={()=>setFocusing(false)} onFocus={()=>setFocusing(true)} onBlur={()=>setFocusing(false)}><Zap size={16}/><span>Start a focus session</span></button>
+          <button type="button" className="btn outline" onClick={()=>go('/materials/upload')}><Plus size={16}/><span>Add materials</span></button>
+        </div>
+      </div>
+      <div className="kn-hero-knowl">
+        <p className="kn-bubble" key={shown.text} role="status">{shown.text}</p>
+        <Knowl pose={shown.pose} onClick={poke} label="Knowl the owl. Click for a tip."/>
+      </div>
+    </section>
+    <div className="kn-grid">
+      <section className="panel"><SectionTitle title="Continue studying" subtitle="Your latest uploads." action={<NavLink to="/materials">View all</NavLink>}/>
+        {items.slice(0,3).map(m=><div className="continue-item" key={m.id}><div className={`file-tile ${m.color||colorOf(m.type)}`}><FileText size={20}/></div><div className="continue-info"><b>{m.name}</b><small>{m.subject} · Uploaded {fmtDate(m.uploaded)}</small></div><button className="round-arrow" aria-label={`Open ${m.name}`} onClick={()=>go('/materials/'+m.id)}><ArrowUpRight size={18}/></button></div>)}
+        {items.length===0&&<div className="empty-state"><FolderOpen size={32}/><b>No materials yet</b><p>Upload your first file to get started.</p></div>}
+      </section>
+      <section className="panel"><SectionTitle title="This week" action={<NavLink to="/analytics">Details</NavLink>}/>
+        {[[Flame,'orange',`${streak} days`,'Study streak. Best is 12.'],[Target,'green','86.5%','Quiz average, up 4.2%.'],[Clock3,'blue','8h 35m','Studied, up 18% on last week.']].map(([I,tone,v,l])=><div className="kn-stat" key={l}><div className={`activity-dot ${tone}`}><I size={18}/></div><div><b>{v}</b><small>{l}</small></div></div>)}
+      </section>
+    </div>
   </>;
 }
 function Materials() {
