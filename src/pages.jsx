@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ThemePicker } from './theme.jsx';
 import { Sparkles, Layers, CheckCircle2, Trophy, Crown, Flame, Clock3, Target, Bell, ShieldCheck, Activity, Plus, Trash2, Send, Play, Pause, RotateCcw, Check, Download, Users, Zap, BookOpen, Medal, ArrowUpRight, Lock, CalendarDays, Swords } from 'lucide-react';
 import { toast } from './materials.jsx';
 import { DECKS, BANK, ROOMS, CHALLENGES, BOARD, BADGES, NOTES, REPORTS, LOGS, useLocal, pushLS, logEvent } from './data.js';
@@ -154,7 +155,7 @@ export function SettingsPage() {
   return <><Head title="Settings" sub="Customize your KNOXIA experience." /><div className="settings-layout"><div className="panel settings-menu">{['Profile', 'Security', 'Preferences'].map(t => <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
     <div className="panel settings-form">{tab === 'Profile' && <><h3>Profile information</h3><label className="field-label">Full name</label><input className="field" value={f.name} onChange={e => set('name', e.target.value)} /><label className="field-label">Username</label><input className="field" value={f.username} onChange={e => set('username', e.target.value)} /><label className="field-label">Email address</label><input className="field" type="email" value={f.email} onChange={e => set('email', e.target.value)} /><Btn onClick={() => { setS(f); toast('Settings saved'); }}>Save changes</Btn></>}
       {tab === 'Security' && <><h3>Account security</h3><label className="field-label">Current password</label><input className="field" type="password" /><label className="field-label">New password</label><input className="field" type="password" /><Btn onClick={() => toast('Password update needs a backend')}>Update password</Btn></>}
-      {tab === 'Preferences' && <><h3>Preferences</h3>{tog('notif', 'Email notifications')}{tog('reminders', 'Study reminders')}{tog('pub', 'Public profile')}{tog('board', 'Show me on leaderboards')}<Btn onClick={() => { setS(f); toast('Settings saved'); }}>Save changes</Btn></>}</div></div></>;
+      {tab === 'Preferences' && <><h3>Preferences</h3><label className="field-label">Appearance</label><ThemePicker />{tog('notif', 'Email notifications')}{tog('reminders', 'Study reminders')}{tog('pub', 'Public profile')}{tog('board', 'Show me on leaderboards')}<Btn onClick={() => { setS(f); toast('Settings saved'); }}>Save changes</Btn></>}</div></div></>;
 }
 
 /* ---------- Admin ---------- */

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ThemeToggle } from './theme.jsx';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, BrainCircuit, GraduationCap, MailCheck, KeyRound, PartyPopper, AlertCircle, Camera, Check, Circle } from 'lucide-react';
 import { toast } from './materials.jsx';
@@ -8,7 +9,7 @@ const store = { get: k => { try { return sessionStorage.getItem(k) || ''; } catc
 const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'];
 
 function Shell({ children, wide }) {
-  return <div className={`auth-screen ${wide ? 'auth-long' : ''}`}><div className="auth-brand"><Link to="/" className="brand"><img className="brand-logo" src="/logo.png" alt="" width="36" height="36" /><span>KNOXIA</span></Link></div>{children}<div className="auth-footer">© 2026 KNOXIA. Learn smarter. Grow together.</div></div>;
+  return <div className={`auth-screen ${wide ? 'auth-long' : ''}`}><div className="auth-brand"><Link to="/" className="brand"><img className="brand-logo" src="/logo.png" alt="" width="36" height="36" /><span>KNOXIA</span></Link></div><ThemeToggle className="auth-theme" />{children}<div className="auth-footer">© 2026 KNOXIA. Learn smarter. Grow together.</div></div>;
 }
 const Card = ({ icon: I, title, sub, wide, children }) => <div className={`auth-card ${wide ? 'wide' : ''}`}><div className="auth-icon"><I size={24} /></div><h1>{title}</h1><p>{sub}</p>{children}</div>;
 const Submit = ({ busy, children }) => <button type="submit" disabled={busy} className="btn primary">{busy ? <i className="spin" aria-hidden="true" /> : null}<span>{children}</span></button>;
