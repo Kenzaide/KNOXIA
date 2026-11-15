@@ -128,3 +128,29 @@ h1,h2,h3{text-wrap:balance}p{text-wrap:pretty}
 .pw-rules li{display:flex;align-items:center;gap:6px;font-size:var(--t-sm);color:var(--muted)}.pw-rules li.ok{color:#0E7A60;font-weight:600}
 .pw-rules>small,.pw-match{font-size:var(--t-sm);color:var(--muted)}.pw-match{color:#C0264F}.pw-match.ok{color:#0E7A60}
 @media(max-width:560px){.pw-rules ul{grid-template-columns:1fr}}
+
+/* ===== Leaderboards, quizzes, logout ===== */
+.nav-link.logout{width:100%;border:0;background:none;font:inherit;font-size:var(--t-md);text-align:left}.nav-link.logout:hover{background:#FDECEF;color:#C0264F}
+.segmented{display:inline-flex;gap:4px;background:var(--soft);padding:4px;border:1px solid var(--border);border-radius:var(--r-ctl);flex-wrap:wrap}
+.segmented button{border:0;background:none;padding:8px 14px;border-radius:8px;font-weight:600;color:var(--muted)}.segmented .selected{background:#fff;color:var(--blue);box-shadow:0 0 0 1px var(--border)}
+.check-list{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:var(--t-md)}
+.podium{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s-4);align-items:end;max-width:640px;margin:var(--s-6) auto}
+.pod{display:grid;justify-items:center;gap:4px;text-align:center;min-width:0}.pod b{font-size:var(--t-md)}.pod span{color:var(--muted);font-size:var(--t-sm)}.pod>svg{color:var(--accent-ink)}.pod.me .avatar{outline:2px solid var(--blue);outline-offset:2px}
+.pod-step{width:100%;margin-top:8px;border-radius:var(--r-card) var(--r-card) 0 0;background:#E4EDFF;color:var(--blue);display:grid;place-items:center;font-weight:800;font-size:28px}
+.p1 .pod-step{height:130px;background:var(--accent-soft);color:var(--accent-ink)}.p2 .pod-step{height:96px}.p3 .pod-step{height:72px}
+.lb-list{padding:var(--s-2) var(--s-4)}.lb-row{display:grid;grid-template-columns:56px 1fr 90px 90px;align-items:center;gap:var(--s-3);padding:12px 8px;border-top:1px solid #edf1f8;font-size:var(--t-md)}
+.lb-row>:last-child{text-align:right}.lb-row.lb-head{border-top:0;color:var(--muted);font-size:var(--t-sm)}.lb-row.me{background:var(--soft);border-radius:var(--r-ctl)}
+.lb-user{display:flex;align-items:center;gap:var(--s-3);min-width:0}.lb-row svg{color:var(--accent-ink);vertical-align:-2px}
+.quiz-wrap{max-width:720px;margin:0 auto}.quiz-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s-2)}
+.q-dots{display:flex;gap:6px;flex-wrap:wrap;margin:var(--s-3) 0}.q-dots button{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:#fff;color:var(--muted);font-weight:600}
+.q-dots .done{background:#E4EDFF;color:var(--blue);border-color:#BFD3F7}.q-dots .now{background:var(--blue);color:#fff;border-color:var(--blue)}
+.quiz-card{text-align:left;margin-top:var(--s-3)}.quiz-card>small{color:var(--muted)}.quiz-card h2{font-family:'Plus Jakarta Sans';font-size:var(--t-xl);line-height:1.4;margin:var(--s-2) 0 var(--s-4)}
+.quiz-nav{display:flex;justify-content:space-between;align-items:center;gap:var(--s-3);margin-top:var(--s-4)}
+.result-hero{display:flex;align-items:center;gap:var(--s-5);flex-wrap:wrap}
+.score-ring{width:120px;height:120px;border-radius:50%;background:conic-gradient(var(--blue) calc(var(--pct)*1%),#EAF0FA 0);display:grid;place-items:center;position:relative;flex-shrink:0}
+.score-ring:before{content:'';position:absolute;inset:10px;background:#fff;border-radius:50%}.score-ring b{position:relative;font-family:'Plus Jakarta Sans';font-size:26px}
+.status-pill.wrong{background:#FDECEF;color:#C0264F}
+.opts{list-style:none;margin:var(--s-3) 0;padding:0;display:grid;gap:6px}.opts li{display:flex;align-items:center;gap:var(--s-3);border:1px solid var(--border);border-radius:var(--r-ctl);padding:10px 12px;font-size:var(--t-md)}
+.opts li>span{width:24px;height:24px;border-radius:7px;background:#eef3fc;display:grid;place-items:center;font-weight:700;color:#526a96;flex-shrink:0}.opts li em{margin-left:auto;font-style:normal;font-size:var(--t-sm);font-weight:700}
+.opts .right{background:#E5F7F1;border-color:#9ED9C7;color:#0E7A60}.opts .wrong{background:#FDECEF;border-color:#F2B8C4;color:#C0264F}
+@media(max-width:560px){.lb-row{grid-template-columns:36px 1fr 70px}.lb-row>:nth-child(3){display:none}.podium{gap:var(--s-2)}}

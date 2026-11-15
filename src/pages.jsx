@@ -44,12 +44,17 @@ export function FlashStudy() {
 
 /* ---------- Quizzes ---------- */
 function QuizRunner({ qs, label, onFinish }) {
-  const nav = useNavigate(); const [i, setI] = useState(0); const [ans, setAns] = useState([]); const q = qs[i]; const pick = ans[i]; const last = i === qs.length - 1;
-  return <div className="study-center"><div className="study-progress"><span>Question {i + 1} of {qs.length}</span><span>{Math.round(i / qs.length * 100)}% complete</span></div><div className="progress-track"><span style={{ width: i / qs.length * 100 + '%' }} /></div>
-    <div className="panel study-card"><small>{label} · QUESTION {String(i + 1).padStart(2, '0')}</small><h2>{q[0]}</h2>
-      {q[1].map((o, k) => <button key={k} className={`answer-option ${pick === k ? 'picked' : ''}`} onClick={() => setAns(a => { const b = [...a]; b[i] = k; return b; })}><span>{'ABCD'[k]}</span>{o}</button>)}
-      <Btn disabled={pick === undefined} onClick={() => last ? onFinish(ans) : setI(i + 1)}>{last ? 'Submit quiz' : 'Next question'}</Btn></div>
-    <div className="study-footer"><span>Choose an answer to continue.</span><Btn v="outline" onClick={() => nav('/dashboard')}>Exit quiz</Btn></div></div>;
+  const nav = useNavigate(); const [i, setI] = useState(0); const [ans, setAns] = useState([]); const q = qs[i]; const last = i === qs.length - 1;
+  const left = qs.filter((_, k) => ans[k] === undefined).length;
+  return <div className="quiz-wrap"><div className="quiz-top"><span className="post-tags"><span>{label}</span></span><span className="muted">{qs.length - left} of {qs.length} answered</span></div><div className="progress-track"><span style={{ width: (qs.length - left) / qs.length * 100 + '%' }} /></div>
+    <div className="q-dots">{qs.map((_, k) => <button key={k} aria-label={`Go to question ${k + 1}`} aria-current={k === i} className={`${ans[k] !== undefined ? 'done' : ''} ${k === i ? 'now' : ''}`} onClick={() => setI(k)}>{k + 1}</button>)}</div>
+    <div className="panel quiz-card"><small>Question {i + 1} of {qs.length}</small><h2>{q[0]}</h2>{q[1].map((o, k) => <button key={k} className={`answer-option ${ans[i] === k ? 'picked' : ''}`} onClick={() => setAns(a => { const b = [...a]; b[i] = k; return b; })}><span>{'ABCD'[k]}</span>{o}</button>)}</div>
+    <div className="quiz-nav"><Btn v="outline" disabled={i === 0} onClick={() => setI(i - 1)}>Previous</Btn><span className="muted">{left ? `${left} left to answer` : 'All answered'}</span>{last ? <Btn disabled={left > 0} onClick={() => onFinish(qs.map((_, k) => ans[k]))}>Submit quiz</Btn> : <Btn onClick={() => setI(i + 1)}>Next</Btn>}</div>
+    <div style={{ textAlign: 'center', marginTop: 12 }}><button className="link-btn" onClick={() => nav('/dashboard')}>Exit quiz</button></div></div>;
+}
+export function RecentAttempts() {
+  const [att] = useLocal('knoxia-attempts', []);
+  return <div className="panel list-panel" style={{ marginTop: 17 }}><div className="list-head"><h3>Recent attempts</h3></div>{att.length === 0 && <p className="muted">Your quiz results will appear here.</p>}{att.slice(0, 5).map(a => <Row key={a.id} icon={Target} tone={a.score / a.n >= .8 ? 'green' : 'orange'} title={`${a.score} / ${a.n} correct`} sub={when(a.date)}><Link className="link-btn" to={'/quizzes/attempts/' + a.id}>Review <ArrowUpRight size={16} /></Link></Row>)}</div>;
 }
 export function QuizTake() {
   const { id } = useParams(); const nav = useNavigate(); const n = Math.min(parseInt(id.split('-')[1]) || 5, BANK.length); const qs = BANK.slice(0, n);
@@ -60,10 +65,11 @@ export function QuizResults() {
   const { id } = useParams(); const nav = useNavigate(); const [att] = useLocal('knoxia-attempts', []); const a = att.find(x => x.id === id);
   if (!a) return <Empty icon={BookOpen} title="Attempt not found" text="Take a quiz to see your results here." action={<Btn onClick={() => nav('/quizzes/create')}>Create a quiz</Btn>} />;
   const pct = Math.round(a.score / a.n * 100); const qs = BANK.slice(0, a.n);
-  return <><Head title="Quiz Results / Review" sub={`Taken ${when(a.date)}`} action={<div className="head-actions"><Btn v="outline" onClick={() => nav('/quizzes/create')}>New quiz</Btn><Btn icon={RotateCcw} onClick={() => nav('/quizzes/ml-' + a.n + '/take')}>Retake</Btn></div>} />
-    <div className="stats-grid compact"><Stat label="Score" value={`${a.score} / ${a.n}`} note={pct >= 80 ? 'Great work' : 'Keep practicing'} icon={Target} tone="green" /><Stat label="Accuracy" value={pct + '%'} note="Correct answers" icon={CheckCircle2} /><Stat label="To review" value={String(a.n - a.score)} note="Missed questions" icon={Clock3} tone="orange" /></div>
-    <div style={{ display: 'grid', gap: 13 }}>{qs.map((q, i) => { const ok = a.ans[i] === q[2]; return <div className="panel" key={i}><b>{i + 1}. {q[0]}</b>
-      <div className={`notice ${ok ? '' : 'error'}`}>{ok ? <Check size={16} /> : <Activity size={16} />}Your answer: {q[1][a.ans[i]]}</div>{!ok && <div className="notice"><Check size={16} />Correct answer: {q[1][q[2]]}</div>}<p className="muted">{q[3]}</p></div>; })}</div></>;
+  return <><Head title="Quiz Results / Review" sub={`Taken ${when(a.date)}`} />
+    <div className="panel result-hero"><div className="score-ring" style={{ '--pct': pct }}><b>{pct}%</b></div><div style={{ flex: 1, minWidth: 220 }}><h3 style={{ fontSize: 20, margin: '0 0 4px' }}>{pct >= 80 ? 'Great work!' : pct >= 50 ? 'Good effort. Review the misses below.' : 'Keep practicing. Review the answers below.'}</h3><p className="muted">You got {a.score} of {a.n} questions right{a.n - a.score ? `, and ${a.n - a.score} to review` : ''}.</p><div className="head-actions" style={{ justifyContent: 'flex-start' }}><Btn icon={RotateCcw} onClick={() => nav('/quizzes/ml-' + a.n + '/take')}>Retake quiz</Btn><Btn v="outline" onClick={() => nav('/quizzes/create')}>New quiz</Btn></div></div></div>
+    <h3 style={{ margin: '24px 0 12px' }}>Answer review</h3>
+    <div style={{ display: 'grid', gap: 13 }}>{qs.map((q, i) => { const ok = a.ans[i] === q[2]; return <div className="panel" key={i}><div className="deck-bottom"><b>{i + 1}. {q[0]}</b><span className={`status-pill ${ok ? 'active' : 'wrong'}`}>{ok ? 'Correct' : 'Incorrect'}</span></div>
+      <ul className="opts">{q[1].map((o, k) => <li key={k} className={k === q[2] ? 'right' : k === a.ans[i] ? 'wrong' : ''}><span>{'ABCD'[k]}</span>{o}{(k === q[2] || k === a.ans[i]) && <em>{k === q[2] ? (k === a.ans[i] ? 'Your answer' : 'Correct answer') : 'Your answer'}</em>}</li>)}</ul><p className="muted">{q[3]}</p></div>; })}</div></>;
 }
 
 /* ---------- Study rooms ---------- */
@@ -103,9 +109,14 @@ export function ChallengePlay() {
 
 /* ---------- Gamification & analytics ---------- */
 export function Leaderboards() {
-  const [tab, setTab] = useState('This week'); const rows = [...BOARD].map(r => [r[0], r[1], tab === 'This week' ? r[2] : r[2] * 4]).sort((a, b) => b[2] - a[2]);
-  return <><Head title="Leaderboards" sub="See how your learning journey compares with others." /><div className="tabs">{['This week', 'All time'].map(t => <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
-    <div className="panel list-panel">{rows.map((r, i) => <div className="generic-row" key={r[0]} style={r[1] === 'KP' ? { background: 'var(--soft)' } : undefined}><b style={{ width: 24 }}>{i === 0 ? <Crown size={18} /> : i + 1}</b><div className="avatar sm">{r[1]}</div><div><b>{r[0]}{r[1] === 'KP' ? ' (you)' : ''}</b></div><span className="row-status">{r[2].toLocaleString()} XP</span></div>)}</div></>;
+  const [tab, setTab] = useState('This week'); const [scope, setScope] = useState('Everyone'); const k = { 'This week': .2, 'This month': .6, 'All time': 1 }[tab];
+  const all = BOARD.filter(r => scope === 'Everyone' || r[1] === 'KP' || r[4]).map(r => ({ name: r[0], init: r[1], xp: Math.round(r[2] * k), streak: r[3], me: r[1] === 'KP' })).sort((a, b) => b.xp - a.xp).map((r, i) => ({ ...r, rank: i + 1 }));
+  const me = all.find(r => r.me); const above = all[me.rank - 2]; const top = all.slice(0, 3);
+  return <><Head title="Leaderboards" sub="See how your learning journey compares with others." action={<div className="segmented" role="group" aria-label="Who to show">{['Everyone', 'Friends'].map(t => <button key={t} className={scope === t ? 'selected' : ''} onClick={() => setScope(t)}>{t}</button>)}</div>} />
+    <div className="tabs">{['This week', 'This month', 'All time'].map(t => <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
+    <div className="stats-grid compact"><Stat label="Your rank" value={'#' + me.rank} note={`of ${all.length} students`} icon={Trophy} tone="orange" /><Stat label="Your XP" value={me.xp.toLocaleString()} note={tab} icon={Zap} /><Stat label={above ? 'To next rank' : 'Position'} value={above ? (above.xp - me.xp).toLocaleString() + ' XP' : 'Top spot'} note={above ? `Behind ${above.name}` : 'Keep it up'} icon={Target} tone="green" /></div>
+    <div className="podium">{[1, 0, 2].map(i => top[i] && <div key={i} className={`pod p${i + 1} ${top[i].me ? 'me' : ''}`}>{i === 0 && <Crown size={22} />}<div className="avatar lg">{top[i].init}</div><b>{top[i].name}{top[i].me ? ' (you)' : ''}</b><span>{top[i].xp.toLocaleString()} XP</span><div className="pod-step">{i + 1}</div></div>)}</div>
+    {all.length > 3 && <div className="panel lb-list"><div className="lb-row lb-head"><span>Rank</span><span>Student</span><span>Streak</span><span>XP</span></div>{all.slice(3).map(r => <div className={`lb-row ${r.me ? 'me' : ''}`} key={r.name}><b>{r.rank}</b><span className="lb-user"><span className="avatar sm">{r.init}</span>{r.name}{r.me ? ' (you)' : ''}</span><span><Flame size={14} /> {r.streak}d</span><b>{r.xp.toLocaleString()}</b></div>)}</div>}</>;
 }
 export function Achievements() {
   const got = BADGES.filter(b => b[3]).length;

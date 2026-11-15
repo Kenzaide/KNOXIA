@@ -51,7 +51,7 @@ export const CHALLENGES = [
   { id: 'c2', title: 'Automata Speed Round', opp: 'Alex Rivera', init: 'AR', q: 2, score: 4 },
   { id: 'c3', title: 'Cybersecurity Challenge', opp: 'Jordan Lee', init: 'JL', q: 5, score: 2 },
 ];
-export const BOARD = [['Alex Rivera', 'AR', 2840], ['Mika Santos', 'MS', 2510], ['Kenneth Punla', 'KP', 3240], ['Jordan Lee', 'JL', 1960], ['Sam Cruz', 'SC', 1720]];
+export const BOARD = [['Kenneth Punla', 'KP', 3240, 7, false], ['Alex Rivera', 'AR', 2840, 9, true], ['Mika Santos', 'MS', 2510, 12, true], ['Jordan Lee', 'JL', 1960, 4, true], ['Sam Cruz', 'SC', 1720, 3, false], ['Bea Reyes', 'BR', 1540, 6, false], ['Carlo Tan', 'CT', 1210, 2, false], ['Dana Lim', 'DL', 980, 1, false]];
 export const BADGES = [
   ['7-Day Streak', 'Study 7 days in a row', 'Flame', true], ['Quiz Master', 'Score 90% or higher on a quiz', 'Target', true],
   ['Early Bird', 'Study before 7 AM', 'Zap', true], ['Deck Builder', 'Create 5 flashcard decks', 'Layers', false],
