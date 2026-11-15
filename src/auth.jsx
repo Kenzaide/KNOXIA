@@ -35,7 +35,7 @@ export function Login() {
   const [busy, go] = useFake(() => { try { localStorage.setItem('knoxia-remember', remember ? '1' : ''); } catch { /* ignore */ } nav('/dashboard'); });
   return <Shell><Card icon={BrainCircuit} title="Welcome back!" sub="Sign in to continue learning and growing.">
     <form onSubmit={e => { e.preventDefault(); if (!busy) go(); }}>
-      <Field label="Email address"><input className="field" type="email" required autoComplete="email" placeholder="juan.delacruz@university.edu.ph" value={email} onChange={e => setEmail(e.target.value)} /></Field>
+      <Field label="Email address"><input className="field" type="email" required autoComplete="email" placeholder="Enter your email address" value={email} onChange={e => setEmail(e.target.value)} /></Field>
       <Field label="Password"><Password value={pw} onChange={e => setPw(e.target.value)} autoComplete="current-password" /></Field>
       <div className="login-opts"><label className="check-inline"><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} /> Remember me</label><Link to="/forgot-password">Forgot password?</Link></div>
       <Submit busy={busy}>Log in</Submit></form>
@@ -44,7 +44,7 @@ export function Login() {
 }
 
 export function Register() {
-  const nav = useNavigate(); const blank = { first: '', middle: '', last: '', suffix: '', email: '', username: '', pw: '', pw2: '', sid: '', school: '', college: '', course: '', year: YEARS[0], section: '', terms: false, privacy: false };
+  const nav = useNavigate(); const blank = { first: '', middle: '', last: '', suffix: '', email: '', username: '', pw: '', pw2: '', sid: '', school: '', college: '', course: '', year: '', section: '', terms: false, privacy: false };
   const [f, setF] = useState(blank); const [err, setErr] = useState(''); const [photo, setPhoto] = useState('');
   const set = k => e => setF(x => ({ ...x, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
   const [busy, go] = useFake(() => { store.set('knoxia-email', f.email); store.set('knoxia-name', f.first); logEvent(`New user registered: ${f.first} ${f.last}`); nav('/verify-email'); });
@@ -57,17 +57,17 @@ export function Register() {
   return <Shell wide><Card wide icon={GraduationCap} title="Create your account" sub="Tell us about yourself so KNOXIA can personalize your study space.">
     <form onSubmit={submit}>
       <fieldset><legend>Personal information</legend>
-        <label className="photo-pick">{photo ? <img src={photo} alt="Profile preview" /> : <Camera size={22} />}<input type="file" accept="image/png,image/jpeg" hidden onChange={e => { const x = e.target.files[0]; if (x) setPhoto(URL.createObjectURL(x)); }} /><span>Profile picture <em>(optional)</em></span></label>
-        <div className="form-grid"><Field label="First name"><input className="field" required autoComplete="given-name" placeholder="Juan" value={f.first} onChange={set('first')} /></Field><Field label="Middle name" optional><input className="field" autoComplete="additional-name" placeholder="Santos" value={f.middle} onChange={set('middle')} /></Field>
-          <Field label="Last name"><input className="field" required autoComplete="family-name" placeholder="Dela Cruz" value={f.last} onChange={set('last')} /></Field><Field label="Suffix" optional><input className="field" placeholder="Jr., III, Sr." value={f.suffix} onChange={set('suffix')} /></Field></div></fieldset>
+        <label className="photo-pick">{photo ? <img src={photo} alt="Profile preview" /> : <Camera size={22} />}<input type="file" accept="image/png,image/jpeg" hidden onChange={e => { const x = e.target.files[0]; if (x) setPhoto(URL.createObjectURL(x)); }} /><span>Upload your profile picture <em>(optional)</em></span></label>
+        <div className="form-grid"><Field label="First name"><input className="field" required autoComplete="given-name" placeholder="Enter your first name" value={f.first} onChange={set('first')} /></Field><Field label="Middle name" optional><input className="field" autoComplete="additional-name" placeholder="Enter your middle name (optional)" value={f.middle} onChange={set('middle')} /></Field>
+          <Field label="Last name"><input className="field" required autoComplete="family-name" placeholder="Enter your last name" value={f.last} onChange={set('last')} /></Field><Field label="Suffix" optional><select className="field" value={f.suffix} onChange={set('suffix')}><option value="">Select your suffix (optional)</option>{['Jr.', 'Sr.', 'II', 'III', 'IV', 'V'].map(x => <option key={x}>{x}</option>)}</select></Field></div></fieldset>
       <fieldset><legend>Account information</legend>
-        <div className="form-grid"><Field label="Email address"><input className="field" type="email" required autoComplete="email" placeholder="juan.delacruz@university.edu.ph" value={f.email} onChange={set('email')} /></Field><Field label="Username"><input className="field" required autoComplete="username" placeholder="juandelacruz" value={f.username} onChange={set('username')} /></Field>
-          <Field label="Password"><Password value={f.pw} onChange={set('pw')} placeholder="Create a strong password" autoComplete="new-password" /></Field><Field label="Confirm password"><Password value={f.pw2} onChange={set('pw2')} placeholder="Re-enter your password" autoComplete="new-password" /><Match a={f.pw} b={f.pw2} /></Field></div><PasswordRules pw={f.pw} /></fieldset>
+        <div className="form-grid"><Field label="Email address"><input className="field" type="email" required autoComplete="email" placeholder="Enter your email address" value={f.email} onChange={set('email')} /></Field><Field label="Username"><input className="field" required autoComplete="username" placeholder="Choose a username" value={f.username} onChange={set('username')} /></Field>
+          <Field label="Password"><Password value={f.pw} onChange={set('pw')} placeholder="Create a password" autoComplete="new-password" /></Field><Field label="Confirm password"><Password value={f.pw2} onChange={set('pw2')} placeholder="Re-enter your password" autoComplete="new-password" /><Match a={f.pw} b={f.pw2} /></Field></div><PasswordRules pw={f.pw} /></fieldset>
       <fieldset><legend>Academic information</legend>
-        <div className="form-grid"><Field label="University / School"><input className="field wide-field" required autoComplete="organization" placeholder="e.g. University of the Philippines Diliman" value={f.school} onChange={set('school')} /></Field>
-          <Field label="Student ID number"><input className="field" required placeholder="e.g. 2023-00123" value={f.sid} onChange={set('sid')} /></Field><Field label="College / Department"><input className="field" required placeholder="e.g. College of Computer Studies" value={f.college} onChange={set('college')} /></Field>
-          <Field label="Course / Program"><input className="field" required placeholder="e.g. BS Computer Science" value={f.course} onChange={set('course')} /></Field><Field label="Year level"><select className="field" value={f.year} onChange={set('year')}>{YEARS.map(c => <option key={c}>{c}</option>)}</select></Field>
-          <Field label="Section" optional><input className="field" placeholder="e.g. 3A" value={f.section} onChange={set('section')} /></Field></div></fieldset>
+        <div className="form-grid"><Field label="University / School"><input className="field wide-field" required autoComplete="organization" placeholder="Enter your university or school name" value={f.school} onChange={set('school')} /></Field>
+          <Field label="Student ID number"><input className="field" required placeholder="Enter your student ID number" value={f.sid} onChange={set('sid')} /></Field><Field label="College / Department"><input className="field" required placeholder="Select your college or department" value={f.college} onChange={set('college')} /></Field>
+          <Field label="Course / Program"><input className="field" required placeholder="Select your course or program" value={f.course} onChange={set('course')} /></Field><Field label="Year level"><select className="field" required value={f.year} onChange={set('year')}><option value="" disabled>Select your year level</option>{YEARS.map(c => <option key={c}>{c}</option>)}</select></Field>
+          <Field label="Section" optional><input className="field" placeholder="Enter your section (optional)" value={f.section} onChange={set('section')} /></Field></div></fieldset>
       <div className="agree"><label className="check-inline"><input type="checkbox" checked={f.terms} onChange={set('terms')} /> I agree to the <Link to="/terms" target="_blank">Terms and Conditions</Link></label><label className="check-inline"><input type="checkbox" checked={f.privacy} onChange={set('privacy')} /> I agree to the <Link to="/privacy" target="_blank">Privacy Policy</Link></label></div>
       <Err msg={err} /><Submit busy={busy}>Create account</Submit></form>
     <div className="auth-switch">Already have an account? <Link to="/login">Log in</Link></div></Card></Shell>;
@@ -77,7 +77,7 @@ export function Forgot() {
   const [email, setEmail] = useState(''); const [sent, setSent] = useState(false);
   const [busy, go] = useFake(() => { store.set('knoxia-email', email); setSent(true); });
   return <Shell><Card icon={KeyRound} title="Forgot password?" sub="Enter your registered email and we’ll send you a link to reset it.">
-    <form onSubmit={e => { e.preventDefault(); if (!busy) go(); }}><Field label="Registered email address"><input className="field" type="email" required autoComplete="email" placeholder="juan.delacruz@university.edu.ph" value={email} onChange={e => setEmail(e.target.value)} /></Field><Submit busy={busy}>Send reset link</Submit>
+    <form onSubmit={e => { e.preventDefault(); if (!busy) go(); }}><Field label="Registered email address"><input className="field" type="email" required autoComplete="email" placeholder="Enter your email address" value={email} onChange={e => setEmail(e.target.value)} /></Field><Submit busy={busy}>Send reset link</Submit>
       {sent && <p className="auth-sent">If an account exists for {email}, a reset link is on its way. <Link to="/reset-password">Open reset page (demo)</Link></p>}</form>
     <div className="auth-switch"><Link to="/login">Back to login</Link></div></Card></Shell>;
 }
@@ -87,7 +87,7 @@ export function ResetPassword() {
   const [busy, go] = useFake(() => { toast('Password updated'); nav('/login'); });
   return <Shell><Card icon={KeyRound} title="Set a new password" sub="Choose a password you haven’t used before.">
     <form onSubmit={e => { e.preventDefault(); if (busy) return; if (!pwOk(pw)) return setErr('Your password doesn’t meet all the requirements listed below.'); if (pw !== pw2) return setErr('Passwords do not match.'); setErr(''); go(); }}>
-      <Field label="New password"><Password value={pw} onChange={e => setPw(e.target.value)} placeholder="Create a new password" autoComplete="new-password" /></Field><Field label="Confirm new password"><Password value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Re-enter your new password" autoComplete="new-password" /><Match a={pw} b={pw2} /></Field><PasswordRules pw={pw} />
+      <Field label="New password"><Password value={pw} onChange={e => setPw(e.target.value)} placeholder="Create a password" autoComplete="new-password" /></Field><Field label="Confirm new password"><Password value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Re-enter your password" autoComplete="new-password" /><Match a={pw} b={pw2} /></Field><PasswordRules pw={pw} />
       <Err msg={err} /><Submit busy={busy}>Update password</Submit></form><div className="auth-switch"><Link to="/login">Back to login</Link></div></Card></Shell>;
 }
 
