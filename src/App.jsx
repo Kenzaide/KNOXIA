@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Routes, Route, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useMaterials, toast, previews, colorOf, fmtSize, fmtDate, SUBJECTS } from './materials.jsx';
 import { ReviewerEditor, SavedReviewers, RecentAttempts, FlashStudy, QuizTake, QuizResults, StudyRooms, RoomDetail, Challenges, ChallengePlay, Leaderboards, Achievements, Analytics, Planner, Notifications, SettingsPage, Moderation, Logs } from './pages.jsx';
@@ -75,8 +76,28 @@ function Toaster() { const [t,setT]=useState(null); useEffect(()=>{let id; const
 function StatCard({label,value,change,icon:Icon,tone='blue'}) { return <div className="stat-card"><div className={`stat-icon ${tone}`}><Icon size={18}/></div><div className="stat-copy"><span>{label}</span><strong>{value}</strong><small className="positive">{change}</small></div></div>; }
 function SectionTitle({title,subtitle,action}) { return <div className="section-title"><div><h2>{title}</h2>{subtitle&&<p>{subtitle}</p>}</div>{action}</div>; }
 
+function ConfirmDialog({title,body,confirmLabel,onConfirm,onCancel}) {
+  const cancelRef=useRef(null); const cancelFn=useRef(onCancel); cancelFn.current=onCancel;
+  useEffect(()=>{
+    const prev=document.activeElement; cancelRef.current&&cancelRef.current.focus();
+    const key=e=>{
+      if(e.key==='Escape')cancelFn.current();
+      if(e.key==='Tab'){ const f=[...document.querySelectorAll('.dialog button')]; if(!f.length)return;
+        const first=f[0],last=f[f.length-1];
+        if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
+        else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()} }
+    };
+    document.addEventListener('keydown',key);
+    return()=>{document.removeEventListener('keydown',key); prev&&prev.focus&&prev.focus()};
+  },[]);
+  return createPortal(<div className="dialog-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)onCancel()}}>
+    <div className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-title" aria-describedby="dlg-body">
+      <div className="dialog-icon"><LogOut size={20}/></div><h3 id="dlg-title">{title}</h3><p id="dlg-body">{body}</p>
+      <div className="dialog-actions"><button type="button" ref={cancelRef} className="btn outline" onClick={onCancel}>Cancel</button><button type="button" className="btn primary danger" onClick={onConfirm}>{confirmLabel}</button></div>
+    </div></div>,document.body);
+}
 function Sidebar({admin=false,close}) {
-  const nav=useNavigate(); const logout=()=>{try{localStorage.removeItem('knoxia-remember')}catch{} close&&close(); nav('/login')};
+  const [confirming,setConfirming]=useState(false); const nav=useNavigate(); const logout=()=>{try{localStorage.removeItem('knoxia-remember')}catch{} close&&close(); nav('/login')};
   return <aside className="sidebar">
     <div className="sidebar-top"><Logo/><button className="mobile-close" onClick={close}><X size={18}/></button></div>
     
@@ -87,7 +108,8 @@ function Sidebar({admin=false,close}) {
     <div className="sidebar-bottom">
       
       <NavLink to="/settings" className="nav-link"><Settings size={18}/><span>Settings</span></NavLink>
-      <button type="button" className="nav-link logout" onClick={logout}><LogOut size={18}/><span>Log out</span></button>
+      <button type="button" className="nav-link logout" onClick={()=>setConfirming(true)}><LogOut size={18}/><span>Log out</span></button>
+      {confirming&&<ConfirmDialog title="Log out of KNOXIA?" body="You will need to sign in again to continue studying." confirmLabel="Log out" onConfirm={()=>{setConfirming(false);logout()}} onCancel={()=>setConfirming(false)}/>}
       <div className="side-user"><Avatar initials={admin?'AD':'KP'} online/><div><b>{admin?'Admin User':'Kenneth Punla'}</b><small>{admin?'Administrator':'3rd Year • BSCS'}</small></div><MoreHorizontal size={18}/></div>
     </div>
   </aside>;
