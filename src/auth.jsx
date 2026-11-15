@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, BrainCircuit, GraduationCap, MailCheck, KeyRound, PartyPopper, AlertCircle, Camera, Check, Circle } from 'lucide-react';
 import { toast } from './materials.jsx';
 import { logEvent } from './data.js';
@@ -14,7 +14,7 @@ const Card = ({ icon: I, title, sub, wide, children }) => <div className={`auth-
 const Submit = ({ busy, children }) => <button type="submit" disabled={busy} className="btn primary">{busy ? <i className="spin" aria-hidden="true" /> : null}<span>{children}</span></button>;
 const Err = ({ msg }) => msg ? <div className="notice error" role="alert"><AlertCircle size={16} />{msg}</div> : null;
 const Field = ({ label, optional, children }) => <label className="afield"><span className="field-label">{label}{optional && <em> (optional)</em>}</span>{children}</label>;
-const Legal = () => <>By continuing you agree to the <Link to="/terms">Terms and Conditions</Link> and <Link to="/privacy">Privacy Policy</Link>.</>;
+const Legal = ({ from = '/login' }) => <>By continuing you agree to the <Link to="/terms" state={{ from }}>Terms and Conditions</Link> and <Link to="/privacy" state={{ from }}>Privacy Policy</Link>.</>;
 
 function Password({ value, onChange, placeholder = 'Enter your password', name, autoComplete }) {
   const [show, setShow] = useState(false);
@@ -45,9 +45,10 @@ export function Login() {
 
 export function Register() {
   const nav = useNavigate(); const blank = { first: '', middle: '', last: '', suffix: '', email: '', username: '', pw: '', pw2: '', sid: '', school: '', college: '', course: '', year: '', section: '', terms: false, privacy: false };
-  const [f, setF] = useState(blank); const [err, setErr] = useState(''); const [photo, setPhoto] = useState('');
+  const DRAFT = 'knoxia-reg-draft'; const [f, setF] = useState(() => { try { return { ...blank, ...JSON.parse(sessionStorage.getItem(DRAFT) || '{}') }; } catch { return blank; } });
+  useEffect(() => { const { pw, pw2, ...rest } = f; try { sessionStorage.setItem(DRAFT, JSON.stringify(rest)); } catch { /* ignore */ } }, [f]); const [err, setErr] = useState(''); const [photo, setPhoto] = useState('');
   const set = k => e => setF(x => ({ ...x, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
-  const [busy, go] = useFake(() => { store.set('knoxia-email', f.email); store.set('knoxia-name', f.first); logEvent(`New user registered: ${f.first} ${f.last}`); nav('/verify-email'); });
+  const [busy, go] = useFake(() => { try { sessionStorage.removeItem(DRAFT); } catch { /* ignore */ } store.set('knoxia-email', f.email); store.set('knoxia-name', f.first); logEvent(`New user registered: ${f.first} ${f.last}`); nav('/verify-email'); });
   const submit = e => { e.preventDefault(); if (busy) return;
     if (!/^[a-zA-Z0-9_.]{3,20}$/.test(f.username)) return setErr('Username must be 3–20 characters: letters, numbers, dots or underscores.');
     if (!pwOk(f.pw)) return setErr('Your password doesn’t meet all the requirements listed under the password fields.');
@@ -59,16 +60,16 @@ export function Register() {
       <fieldset><legend>Personal information</legend>
         <label className="photo-pick">{photo ? <img src={photo} alt="Profile preview" /> : <Camera size={22} />}<input type="file" accept="image/png,image/jpeg" hidden onChange={e => { const x = e.target.files[0]; if (x) setPhoto(URL.createObjectURL(x)); }} /><span>Upload your profile picture <em>(optional)</em></span></label>
         <div className="form-grid"><Field label="First name"><input className="field" required autoComplete="given-name" placeholder="Enter your first name" value={f.first} onChange={set('first')} /></Field><Field label="Middle name" optional><input className="field" autoComplete="additional-name" placeholder="Enter your middle name (optional)" value={f.middle} onChange={set('middle')} /></Field>
-          <Field label="Last name"><input className="field" required autoComplete="family-name" placeholder="Enter your last name" value={f.last} onChange={set('last')} /></Field><Field label="Suffix" optional><select className="field" value={f.suffix} onChange={set('suffix')}><option value="">Select your suffix (optional)</option>{['Jr.', 'Sr.', 'II', 'III', 'IV', 'V'].map(x => <option key={x}>{x}</option>)}</select></Field></div></fieldset>
+          <Field label="Last name"><input className="field" required autoComplete="family-name" placeholder="Enter your last name" value={f.last} onChange={set('last')} /></Field><Field label="Suffix" optional><input className="field" placeholder="Enter your suffix (optional)" value={f.suffix} onChange={set('suffix')} /></Field></div></fieldset>
       <fieldset><legend>Account information</legend>
         <div className="form-grid"><Field label="Email address"><input className="field" type="email" required autoComplete="email" placeholder="Enter your email address" value={f.email} onChange={set('email')} /></Field><Field label="Username"><input className="field" required autoComplete="username" placeholder="Choose a username" value={f.username} onChange={set('username')} /></Field>
           <Field label="Password"><Password value={f.pw} onChange={set('pw')} placeholder="Create a password" autoComplete="new-password" /></Field><Field label="Confirm password"><Password value={f.pw2} onChange={set('pw2')} placeholder="Re-enter your password" autoComplete="new-password" /><Match a={f.pw} b={f.pw2} /></Field></div><PasswordRules pw={f.pw} /></fieldset>
       <fieldset><legend>Academic information</legend>
         <div className="form-grid"><Field label="University / School"><input className="field wide-field" required autoComplete="organization" placeholder="Enter your university or school name" value={f.school} onChange={set('school')} /></Field>
-          <Field label="Student ID number"><input className="field" required placeholder="Enter your student ID number" value={f.sid} onChange={set('sid')} /></Field><Field label="College / Department"><input className="field" required placeholder="Select your college or department" value={f.college} onChange={set('college')} /></Field>
-          <Field label="Course / Program"><input className="field" required placeholder="Select your course or program" value={f.course} onChange={set('course')} /></Field><Field label="Year level"><select className="field" required value={f.year} onChange={set('year')}><option value="" disabled>Select your year level</option>{YEARS.map(c => <option key={c}>{c}</option>)}</select></Field>
+          <Field label="Student ID number"><input className="field" required placeholder="Enter your student ID number" value={f.sid} onChange={set('sid')} /></Field><Field label="College / Department"><input className="field" required placeholder="Enter your college or department" value={f.college} onChange={set('college')} /></Field>
+          <Field label="Course / Program"><input className="field" required placeholder="Enter your course or program" value={f.course} onChange={set('course')} /></Field><Field label="Year level"><select className="field" required value={f.year} onChange={set('year')}><option value="" disabled>Select your year level</option>{YEARS.map(c => <option key={c}>{c}</option>)}</select></Field>
           <Field label="Section" optional><input className="field" placeholder="Enter your section (optional)" value={f.section} onChange={set('section')} /></Field></div></fieldset>
-      <div className="agree"><label className="check-inline"><input type="checkbox" checked={f.terms} onChange={set('terms')} /> I agree to the <Link to="/terms" target="_blank">Terms and Conditions</Link></label><label className="check-inline"><input type="checkbox" checked={f.privacy} onChange={set('privacy')} /> I agree to the <Link to="/privacy" target="_blank">Privacy Policy</Link></label></div>
+      <div className="agree"><label className="check-inline"><input type="checkbox" checked={f.terms} onChange={set('terms')} /> I agree to the <Link to="/terms" state={{ from: '/register' }}>Terms and Conditions</Link></label><label className="check-inline"><input type="checkbox" checked={f.privacy} onChange={set('privacy')} /> I agree to the <Link to="/privacy" state={{ from: '/register' }}>Privacy Policy</Link></label></div>
       <Err msg={err} /><Submit busy={busy}>Create account</Submit></form>
     <div className="auth-switch">Already have an account? <Link to="/login">Log in</Link></div></Card></Shell>;
 }
@@ -116,8 +117,8 @@ const LEGAL = {
   '/privacy': ['Privacy Policy', [['What we collect', 'Account details (name, email, username), academic details (student ID, college, program, year level) and the materials you upload.'], ['How we use it', 'To run your account, personalize your dashboard, study groups and leaderboards, and generate study tools from your materials.'], ['Sharing', 'Your materials are private by default. Profile details are shown to others only as your privacy settings allow.'], ['Your choices', 'You can edit or delete your data from Settings, or contact support.']]],
 };
 export function Legal_({ path }) {
-  const [title, secs] = LEGAL[path];
-  return <Shell wide><div className="auth-card wide legal-doc"><h1>{title}</h1><p className="auth-legal">Draft for the prototype. Have it reviewed before launch.</p>{secs.map(([h, t]) => <section key={h}><h2>{h}</h2><p>{t}</p></section>)}<div className="auth-switch"><button type="button" className="link-btn" onClick={() => history.length > 1 ? history.back() : (location.href = '/login')}>Go back</button></div></div></Shell>;
+  const nav = useNavigate(); const from = useLocation().state?.from || '/login'; const [title, secs] = LEGAL[path];
+  return <Shell wide><div className="auth-card wide legal-doc"><h1>{title}</h1><p className="auth-legal">Draft for the prototype. Have it reviewed before launch.</p>{secs.map(([h, t]) => <section key={h}><h2>{h}</h2><p>{t}</p></section>)}<div className="auth-switch"><button type="button" className="btn primary" onClick={() => nav(from)}>{from === '/register' ? 'Back to sign up' : 'Back to log in'}</button></div></div></Shell>;
 }
 
 export function authPage(path) {
