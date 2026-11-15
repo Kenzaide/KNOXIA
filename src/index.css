@@ -99,3 +99,6 @@ h1,h2,h3{text-wrap:balance}p{text-wrap:pretty}
 @keyframes spin{to{transform:rotate(1turn)}}@keyframes fade{from{opacity:0;transform:translateY(4px)}}@keyframes rise{from{opacity:0;transform:translate(-50%,8px)}}@keyframes shimmer{to{background-position:-200% 0}}
 @media(max-width:760px){.hero{grid-template-columns:1fr}.hero h1{font-size:34px}.dashboard-grid{grid-template-columns:1fr}.continue-panel{grid-row:auto}.welcome-row h1{font-size:22px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+.brand-logo{width:36px;height:36px;object-fit:contain;flex-shrink:0}
+.brand-logo.small{width:28px;height:28px}

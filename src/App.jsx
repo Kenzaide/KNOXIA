@@ -60,7 +60,7 @@ const titleMap = {
   '/admin/dashboard':'Admin Dashboard','/admin/users':'User Management','/admin/moderation':'Content Moderation',
   '/admin/logs':'Activity Logs'
 };
-function Logo({small=false}) { return <div className="brand"><div className="brand-mark"><BrainCircuit size={small?18:21}/></div>{!small && <span>KNOXIA</span>}</div>; }
+function Logo({small=false}) { return <div className="brand"><img className={`brand-logo${small?' small':''}`} src="/logo.png" alt={small?'KNOXIA':''} width={small?28:36} height={small?28:36}/>{!small && <span>KNOXIA</span>}</div>; }
 function Avatar({initials='KP',size='md',online=false}) { return <div className={`avatar ${size}`}>{initials}{online&&<i/>}</div>; }
 function Button({children,variant='primary',icon:Icon,onClick,type='button',loading=false}) { return <button type={type} onClick={onClick} disabled={loading} className={`btn ${variant}`}>{loading?<i className="spin" aria-hidden="true"/>:Icon&&<Icon size={16}/>}<span>{children}</span></button>; }
 // Stand-in for data fetching: shows skeletons briefly until a real API is connected.
