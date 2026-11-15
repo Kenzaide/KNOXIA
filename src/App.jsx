@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Routes, Route, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useMaterials, toast, previews, colorOf, fmtSize, fmtDate, SUBJECTS } from './materials.jsx';
 import { ReviewerEditor, SavedReviewers, RecentAttempts, FlashStudy, QuizTake, QuizResults, StudyRooms, RoomDetail, Challenges, ChallengePlay, Leaderboards, Achievements, Analytics, Planner, Notifications, SettingsPage, Moderation, Logs } from './pages.jsx';
-import { saveReviewer } from './data.js';
+import { saveReviewer, useLocal, NOTES } from './data.js';
 import { authPage } from './auth.jsx';
 
 let navTo = (p) => { location.href = p; };
@@ -90,9 +90,51 @@ function Sidebar({admin=false,close}) {
     </div>
   </aside>;
 }
+function Clock() {
+  const [now,setNow]=useState(()=>new Date());
+  useEffect(()=>{const id=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(id)},[]);
+  const time=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  const date=now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+  return <time className="top-clock" dateTime={now.toISOString()}><b>{time}</b><small>{date}</small></time>;
+}
+function NotificationBell() {
+  const nav=useNavigate(); const {pathname}=useLocation();
+  const [items,setItems]=useLocal('knoxia-notes',NOTES);
+  const [open,setOpen]=useState(false); const box=useRef(null); const btn=useRef(null);
+  const unread=items.filter(x=>!x.read).length;
+  useEffect(()=>{setOpen(false)},[pathname]);
+  useEffect(()=>{
+    if(!open) return;
+    const down=e=>{ if(box.current&&!box.current.contains(e.target)) setOpen(false); };
+    const key=e=>{ if(e.key==='Escape'){ setOpen(false); btn.current&&btn.current.focus(); } };
+    document.addEventListener('mousedown',down); document.addEventListener('keydown',key);
+    return()=>{document.removeEventListener('mousedown',down); document.removeEventListener('keydown',key)};
+  },[open]);
+  const markRead=id=>setItems(a=>a.map(x=>x.id===id?{...x,read:true}:x));
+  const markAll=()=>setItems(a=>a.map(x=>({...x,read:true})));
+  return <div className="notif-wrap" ref={box}>
+    <button ref={btn} type="button" className="icon-btn notification" aria-label={`Notifications${unread?`, ${unread} unread`:''}`} aria-haspopup="true" aria-expanded={open} onClick={()=>setOpen(o=>!o)}>
+      <Bell size={18}/>{unread>0&&<span className="notif-badge">{unread}</span>}
+    </button>
+    {open&&<div className="notif-menu" role="region" aria-label="Notifications">
+      <div className="notif-head"><b>Notifications</b>{unread>0?<button type="button" className="link-btn" onClick={markAll}>Mark all as read</button>:<span className="muted-sm">All caught up</span>}</div>
+      <ul className="notif-list">
+        {items.length===0&&<li className="notif-empty">No notifications yet.</li>}
+        {items.map(x=><li key={x.id} className={`notif-item${x.read?'':' unread'}`}>
+          <button type="button" className="notif-main" onClick={()=>markRead(x.id)} title={x.read?'':'Mark as read'}>
+            <span className="notif-dot" aria-hidden="true"/>
+            <span className="notif-text"><b>{x.t}</b><small>{x.s}</small></span>
+          </button>
+          <button type="button" className="notif-open" aria-label={`Open: ${x.t}`} onClick={()=>{markRead(x.id); setOpen(false); nav(x.to);}}><ChevronRight size={16}/></button>
+        </li>)}
+      </ul>
+      <div className="notif-foot"><button type="button" className="link-btn" onClick={()=>{setOpen(false); nav('/notifications');}}>View all notifications</button></div>
+    </div>}
+  </div>;
+}
 function Topbar({title,admin=false,onMenu}) {
   const [search,setSearch]=useState('');
-  return <header className="topbar"><div className="top-left"><button className="menu-btn" onClick={onMenu}><Menu size={20}/></button><div className="crumb"><b>{title}</b></div></div><div className="top-actions"><div className="top-search"><Search size={16}/><input placeholder="Search anything..." value={search} onChange={e=>setSearch(e.target.value)}/></div><NavLink to="/notifications" className="icon-btn notification"><Bell size={18}/><i/></NavLink><div className="top-divider"/><Avatar initials={admin?'AD':'KP'} size="sm"/></div></header>;
+  return <header className="topbar"><div className="top-left"><button className="menu-btn" onClick={onMenu}><Menu size={20}/></button><div className="crumb"><b>{title}</b></div></div><div className="top-actions"><Clock/><div className="top-search"><Search size={16}/><input placeholder="Search anything..." value={search} onChange={e=>setSearch(e.target.value)}/></div><NotificationBell/><div className="top-divider"/><Avatar initials={admin?'AD':'KP'} size="sm"/></div></header>;
 }
 function Shell({children,admin=false,title}) {
   const [open,setOpen]=useState(false);

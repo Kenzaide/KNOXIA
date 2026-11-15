@@ -6,7 +6,19 @@ export function useLocal(key, init) {
     try { const s = JSON.parse(localStorage.getItem(key)); if (s !== null) return s; } catch { /* use init */ }
     return init;
   });
-  useEffect(() => { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* storage unavailable */ } }, [key, v]);
+  useEffect(() => {
+    try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* storage unavailable */ }
+    // Tell other components using the same key (e.g. the notification dropdown and the Notifications page).
+    window.dispatchEvent(new CustomEvent('knoxia-local', { detail: { key, value: v } }));
+  }, [key, v]);
+  useEffect(() => {
+    const onSync = (e) => {
+      if (e.detail.key !== key) return;
+      setV((prev) => (JSON.stringify(prev) === JSON.stringify(e.detail.value) ? prev : e.detail.value));
+    };
+    window.addEventListener('knoxia-local', onSync);
+    return () => window.removeEventListener('knoxia-local', onSync);
+  }, [key]);
   return [v, setV];
 }
 // Synchronous write used right before navigating, so the next page can read it.
