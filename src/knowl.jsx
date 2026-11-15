@@ -54,3 +54,12 @@ export function Knowl({ pose = 'default', onClick, label = 'Knowl the owl', clas
     </button>
   );
 }
+
+/** Small round Knowl face for chat headers and message bubbles. */
+export function KnowlAvatar({ pose = 'default', size = 36, className = '' }) {
+  return (
+    <span className={`knowl-avatar ${className}`} style={{ width: size, height: size }} aria-hidden="true">
+      <img src={`/knowl/${pose}.webp`} alt="" draggable="false" />
+    </span>
+  );
+}
