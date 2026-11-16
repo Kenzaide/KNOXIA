@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ThemeToggle } from './theme.jsx';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { tab } from './storage.js';
 import { Eye, EyeOff, BrainCircuit, GraduationCap, MailCheck, KeyRound, PartyPopper, AlertCircle, Camera, Check, Circle, Info } from 'lucide-react';
 import { toast } from './materials.jsx';
 import { logEvent } from './data.js';
@@ -8,7 +9,7 @@ import { useAuth, REMEMBER_DAYS } from './session.js';
 import { registerAccount, authenticate, verifyAccount, useProfile, ALLOW_DEMO_LOGIN, YEARS, USERNAME_RE, USERNAME_HELP } from './accounts.js';
 import { fileToAvatar, AVATAR_ACCEPT } from './avatar.js';
 
-const store = { get: k => { try { return sessionStorage.getItem(k) || ''; } catch { return ''; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch { /* ignore */ } } };
+const store = { get: k => tab.getRaw(k) || '', set: (k, v) => { tab.setRaw(k, v); } };
 
 function Shell({ children, wide }) {
   return <div className={`auth-screen ${wide ? 'auth-long' : ''}`}><div className="auth-brand"><Link to="/" className="brand"><img className="brand-logo" src="/logo.png" alt="" width="36" height="36" /><span>KNOXIA</span></Link></div><ThemeToggle className="auth-theme" />{children}<div className="auth-footer">© 2026 KNOXIA. Learn smarter. Grow together.</div></div>;
@@ -57,14 +58,14 @@ export function Login() {
 
 export function Register() {
   const nav = useNavigate(); const blank = { first: '', middle: '', last: '', suffix: '', email: '', username: '', pw: '', pw2: '', sid: '', school: '', college: '', course: '', year: '', section: '', terms: false, privacy: false };
-  const DRAFT = 'knoxia-reg-draft'; const [f, setF] = useState(() => { try { return { ...blank, ...JSON.parse(sessionStorage.getItem(DRAFT) || '{}') }; } catch { return blank; } });
-  useEffect(() => { const { pw, pw2, ...rest } = f; try { sessionStorage.setItem(DRAFT, JSON.stringify(rest)); } catch { /* ignore */ } }, [f]); const [err, setErr] = useState(''); const [photo, setPhoto] = useState('');
+  const DRAFT = 'knoxia-reg-draft'; const [f, setF] = useState(() => ({ ...blank, ...tab.get(DRAFT, {}) }));
+  useEffect(() => { const { pw, pw2, ...rest } = f; tab.set(DRAFT, rest); }, [f]); const [err, setErr] = useState(''); const [photo, setPhoto] = useState('');
   const set = k => e => setF(x => ({ ...x, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
   // Saves the account (persisted in this browser, see src/accounts.js), then asks for the email code.
   const [busy, go] = useFake(async () => {
     const r = await registerAccount({ ...f, avatar: photo });
     if (r.error) { setErr(r.error); return; }
-    try { sessionStorage.removeItem(DRAFT); } catch { /* ignore */ }
+    tab.remove(DRAFT);
     store.set('knoxia-pending-email', r.account.email); store.set('knoxia-name', r.account.first);
     logEvent(`New user registered: ${f.first} ${f.last}`); nav('/verify-email');
   });

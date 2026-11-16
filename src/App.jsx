@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Routes, Route, NavLink, Link, Navigate, useLocation, useNavigate, useNavigationType, useParams } from 'react-router-dom';
 import { useMaterials, toast, previews, colorOf, fmtSize, fmtDate, SUBJECTS } from './materials.jsx';
 import { ReviewerEditor, SavedReviewers, RecentAttempts, FlashStudy, QuizTake, QuizResults, StudyRooms, RoomDetail, Challenges, ChallengePlay, Leaderboards, Achievements, Analytics, Planner, Notifications, SettingsPage, Moderation, Logs } from './pages.jsx';
-import { saveReviewer, useLocal, NOTES } from './data.js';
+import { saveReviewer, useNotes } from './data.js';
 import { authPage } from './auth.jsx';
 import { Knowl, KnowlAvatar } from './knowl.jsx';
 import { ThemeToggle } from './theme.jsx';
@@ -137,7 +137,7 @@ function Clock() {
 }
 function NotificationBell() {
   const nav=useNavigate(); const {pathname}=useLocation();
-  const [items,setItems]=useLocal('knoxia-notes',NOTES);
+  const [items,setItems]=useNotes();
   const [open,setOpen]=useState(false); const box=useRef(null); const btn=useRef(null);
   const unread=items.filter(x=>!x.read).length;
   useEffect(()=>{setOpen(false)},[pathname]);

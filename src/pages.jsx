@@ -5,7 +5,7 @@ import { Sparkles, Layers, CheckCircle2, Trophy, Crown, Flame, Clock3, Target, B
 import { toast } from './materials.jsx';
 import { useProfile } from './accounts.js';
 import { ProfileEditor } from './profile.jsx';
-import { DECKS, BANK, ROOMS, CHALLENGES, BOARD, BADGES, NOTES, REPORTS, LOGS, useLocal, pushLS, logEvent } from './data.js';
+import { DECKS, BANK, ROOMS, CHALLENGES, BOARD, BADGES, useNotes, useReviewers, useAttempts, useRooms, useChallenges, usePlan, useSettings, useReports, useLogs, pushLS, logEvent } from './data.js';
 
 const Btn = ({ children, v = 'primary', icon: I, ...p }) => <button type="button" className={`btn ${v}`} {...p}>{I && <I size={16} />}<span>{children}</span></button>;
 const Head = ({ title, sub, action }) => <div className="section-title"><div><h2>{title}</h2>{sub && <p>{sub}</p>}</div>{action}</div>;
@@ -18,12 +18,12 @@ const ICONS = { Flame, Trophy, Target, Zap, Layers, Users, BookOpen, Medal };
 
 /* ---------- Reviewers ---------- */
 export function SavedReviewers() {
-  const [list] = useLocal('knoxia-reviewers', []);
+  const [list] = useReviewers();
   if (!list.length) return null;
   return <div className="panel list-panel" style={{ marginTop: 17 }}><div className="list-head"><h3>Saved reviewers</h3></div>{list.map(r => <Row key={r.id} icon={Sparkles} title={r.title} sub={`${r.style} · ${r.file}`}><Link className="link-btn" to={'/reviewers/' + r.id}>Open <ArrowUpRight size={16} /></Link></Row>)}</div>;
 }
 export function ReviewerEditor() {
-  const { id } = useParams(); const nav = useNavigate(); const [list, setList] = useLocal('knoxia-reviewers', []);
+  const { id } = useParams(); const nav = useNavigate(); const [list, setList] = useReviewers();
   const r = list.find(x => x.id === id); const [t, setT] = useState(r ? r.title : ''); const [b, setB] = useState(r ? r.body : '');
   if (!r) return <Empty icon={Sparkles} title="Reviewer not found" text="It may have been deleted." action={<Btn onClick={() => nav('/reviewers/create')}>Create a reviewer</Btn>} />;
   const save = () => { setList(a => a.map(x => x.id === id ? { ...x, title: t.trim() || x.title, body: b, updated: new Date().toISOString() } : x)); toast('Reviewer saved'); };
@@ -56,7 +56,7 @@ function QuizRunner({ qs, label, onFinish }) {
     <div style={{ textAlign: 'center', marginTop: 12 }}><button className="link-btn" onClick={() => nav('/dashboard')}>Exit quiz</button></div></div>;
 }
 export function RecentAttempts() {
-  const [att] = useLocal('knoxia-attempts', []);
+  const [att] = useAttempts();
   return <div className="panel list-panel" style={{ marginTop: 17 }}><div className="list-head"><h3>Recent attempts</h3></div>{att.length === 0 && <p className="muted">Your quiz results will appear here.</p>}{att.slice(0, 5).map(a => <Row key={a.id} icon={Target} tone={a.score / a.n >= .8 ? 'green' : 'orange'} title={`${a.score} / ${a.n} correct`} sub={when(a.date)}><Link className="link-btn" to={'/quizzes/attempts/' + a.id}>Review <ArrowUpRight size={16} /></Link></Row>)}</div>;
 }
 export function QuizTake() {
@@ -65,7 +65,7 @@ export function QuizTake() {
   return <><Head title="Take Quiz" sub="Focus on understanding, one question at a time." /><QuizRunner qs={qs} label="PRACTICE QUIZ" onFinish={finish} /></>;
 }
 export function QuizResults() {
-  const { id } = useParams(); const nav = useNavigate(); const [att] = useLocal('knoxia-attempts', []); const a = att.find(x => x.id === id);
+  const { id } = useParams(); const nav = useNavigate(); const [att] = useAttempts(); const a = att.find(x => x.id === id);
   if (!a) return <Empty icon={BookOpen} title="Attempt not found" text="Take a quiz to see your results here." action={<Btn onClick={() => nav('/quizzes/create')}>Create a quiz</Btn>} />;
   const pct = Math.round(a.score / a.n * 100); const qs = BANK.slice(0, a.n);
   return <><Head title="Quiz Results / Review" sub={`Taken ${when(a.date)}`} />
@@ -77,14 +77,14 @@ export function QuizResults() {
 
 /* ---------- Study rooms ---------- */
 export function StudyRooms() {
-  const nav = useNavigate(); const [rooms, setRooms] = useLocal('knoxia-rooms', ROOMS); const [open, setOpen] = useState(false); const [name, setName] = useState('');
+  const nav = useNavigate(); const [rooms, setRooms] = useRooms(); const [open, setOpen] = useState(false); const [name, setName] = useState('');
   const create = e => { e.preventDefault(); if (!name.trim()) return; const r = { id: 'r' + Date.now(), name: name.trim(), topic: 'Open study', members: ['KP'] }; setRooms(a => [r, ...a]); toast('Room created'); nav('/study-rooms/' + r.id); };
   return <><Head title="Study Rooms" sub="Study together, stay focused." action={<Btn icon={Plus} onClick={() => setOpen(!open)}>Create a room</Btn>} />
     {open && <form className="panel rename-form" style={{ marginBottom: 16 }} onSubmit={create}><input autoFocus aria-label="Room name" placeholder="Room name" value={name} onChange={e => setName(e.target.value)} /><Btn type="submit">Create room</Btn></form>}
     <div className="friend-grid">{rooms.map(r => <div className="panel friend-card" key={r.id}><div className="stat-icon" style={{ margin: '0 auto 10px' }}><Users size={18} /></div><h3>{r.name}</h3><p>{r.topic}</p><span className="friend-status">{r.members.length} studying</span><Btn v="soft" onClick={() => nav('/study-rooms/' + r.id)}>Join room</Btn></div>)}</div></>;
 }
 export function RoomDetail() {
-  const { id } = useParams(); const nav = useNavigate(); const [rooms] = useLocal('knoxia-rooms', ROOMS); const r = rooms.find(x => x.id === id); const me = useProfile();
+  const { id } = useParams(); const nav = useNavigate(); const [rooms] = useRooms(); const r = rooms.find(x => x.id === id); const me = useProfile();
   const [sec, setSec] = useState(1500); const [run, setRun] = useState(false); const [msgs, setMsgs] = useState([['MS', 'Starting a 25-minute focus block.']]); const [text, setText] = useState('');
   useEffect(() => { if (!run) return; const t = setInterval(() => setSec(s => { if (s <= 1) { setRun(false); return 0; } return s - 1; }), 1000); return () => clearInterval(t); }, [run]);
   if (!r) return <Empty icon={Users} title="Room not found" text="It may have been closed." action={<Btn onClick={() => nav('/study-rooms')}>Back to study rooms</Btn>} />;
@@ -98,13 +98,13 @@ export function RoomDetail() {
 
 /* ---------- Challenges ---------- */
 export function Challenges() {
-  const nav = useNavigate(); const [list, setList] = useLocal('knoxia-challenges', CHALLENGES);
+  const nav = useNavigate(); const [list, setList] = useChallenges();
   const add = () => { const c = { id: 'c' + Date.now(), title: `Open Challenge #${list.length + 1}`, opp: 'Alex Rivera', init: 'AR', q: (list.length * 2) % 6, score: 3 }; setList(a => [c, ...a]); toast('Challenge created'); };
   return <><Head title="Quiz Challenges" sub="Challenge friends and test your knowledge." action={<Btn icon={Plus} onClick={add}>Create challenge</Btn>} />
     <div className="panel list-panel">{list.map(c => <Row key={c.id} icon={Swords} tone="purple" title={c.title} sub={`vs ${c.opp} · 5 questions`}><Btn v="soft" icon={Play} onClick={() => nav(`/challenges/${c.id}/play`)}>Play</Btn></Row>)}</div></>;
 }
 export function ChallengePlay() {
-  const { id } = useParams(); const nav = useNavigate(); const [list] = useLocal('knoxia-challenges', CHALLENGES); const c = list.find(x => x.id === id) || list[0];
+  const { id } = useParams(); const nav = useNavigate(); const [list] = useChallenges(); const c = list.find(x => x.id === id) || list[0];
   const qs = BANK.slice(c.q, c.q + 5); const [res, setRes] = useState(null); const [run, setRun] = useState(0);
   if (res !== null) { const o = res > c.score ? 'You won the battle' : res < c.score ? `${c.opp} won this round` : 'It’s a draw'; return <><Head title="Challenge Game / Quiz Battle" sub={c.title} /><div className="study-center"><div className="panel study-card"><small>RESULT</small><h2>{o}</h2><p className="muted">You scored {res} / 5. {c.opp} scored {c.score} / 5.</p><Btn icon={RotateCcw} onClick={() => { setRes(null); setRun(x => x + 1); }}>Rematch</Btn> <Btn v="outline" onClick={() => nav('/challenges')}>Back to challenges</Btn></div></div></>; }
   return <><Head title="Challenge Game / Quiz Battle" sub={`${c.title} · vs ${c.opp}`} /><QuizRunner key={run} qs={qs} label="BATTLE" onFinish={a => setRes(a.filter((x, i) => x === qs[i][2]).length)} /></>;
@@ -127,7 +127,7 @@ export function Achievements() {
     <div className="friend-grid">{BADGES.map(([n, d, ic, on]) => { const I = ICONS[ic]; return <div className="panel friend-card" key={n} style={on ? undefined : { opacity: .6 }}><div className={`stat-icon ${on ? 'orange' : ''}`} style={{ margin: '0 auto 10px' }}>{on ? <I size={18} /> : <Lock size={18} />}</div><h3>{n}</h3><p>{d}</p><span className="friend-status">{on ? 'Earned' : 'Locked'}</span></div>; })}</div></>;
 }
 export function Analytics() {
-  const [att] = useLocal('knoxia-attempts', []); const avg = att.length ? Math.round(att.reduce((s, a) => s + a.score / a.n * 100, 0) / att.length) : 86;
+  const [att] = useAttempts(); const avg = att.length ? Math.round(att.reduce((s, a) => s + a.score / a.n * 100, 0) / att.length) : 86;
   const topics = [['Machine Learning', 78], ['Automata Theory', 54], ['Cybersecurity', 85], ['Computer Architecture', 41]];
   return <><Head title="Learning Analytics" sub="Use your learning data to make your next study session count." action={<Btn v="outline" icon={Download} onClick={() => dl('knoxia-report.csv', [['Topic', 'Mastery %'], ...topics, ['Quizzes taken', att.length], ['Quiz average %', avg]])}>Export report</Btn>} />
     <div className="stats-grid"><Stat label="Study time" value="18h 42m" note="↑ 12% this week" icon={Clock3} /><Stat label="Quiz average" value={avg + '%'} note={att.length ? 'From your attempts' : 'Sample data'} icon={Target} tone="green" /><Stat label="Quizzes taken" value={String(att.length)} note="This device" icon={BookOpen} tone="purple" /><Stat label="Streak" value="7 days" note="Personal best: 12" icon={Flame} tone="orange" /></div>
@@ -135,7 +135,7 @@ export function Analytics() {
       <section className="panel"><h3>Topic mastery</h3>{topics.map(([n, v]) => <div key={n}><div className="deck-bottom"><span>{n}</span><b>{v}%</b></div><div className="progress-track"><span style={{ width: v + '%' }} /></div></div>)}</section></div></>;
 }
 export function Planner() {
-  const [items, setItems] = useLocal('knoxia-plan', [{ id: 'a', title: 'Machine Learning review', date: '2026-11-16', done: false }, { id: 'b', title: 'Automata Theory practice', date: '2026-11-17', done: false }, { id: 'c', title: 'Computer Architecture notes', date: '2026-11-18', done: true }]);
+  const [items, setItems] = usePlan();
   const [title, setTitle] = useState(''); const [date, setDate] = useState('2026-11-16');
   const add = e => { e.preventDefault(); if (!title.trim()) return; setItems(a => [...a, { id: String(Date.now()), title: title.trim(), date, done: false }]); setTitle(''); toast('Session added'); };
   const done = items.filter(x => x.done).length;
@@ -146,12 +146,12 @@ export function Planner() {
 
 /* ---------- Account ---------- */
 export function Notifications() {
-  const nav = useNavigate(); const [items, setItems] = useLocal('knoxia-notes', NOTES); const unread = items.filter(x => !x.read).length;
+  const nav = useNavigate(); const [items, setItems] = useNotes(); const unread = items.filter(x => !x.read).length;
   return <><Head title="Notifications" sub={`${unread} unread`} action={<Btn v="outline" icon={Check} onClick={() => setItems(a => a.map(x => ({ ...x, read: true })))}>Mark all as read</Btn>} />
     <div className="panel list-panel">{items.map(x => <Row key={x.id} icon={Bell} tone={x.read ? 'blue' : 'orange'} title={x.t} sub={x.s} style={{ cursor: 'pointer' }} onClick={() => { setItems(a => a.map(y => y.id === x.id ? { ...y, read: true } : y)); nav(x.to); }}><span className="row-status">{x.read ? 'Read' : 'New'}</span></Row>)}</div></>;
 }
 export function SettingsPage() {
-  const [s, setS] = useLocal('knoxia-settings', { notif: true, reminders: true, pub: true, board: true });
+  const [s, setS] = useSettings();
   const [f, setF] = useState(s); const [tab, setTab] = useState('Profile'); const set = (k, v) => setF(x => ({ ...x, [k]: v }));
   const tog = (k, l) => <label className="check-list" key={k}><span><input type="checkbox" checked={f[k]} onChange={e => set(k, e.target.checked)} /> {l}</span></label>;
   return <><Head title="Settings" sub="Customize your KNOXIA experience." /><div className="settings-layout"><div className="panel settings-menu">{['Profile', 'Security', 'Preferences'].map(t => <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
@@ -162,14 +162,14 @@ export function SettingsPage() {
 
 /* ---------- Admin ---------- */
 export function Moderation() {
-  const [items, setItems] = useLocal('knoxia-reports', REPORTS); const [tab, setTab] = useState('Pending');
+  const [items, setItems] = useReports(); const [tab, setTab] = useState('Pending');
   const act = (r, status) => { setItems(a => a.map(x => x.id === r.id ? { ...x, status } : x)); logEvent(`Report ${status.toLowerCase()}: ${r.type} by ${r.who}`); toast(`Report ${status.toLowerCase()}`); };
   const list = items.filter(x => tab === 'All' || (tab === 'Pending') === (x.status === 'Pending'));
   return <><Head title="Content Moderation" sub="Review reported content and community concerns." /><div className="tabs">{['Pending', 'Resolved', 'All'].map(t => <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
     <div className="panel list-panel">{list.length === 0 && <Empty icon={ShieldCheck} title="Nothing to review" text="New reports will show up here." />}{list.map(r => <Row key={r.id} icon={ShieldCheck} tone={r.status === 'Pending' ? 'orange' : 'green'} title={`${r.type} by ${r.who}`} sub={r.reason}>{r.status === 'Pending' ? <div className="friend-buttons"><Btn v="outline" onClick={() => act(r, 'Dismissed')}>Dismiss</Btn><Btn icon={Trash2} onClick={() => act(r, 'Removed')}>Remove</Btn></div> : <span className="row-status">{r.status}</span>}</Row>)}</div></>;
 }
 export function Logs() {
-  const [logs] = useLocal('knoxia-logs', LOGS); const [q, setQ] = useState(''); const list = logs.filter(l => l.t.toLowerCase().includes(q.toLowerCase()));
+  const [logs] = useLogs(); const [q, setQ] = useState(''); const list = logs.filter(l => l.t.toLowerCase().includes(q.toLowerCase()));
   return <><Head title="Activity Logs" sub="A record of recent administrative activity." action={<Btn v="outline" icon={Download} onClick={() => dl('knoxia-logs.csv', [['Time', 'Event'], ...logs.map(l => [l.time, l.t])])}>Download logs</Btn>} />
     <div className="toolbar"><div className="search-field"><Activity size={16} /><input aria-label="Search logs" placeholder="Search logs…" value={q} onChange={e => setQ(e.target.value)} /></div></div>
     <div className="panel list-panel">{list.map(l => <Row key={l.id} icon={Activity} title={l.t} sub={when(l.time)} />)}{list.length === 0 && <Empty icon={Activity} title="No matching events" text="Try a different search." />}</div></>;

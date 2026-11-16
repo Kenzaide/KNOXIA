@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
+import { useUserData } from './storage.js';
 
 const KEY = 'knoxia-materials';
 export const SUBJECTS = ['Artificial Intelligence', 'Computer Science', 'Computer Systems', 'Cybersecurity', 'Networks', 'Other'];
@@ -17,24 +18,17 @@ export const fmtDate = (d) => new Date(d).toLocaleDateString('en-US', { month: '
 
 export const toast = (msg) => window.dispatchEvent(new CustomEvent('knoxia-toast', { detail: msg }));
 
-const Ctx = createContext(null);
+// Kept so main.jsx needn't change: the library now lives in shared storage (storage.js), not in this provider.
+export const MaterialsProvider = ({ children }) => children;
 
-export function MaterialsProvider({ children }) {
-  const [items, setItems] = useState(() => {
-    try { const s = JSON.parse(localStorage.getItem(KEY)); if (Array.isArray(s)) return s; } catch { /* use seed */ }
-    return seed;
-  });
-  useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(items)); } catch { /* storage unavailable */ } }, [items]);
-
+export function useMaterials() {
+  const [items, setItems] = useUserData(KEY, seed);
   const add = useCallback((m) => {
     const item = { ...m, id: String(Date.now()), uploaded: new Date().toISOString() };
     setItems((a) => [item, ...a]);
     return item;
-  }, []);
-  const update = useCallback((id, patch) => setItems((a) => a.map((x) => (x.id === id ? { ...x, ...patch } : x))), []);
-  const remove = useCallback((id) => { previews.delete(id); setItems((a) => a.filter((x) => x.id !== id)); }, []);
-
-  return <Ctx.Provider value={{ items, add, update, remove }}>{children}</Ctx.Provider>;
+  }, [setItems]);
+  const update = useCallback((id, patch) => setItems((a) => a.map((x) => (x.id === id ? { ...x, ...patch } : x))), [setItems]);
+  const remove = useCallback((id) => { previews.delete(id); setItems((a) => a.filter((x) => x.id !== id)); }, [setItems]);
+  return useMemo(() => ({ items, add, update, remove }), [items, add, update, remove]);
 }
-
-export const useMaterials = () => useContext(Ctx);

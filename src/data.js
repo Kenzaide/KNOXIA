@@ -1,30 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useUserData, userData } from './storage.js';
 
-// Persists state in localStorage until a backend is connected.
-export function useLocal(key, init) {
-  const [v, setV] = useState(() => {
-    try { const s = JSON.parse(localStorage.getItem(key)); if (s !== null) return s; } catch { /* use init */ }
-    return init;
-  });
-  useEffect(() => {
-    try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* storage unavailable */ }
-    // Tell other components using the same key (e.g. the notification dropdown and the Notifications page).
-    window.dispatchEvent(new CustomEvent('knoxia-local', { detail: { key, value: v } }));
-  }, [key, v]);
-  useEffect(() => {
-    const onSync = (e) => {
-      if (e.detail.key !== key) return;
-      setV((prev) => (JSON.stringify(prev) === JSON.stringify(e.detail.value) ? prev : e.detail.value));
-    };
-    window.addEventListener('knoxia-local', onSync);
-    return () => window.removeEventListener('knoxia-local', onSync);
-  }, [key]);
-  return [v, setV];
-}
-// Synchronous write used right before navigating, so the next page can read it.
-export const pushLS = (k, item, seed = []) => {
-  try { const a = JSON.parse(localStorage.getItem(k)) || seed; localStorage.setItem(k, JSON.stringify([item, ...a])); } catch { /* ignore */ }
-};
+// Shared, persisted, per-user state (see storage.js). Kept under the old name for existing imports.
+export const useLocal = useUserData;
+// Synchronous write used right before navigating; mounted components pick it up automatically.
+export const pushLS = (k, item, seed = []) => { userData.update(k, (a) => [item, ...a], seed); };
 
 export const DECKS = [
   { id: '1', title: 'Machine Learning Fundamentals', cards: [['What is supervised learning?', 'Learning from labeled training data.'], ['What is overfitting?', 'A model memorizes training data and performs poorly on new data.'], ['What does regularization do?', 'Penalizes model complexity to reduce overfitting.'], ['What is a feature?', 'An input variable the model uses to make predictions.']] },
@@ -89,3 +68,18 @@ export const LOGS = [
   { id: 'l4', t: 'New user registered: Sam Cruz', time: '2026-11-12T10:05:00' },
 ];
 export const logEvent = (t) => pushLS('knoxia-logs', { id: String(Date.now()), t, time: new Date().toISOString() }, LOGS);
+
+/* ---------- App state: one named hook per saved collection ---------- */
+export const KEYS = { notes: 'knoxia-notes', reviewers: 'knoxia-reviewers', attempts: 'knoxia-attempts', rooms: 'knoxia-rooms', challenges: 'knoxia-challenges', plan: 'knoxia-plan', settings: 'knoxia-settings', reports: 'knoxia-reports', logs: 'knoxia-logs' };
+export const PLAN = [{ id: 'a', title: 'Machine Learning review', date: '2026-11-16', done: false }, { id: 'b', title: 'Automata Theory practice', date: '2026-11-17', done: false }, { id: 'c', title: 'Computer Architecture notes', date: '2026-11-18', done: true }];
+export const SETTINGS_DEFAULT = { notif: true, reminders: true, pub: true, board: true };
+const NONE = [];
+export const useNotes = () => useUserData(KEYS.notes, NOTES);
+export const useReviewers = () => useUserData(KEYS.reviewers, NONE);
+export const useAttempts = () => useUserData(KEYS.attempts, NONE);
+export const useRooms = () => useUserData(KEYS.rooms, ROOMS);
+export const useChallenges = () => useUserData(KEYS.challenges, CHALLENGES);
+export const usePlan = () => useUserData(KEYS.plan, PLAN);
+export const useSettings = () => useUserData(KEYS.settings, SETTINGS_DEFAULT);
+export const useReports = () => useUserData(KEYS.reports, REPORTS);
+export const useLogs = () => useUserData(KEYS.logs, LOGS);

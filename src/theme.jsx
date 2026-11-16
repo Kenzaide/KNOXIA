@@ -12,9 +12,10 @@ import { Moon, Sun, Monitor } from 'lucide-react';
  */
 const KEY = 'knoxia-theme';
 const COLORS = { light: '#EEF4FF', dark: '#0A1120' };
+import { local } from './storage.js';
 const listeners = new Set();
 
-const read = () => { try { const v = localStorage.getItem(KEY); return v === 'light' || v === 'dark' ? v : 'system'; } catch { return 'system'; } };
+const read = () => { const v = local.getRaw(KEY); return v === 'light' || v === 'dark' ? v : 'system'; };
 const systemDark = () => !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 const resolve = (pref) => (pref === 'system' ? (systemDark() ? 'dark' : 'light') : pref);
 
@@ -76,7 +77,7 @@ function withTransition(run, origin) {
 
 function save(pref, origin) {
   withTransition(() => {
-    try { pref === 'system' ? localStorage.removeItem(KEY) : localStorage.setItem(KEY, pref); } catch { /* storage unavailable: keep in memory */ }
+    if (pref === 'system') local.removeRaw(KEY); else local.setRaw(KEY, pref);
     apply(pref);
     listeners.forEach((fn) => fn(pref));
   }, origin);
