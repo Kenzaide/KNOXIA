@@ -6,14 +6,20 @@ const KEY = 'knoxia-materials';
 export const SUBJECTS = ['Artificial Intelligence', 'Computer Science', 'Computer Systems', 'Cybersecurity', 'Networks', 'Other'];
 
 const seed = [
-  { id: '1', name: 'Introduction to Machine Learning', type: 'PDF', size: '2.4 MB', uploaded: '2026-11-14T08:00:00', subject: 'Artificial Intelligence', desc: 'Supervised and unsupervised learning basics.' },
-  { id: '2', name: 'Automata Theory — Module 03', type: 'PDF', size: '1.8 MB', uploaded: '2026-11-12T08:00:00', subject: 'Computer Science', desc: 'Finite automata and regular languages.' },
-  { id: '3', name: 'Computer Architecture Notes', type: 'PPTX', size: '5.1 MB', uploaded: '2026-11-10T08:00:00', subject: 'Computer Systems', desc: 'CPU design, memory hierarchy and pipelining.' },
-  { id: '4', name: 'Information Assurance Reviewer', type: 'DOCX', size: '840 KB', uploaded: '2026-11-08T08:00:00', subject: 'Cybersecurity', desc: 'Security principles and risk management.' },
+  { id: '1', name: 'Introduction to Machine Learning', type: 'PDF', size: '2.4 MB', bytes: 2516582, uploaded: '2026-11-14T08:00:00', subject: 'Artificial Intelligence', tags: ['midterm', 'ml'], favorite: true, desc: 'Supervised and unsupervised learning basics.' },
+  { id: '2', name: 'Automata Theory — Module 03', type: 'PDF', size: '1.8 MB', bytes: 1887437, uploaded: '2026-11-12T08:00:00', subject: 'Computer Science', tags: ['theory', 'midterm'], desc: 'Finite automata and regular languages.' },
+  { id: '3', name: 'Computer Architecture Notes', type: 'PPTX', size: '5.1 MB', bytes: 5347737, uploaded: '2026-11-10T08:00:00', subject: 'Computer Systems', tags: ['lecture'], desc: 'CPU design, memory hierarchy and pipelining.' },
+  { id: '4', name: 'Information Assurance Reviewer', type: 'DOCX', size: '840 KB', bytes: 860160, uploaded: '2026-11-08T08:00:00', subject: 'Cybersecurity', tags: ['reviewer', 'finals'], desc: 'Security principles and risk management.' },
+  { id: '5', name: 'Data Structures — Trees and Graphs', type: 'PDF', size: '3.2 MB', bytes: 3355443, uploaded: '2026-10-30T08:00:00', subject: 'Computer Science', tags: ['finals', 'algorithms'], favorite: true, desc: 'Binary trees, heaps, BFS and DFS.' },
+  { id: '6', name: 'Computer Networks — OSI and TCP/IP', type: 'PPTX', size: '4.4 MB', bytes: 4613734, uploaded: '2026-10-22T08:00:00', subject: 'Networks', tags: ['lecture', 'midterm'], desc: 'Layers, addressing and routing basics.' },
+  { id: '7', name: 'Neural Networks Lab Guide', type: 'DOCX', size: '1.1 MB', bytes: 1153434, uploaded: '2026-10-15T08:00:00', subject: 'Artificial Intelligence', tags: ['lab', 'ml'], desc: 'Step-by-step lab on training a small network.' },
+  { id: '8', name: 'Operating Systems Summary', type: 'PDF', size: '960 KB', bytes: 983040, uploaded: '2026-09-28T08:00:00', subject: 'Computer Systems', tags: ['reviewer'], desc: 'Processes, scheduling and memory management.' },
 ];
 
 export const colorOf = (t) => ({ PDF: 'blue', DOCX: 'green', PPTX: 'orange' }[t] || 'blue');
 export const fmtSize = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
+/** File size in bytes. Older items only have the text size ("2.4 MB"). */
+export const sizeBytes = (m) => { if (typeof m.bytes === 'number') return m.bytes; const x = /([\d.]+)\s*(KB|MB)/i.exec(m.size || ''); return x ? Math.round(parseFloat(x[1]) * (x[2].toUpperCase() === 'MB' ? 1048576 : 1024)) : 0; };
 export const fmtDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
 
 /* ---------- upload rules ---------- */
@@ -55,5 +61,7 @@ export function useMaterials() {
   }, [setItems]);
   const update = useCallback((id, patch) => setItems((a) => a.map((x) => (x.id === id ? { ...x, ...patch } : x))), [setItems]);
   const remove = useCallback((id) => { deleteFile(id); setItems((a) => a.filter((x) => x.id !== id)); }, [setItems]);
-  return useMemo(() => ({ items, add, update, remove }), [items, add, update, remove]);
+  const updateMany = useCallback((ids, patch) => { const set = new Set(ids); setItems((a) => a.map((x) => (set.has(x.id) ? { ...x, ...patch } : x))); }, [setItems]);
+  const removeMany = useCallback((ids) => { const set = new Set(ids); set.forEach((id) => deleteFile(id)); setItems((a) => a.filter((x) => !set.has(x.id))); }, [setItems]);
+  return useMemo(() => ({ items, add, update, remove, updateMany, removeMany }), [items, add, update, remove, updateMany, removeMany]);
 }

@@ -11,6 +11,8 @@ import { ThemeToggle } from './theme.jsx';
 import { useAuth, accessFor, normalizePath, safeRedirect } from './session.js';
 import { useProfile, profileByUsername, useAccounts, buildProfile } from './accounts.js';
 import { UserAvatar, ProfileHeader, ProfileDetails } from './profile.jsx';
+import { Button, usePending, PageSkeleton, SectionTitle, ConfirmDialog } from './ui.jsx';
+import MaterialLibrary from './library.jsx';
 
 // In-app navigation helper. Always goes through the router (no full page reloads).
 function useGo() {
@@ -75,34 +77,8 @@ const titleMap = {
 };
 function Logo({small=false}) { return <div className="brand"><img className={`brand-logo${small?' small':''}`} src="/logo.png" alt={small?'KNOXIA':''} width={small?28:36} height={small?28:36}/>{!small && <span>KNOXIA</span>}</div>; }
 function Avatar({initials='KP',size='md',online=false,src=''}) { return <div className={`avatar ${size}`}>{src?<img src={src} alt=""/>:initials}{online&&<i/>}</div>; }
-function Button({children,variant='primary',icon:Icon,onClick,type='button',loading=false}) { return <button type={type} onClick={onClick} disabled={loading} className={`btn ${variant}`}>{loading?<i className="spin" aria-hidden="true"/>:Icon&&<Icon size={16}/>}<span>{children}</span></button>; }
-// Stand-in for data fetching: shows skeletons briefly until a real API is connected.
-function usePending(ms=450) { const [p,setP]=useState(true); useEffect(()=>{const t=setTimeout(()=>setP(false),ms);return()=>clearTimeout(t)},[ms]); return p; }
-function PageSkeleton({cards=false}) { return <div aria-busy="true" aria-label="Loading"><div className="skel" style={{height:28,width:240,marginBottom:12}}/><div className="skel" style={{height:16,width:340,marginBottom:24}}/><div className={cards?'material-grid':'stats-grid'}>{Array.from({length:cards?6:4}).map((_,i)=><div className="skel skel-card" key={i} style={{height:cards?176:88}}/>)}</div></div>; }
 function Toaster() { const [t,setT]=useState(null); useEffect(()=>{let id; const h=e=>{setT({m:e.detail,k:Date.now()});clearTimeout(id);id=setTimeout(()=>setT(null),2600)}; window.addEventListener('knoxia-toast',h); return()=>{window.removeEventListener('knoxia-toast',h);clearTimeout(id)}},[]); return t?<div className="toast" role="status" key={t.k}><CheckCircle2 size={18}/>{t.m}</div>:null; }
 function StatCard({label,value,change,icon:Icon,tone='blue'}) { return <div className="stat-card"><div className={`stat-icon ${tone}`}><Icon size={18}/></div><div className="stat-copy"><span>{label}</span><strong>{value}</strong><small className="positive">{change}</small></div></div>; }
-function SectionTitle({title,subtitle,action}) { return <div className="section-title"><div><h2>{title}</h2>{subtitle&&<p>{subtitle}</p>}</div>{action}</div>; }
-
-function ConfirmDialog({title,body,confirmLabel,onConfirm,onCancel,icon:Icon=LogOut}) {
-  const cancelRef=useRef(null); const cancelFn=useRef(onCancel); cancelFn.current=onCancel;
-  useEffect(()=>{
-    const prev=document.activeElement; cancelRef.current&&cancelRef.current.focus();
-    const key=e=>{
-      if(e.key==='Escape')cancelFn.current();
-      if(e.key==='Tab'){ const f=[...document.querySelectorAll('.dialog button')]; if(!f.length)return;
-        const first=f[0],last=f[f.length-1];
-        if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
-        else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()} }
-    };
-    document.addEventListener('keydown',key);
-    return()=>{document.removeEventListener('keydown',key); prev&&prev.focus&&prev.focus()};
-  },[]);
-  return createPortal(<div className="dialog-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)onCancel()}}>
-    <div className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-title" aria-describedby="dlg-body">
-      <div className="dialog-icon"><Icon size={20}/></div><h3 id="dlg-title">{title}</h3><p id="dlg-body">{body}</p>
-      <div className="dialog-actions"><button type="button" ref={cancelRef} className="btn outline" onClick={onCancel}>Cancel</button><button type="button" className="btn primary danger" onClick={onConfirm}>{confirmLabel}</button></div>
-    </div></div>,document.body);
-}
 // A sidebar link stays active for its whole section (e.g. Materials stays lit on /materials/upload and /materials/:id).
 function SideLink({to,match,Icon,name,close}) {
   const {pathname}=useLocation(); const on=(match||[to]).some(m=>pathname===m||pathname.startsWith(m+'/'));
@@ -238,22 +214,6 @@ function Dashboard() { const go=useGo();
       </section>
     </div>
   </>;
-}
-function Materials() { const go=useGo();
-  const {items,remove}=useMaterials(); const loading=usePending(); const [del,setDel]=useState(null);
-  const [q,setQ]=useState(''); const [subject,setSubject]=useState('All'); const [sort,setSort]=useState('newest');
-  const subjects=['All',...new Set(items.map(m=>m.subject))];
-  const list=items.filter(m=>(subject==='All'||m.subject===subject)&&(m.name+' '+m.subject+' '+(m.desc||'')).toLowerCase().includes(q.toLowerCase()))
-    .sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):sort==='subject'?a.subject.localeCompare(b.subject):new Date(b.uploaded)-new Date(a.uploaded));
-  if(loading) return <PageSkeleton cards/>;
-  return <><SectionTitle title="My Materials" subtitle={`${items.length} ${items.length===1?'file':'files'} in your library.`} action={<Button icon={Upload} onClick={()=>go('/materials/upload')}>Upload material</Button>}/>
-    <div className="toolbar"><div className="search-field"><Search size={16}/><input placeholder="Search your materials..." value={q} onChange={e=>setQ(e.target.value)}/></div>
-      <select className="filter-btn" aria-label="Filter by subject" value={subject} onChange={e=>setSubject(e.target.value)}>{subjects.map(x=><option key={x}>{x}</option>)}</select>
-      <select className="filter-btn" aria-label="Sort materials" value={sort} onChange={e=>setSort(e.target.value)}><option value="newest">Newest first</option><option value="name">Name</option><option value="subject">Subject</option></select></div>
-    <div className="material-grid">{list.map(m=><div className="material-card" key={m.id}><div className="material-card-top"><div className={`file-tile ${m.color||colorOf(m.type)}`}><FileText size={20}/></div><button className="plain-icon" aria-label={`Delete ${m.name}`} onClick={()=>{if(confirm(`Delete "${m.name}"?`)){remove(m.id);toast('Material deleted')}}}><Trash2 size={18}/></button></div>
-      <h3>{m.name}</h3><p>{m.subject}</p><div className="material-meta"><span>{m.type} · {m.size}</span><span>{fmtDate(m.uploaded)}</span></div>
-      <div className="material-actions"><button onClick={()=>go('/materials/'+m.id)}>Open material <ArrowUpRight size={16}/></button></div></div>)}</div>
-    {list.length===0&&<div className="empty-state"><FolderOpen size={32}/><b>{items.length?'No materials found':'No materials yet'}</b><p>{items.length?'Try another search or filter.':'Upload your first file to get started.'}</p>{!items.length&&<Button icon={Upload} onClick={()=>go('/materials/upload')}>Upload material</Button>}</div>}{del&&<ConfirmDialog icon={Trash2} title={`Delete "${del.name}"?`} body="This removes the file and its details from your library. This can't be undone." confirmLabel="Delete" onCancel={()=>setDel(null)} onConfirm={()=>{remove(del.id);toast('Material deleted');setDel(null)}}/>}</>;
 }
 function UploadPage() { const go=useGo();
   const {items,add}=useMaterials(); const alive=useRef(true);
@@ -438,7 +398,7 @@ function AppRoutes() {
  const admin=path.startsWith('/admin');
  const title=pageTitle(path);
  return <Shell admin={admin} title={title}><div className="page-fade" key={path}><Routes>
-   <Route path="/dashboard" element={<Dashboard/>}/><Route path="/materials" element={<Materials/>}/><Route path="/materials/upload" element={<UploadPage/>}/><Route path="/materials/:id" element={<MaterialDetail/>}/>
+   <Route path="/dashboard" element={<Dashboard/>}/><Route path="/materials" element={<MaterialLibrary/>}/><Route path="/materials/upload" element={<UploadPage/>}/><Route path="/materials/:id" element={<MaterialDetail/>}/>
    <Route path="/reviewers/create" element={<CreateReviewer/>}/><Route path="/reviewers/:id" element={<ReviewerEditor/>}/><Route path="/study-companion" element={<Companion/>}/><Route path="/flashcards" element={<Flashcards/>}/><Route path="/flashcards/:id/study" element={<FlashStudy/>}/><Route path="/quizzes/create" element={<QuizCreate/>}/><Route path="/quizzes/:id/take" element={<QuizTake/>}/><Route path="/quizzes/attempts/:id" element={<QuizResults/>}/>
    <Route path="/feed" element={<Feed/>}/><Route path="/friends" element={<Friends/>}/><Route path="/profile" element={<Profile/>}/><Route path="/profile/:username" element={<Profile/>}/><Route path="/study-rooms" element={<StudyRooms/>}/><Route path="/study-rooms/:id" element={<RoomDetail/>}/><Route path="/challenges" element={<Challenges/>}/><Route path="/challenges/:id/play" element={<ChallengePlay/>}/>
    <Route path="/leaderboards" element={<Leaderboards/>}/><Route path="/achievements" element={<Achievements/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/study-planner" element={<Planner/>}/>
