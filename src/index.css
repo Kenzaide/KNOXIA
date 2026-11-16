@@ -318,3 +318,7 @@ html.theme-fade *,html.theme-fade *::before,html.theme-fade *::after{transition:
 /* Sun/Moon icon swap */
 .theme-icon{display:grid;place-items:center;animation:themeIcon .5s var(--ease,ease)}
 @keyframes themeIcon{from{opacity:0;transform:rotate(-90deg) scale(.4)}to{opacity:1;transform:none}}
+
+/* ===== Navigation ===== */
+.page-content:focus{outline:none}
+.side-user.active{background:var(--tint)}
