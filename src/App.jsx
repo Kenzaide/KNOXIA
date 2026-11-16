@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Routes, Route, NavLink, Link, Navigate, useLocation, useNavigate, useNavigationType, useParams } from 'react-router-dom';
-import { useMaterials, toast, previews, colorOf, fmtSize, fmtDate, SUBJECTS } from './materials.jsx';
+import { useMaterials, toast, colorOf, fmtSize, fmtDate, SUBJECTS, MAX_MB, MAX_BATCH, validateFile, fileExt, parseTags } from './materials.jsx';
+import { saveFile, getFile, hashFile, newId } from './files.js';
 import { ReviewerEditor, SavedReviewers, RecentAttempts, FlashStudy, QuizTake, QuizResults, StudyRooms, RoomDetail, Challenges, ChallengePlay, Leaderboards, Achievements, Analytics, Planner, Notifications, SettingsPage, Moderation, Logs } from './pages.jsx';
 import { saveReviewer, useNotes } from './data.js';
 import { authPage } from './auth.jsx';
@@ -82,7 +83,7 @@ function Toaster() { const [t,setT]=useState(null); useEffect(()=>{let id; const
 function StatCard({label,value,change,icon:Icon,tone='blue'}) { return <div className="stat-card"><div className={`stat-icon ${tone}`}><Icon size={18}/></div><div className="stat-copy"><span>{label}</span><strong>{value}</strong><small className="positive">{change}</small></div></div>; }
 function SectionTitle({title,subtitle,action}) { return <div className="section-title"><div><h2>{title}</h2>{subtitle&&<p>{subtitle}</p>}</div>{action}</div>; }
 
-function ConfirmDialog({title,body,confirmLabel,onConfirm,onCancel}) {
+function ConfirmDialog({title,body,confirmLabel,onConfirm,onCancel,icon:Icon=LogOut}) {
   const cancelRef=useRef(null); const cancelFn=useRef(onCancel); cancelFn.current=onCancel;
   useEffect(()=>{
     const prev=document.activeElement; cancelRef.current&&cancelRef.current.focus();
@@ -98,7 +99,7 @@ function ConfirmDialog({title,body,confirmLabel,onConfirm,onCancel}) {
   },[]);
   return createPortal(<div className="dialog-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)onCancel()}}>
     <div className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-title" aria-describedby="dlg-body">
-      <div className="dialog-icon"><LogOut size={20}/></div><h3 id="dlg-title">{title}</h3><p id="dlg-body">{body}</p>
+      <div className="dialog-icon"><Icon size={20}/></div><h3 id="dlg-title">{title}</h3><p id="dlg-body">{body}</p>
       <div className="dialog-actions"><button type="button" ref={cancelRef} className="btn outline" onClick={onCancel}>Cancel</button><button type="button" className="btn primary danger" onClick={onConfirm}>{confirmLabel}</button></div>
     </div></div>,document.body);
 }
@@ -239,7 +240,7 @@ function Dashboard() { const go=useGo();
   </>;
 }
 function Materials() { const go=useGo();
-  const {items,remove}=useMaterials(); const loading=usePending();
+  const {items,remove}=useMaterials(); const loading=usePending(); const [del,setDel]=useState(null);
   const [q,setQ]=useState(''); const [subject,setSubject]=useState('All'); const [sort,setSort]=useState('newest');
   const subjects=['All',...new Set(items.map(m=>m.subject))];
   const list=items.filter(m=>(subject==='All'||m.subject===subject)&&(m.name+' '+m.subject+' '+(m.desc||'')).toLowerCase().includes(q.toLowerCase()))
@@ -252,38 +253,59 @@ function Materials() { const go=useGo();
     <div className="material-grid">{list.map(m=><div className="material-card" key={m.id}><div className="material-card-top"><div className={`file-tile ${m.color||colorOf(m.type)}`}><FileText size={20}/></div><button className="plain-icon" aria-label={`Delete ${m.name}`} onClick={()=>{if(confirm(`Delete "${m.name}"?`)){remove(m.id);toast('Material deleted')}}}><Trash2 size={18}/></button></div>
       <h3>{m.name}</h3><p>{m.subject}</p><div className="material-meta"><span>{m.type} · {m.size}</span><span>{fmtDate(m.uploaded)}</span></div>
       <div className="material-actions"><button onClick={()=>go('/materials/'+m.id)}>Open material <ArrowUpRight size={16}/></button></div></div>)}</div>
-    {list.length===0&&<div className="empty-state"><FolderOpen size={32}/><b>{items.length?'No materials found':'No materials yet'}</b><p>{items.length?'Try another search or filter.':'Upload your first file to get started.'}</p>{!items.length&&<Button icon={Upload} onClick={()=>go('/materials/upload')}>Upload material</Button>}</div>}</>;
+    {list.length===0&&<div className="empty-state"><FolderOpen size={32}/><b>{items.length?'No materials found':'No materials yet'}</b><p>{items.length?'Try another search or filter.':'Upload your first file to get started.'}</p>{!items.length&&<Button icon={Upload} onClick={()=>go('/materials/upload')}>Upload material</Button>}</div>}{del&&<ConfirmDialog icon={Trash2} title={`Delete "${del.name}"?`} body="This removes the file and its details from your library. This can't be undone." confirmLabel="Delete" onCancel={()=>setDel(null)} onConfirm={()=>{remove(del.id);toast('Material deleted');setDel(null)}}/>}</>;
 }
 function UploadPage() { const go=useGo();
-  const {items,add}=useMaterials(); const timer=useRef(null);
-  const [file,setFile]=useState(null); const [drag,setDrag]=useState(false); const [title,setTitle]=useState('');
-  const [subject,setSubject]=useState(SUBJECTS[0]); const [desc,setDesc]=useState(''); const [error,setError]=useState(''); const [notice,setNotice]=useState(''); const [progress,setProgress]=useState(null);
-  useEffect(()=>()=>clearInterval(timer.current),[]);
-  const pick=f=>{ if(!f)return; const ext=f.name.split('.').pop().toUpperCase(); setNotice('');
-    if(!['PDF','DOCX','PPTX'].includes(ext)){setError('Unsupported file type. Please choose a PDF, DOCX or PPTX file.');return}
-    if(f.size>25*1048576){setError('This file is larger than 25 MB.');return}
-    setError(''); setFile(f); setTitle(f.name.replace(/\.[^.]+$/,''));
-    if(items.some(m=>m.fileName===f.name&&m.size===fmtSize(f.size)))setNotice('This looks like a file you already uploaded. You can still continue.'); };
-  const start=()=>{ if(!file||progress!==null)return; let p=0; setProgress(0);
-    timer.current=setInterval(()=>{ p+=14; if(p>=100){ clearInterval(timer.current); const type=file.name.split('.').pop().toUpperCase();
-      const item=add({name:title.trim()||file.name,fileName:file.name,type,size:fmtSize(file.size),subject,desc:desc.trim(),color:colorOf(type)});
-      previews.set(item.id,URL.createObjectURL(file)); toast('Material uploaded'); go('/materials/'+item.id); } else setProgress(p); },150); };
+  const {items,add}=useMaterials(); const alive=useRef(true);
+  const [queue,setQueue]=useState([]); const [drag,setDrag]=useState(false); const [busy,setBusy]=useState(false);
+  const [subject,setSubject]=useState(SUBJECTS[0]); const [tags,setTags]=useState(''); const [desc,setDesc]=useState('');
+  useEffect(()=>{alive.current=true;return()=>{alive.current=false}},[]);
+  const patch=(key,p)=>{ if(alive.current) setQueue(q=>q.map(x=>x.key===key?{...x,...p}:x)); };
+  const addFiles=async list=>{
+    const files=[...list]; if(!files.length)return;
+    const room=Math.max(MAX_BATCH-queue.length,0); if(files.length>room) toast(`You can add up to ${MAX_BATCH} files at a time`);
+    const rows=files.slice(0,room).map(f=>({key:newId(),file:f,title:f.name.replace(/\.[^.]+$/,''),state:'checking',include:false}));
+    setQueue(q=>[...q,...rows]);
+    const seen=new Map(queue.filter(x=>x.hash).map(x=>[x.hash,x.title]));
+    for(const r of rows){
+      const v=await validateFile(r.file); if(!v.ok){patch(r.key,{state:'invalid',error:v.error});continue}
+      const hash=await hashFile(r.file); const dup=items.find(m=>m.hash===hash); const twin=seen.get(hash); seen.set(hash,r.title);
+      patch(r.key,{hash,state:dup||twin?'duplicate':'ready',dupOf:dup?dup.name:twin||''});
+    }
+  };
+  const ready=queue.filter(x=>x.state==='ready'||(x.state==='duplicate'&&x.include));
+  const start=async()=>{ if(!ready.length||busy)return; setBusy(true); let ok=0,failed=0,last=null;
+    for(const r of ready){ patch(r.key,{state:'uploading',progress:25});
+      try{ const id=newId(); await saveFile(id,r.file); patch(r.key,{progress:80});
+        last=add({id,name:(r.title.trim()||r.file.name).slice(0,120),fileName:r.file.name,type:fileExt(r.file.name).toUpperCase(),size:fmtSize(r.file.size),bytes:r.file.size,subject,tags:parseTags(tags),desc:desc.trim(),hash:r.hash});
+        patch(r.key,{state:'done',progress:100}); ok++;
+      }catch(e){ failed++; patch(r.key,{state:'failed',error:e&&e.name==='QuotaExceededError'?'Your browser is out of storage space. Delete a material and try again.':'This file could not be saved. Try again.'}); } }
+    if(alive.current) setBusy(false);
+    if(ok) toast(ok===1?'Material uploaded':`${ok} materials uploaded`);
+    if(ok&&!failed&&alive.current) go(ok===1&&queue.length===1?'/materials/'+last.id:'/materials');
+  };
+  const label={checking:'Checking…',ready:'Ready',uploading:'Uploading…',done:'Uploaded',invalid:'',failed:'',duplicate:''};
   return <><SectionTitle title="Upload Materials" subtitle="Add your files and let KNOXIA turn them into useful study resources."/><div className="upload-layout"><div className="upload-main">
-    <div className={`drop-zone ${drag?'drag':''}`} onDragOver={e=>{e.preventDefault();setDrag(true)}} onDragLeave={()=>setDrag(false)} onDrop={e=>{e.preventDefault();setDrag(false);pick(e.dataTransfer.files[0])}}>
-      <div className="upload-icon"><Upload size={24}/></div><h2>Drag and drop your files here</h2><p>or choose a file from your device</p>
-      <label className="btn primary">Browse files<input type="file" hidden accept=".pdf,.docx,.pptx" onChange={e=>pick(e.target.files[0])}/></label>
-      <small>Supported formats: PDF, DOCX, PPTX · Maximum 25 MB</small>
-      {file&&<div className="selected-file"><FileText size={18}/><span>{file.name} · {fmtSize(file.size)}</span><button aria-label="Remove file" onClick={()=>{setFile(null);setNotice('')}}><X size={16}/></button></div>}
-      {error&&<div className="notice error"><AlertCircle size={16}/>{error}</div>}{notice&&<div className="notice"><AlertCircle size={16}/>{notice}</div>}</div>
-    <div className="panel upload-form"><h3>Material details</h3>
-      <label className="ufield"><span>Title</span><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Choose a file first" disabled={!file}/></label>
+    <div className={`drop-zone ${drag?'drag':''}`} onDragOver={e=>{e.preventDefault();setDrag(true)}} onDragLeave={()=>setDrag(false)} onDrop={e=>{e.preventDefault();setDrag(false);addFiles(e.dataTransfer.files)}}>
+      <div className="upload-icon"><Upload size={24}/></div><h2>Drag and drop your files here</h2><p>or choose files from your device</p>
+      <label className="btn primary">Browse files<input type="file" hidden multiple accept=".pdf,.docx,.pptx" onChange={e=>{addFiles(e.target.files);e.target.value=''}}/></label>
+      <small>PDF, DOCX or PPTX · up to {MAX_MB} MB each · {MAX_BATCH} files at a time</small></div>
+    {queue.length>0&&<ul className="file-queue" aria-label="Files to upload">{queue.map(r=><li className={`file-row ${r.state}`} key={r.key}>
+      <FileText size={20}/><div className="file-row-main">
+        {r.state==='ready'||r.state==='duplicate'?<input aria-label="Material title" value={r.title} maxLength={120} onChange={e=>patch(r.key,{title:e.target.value})}/>:<b>{r.title}</b>}
+        <small>{fmtSize(r.file.size)} · {fileExt(r.file.name).toUpperCase()}{label[r.state]&&<> · {label[r.state]}</>}</small>
+        {(r.state==='invalid'||r.state==='failed')&&<small className="row-error" role="alert"><AlertCircle size={14}/> {r.error}</small>}
+        {r.state==='duplicate'&&<label className="row-dup"><input type="checkbox" checked={r.include} onChange={e=>patch(r.key,{include:e.target.checked})}/> Already in your library{r.dupOf?` as “${r.dupOf}”`:''}. Upload anyway</label>}
+        {r.state==='uploading'&&<div className="progress-track"><span style={{width:r.progress+'%'}}/></div>}
+      </div>{r.state==='done'?<CheckCircle2 size={20} className="row-ok"/>:<button type="button" className="plain-icon" aria-label={`Remove ${r.title}`} disabled={r.state==='uploading'} onClick={()=>setQueue(q=>q.filter(x=>x.key!==r.key))}><X size={18}/></button>}
+    </li>)}</ul>}
+    <div className="panel upload-form"><h3>Details for this upload</h3><p className="muted">Applies to every file in the list above.</p>
       <label className="ufield"><span>Subject</span><select value={subject} onChange={e=>setSubject(e.target.value)}>{SUBJECTS.map(x=><option key={x}>{x}</option>)}</select></label>
-      <label className="ufield"><span>Description (optional)</span><textarea rows="2" value={desc} onChange={e=>setDesc(e.target.value)} placeholder="What is this material about?"/></label>
-      {progress!==null&&<div><div className="progress-track"><span style={{width:progress+'%'}}/></div><small className="muted">Uploading and processing… {progress}%</small></div>}
-      <div className="form-actions"><Button variant="outline" onClick={()=>go('/materials')}>Cancel</Button><Button icon={Upload} loading={progress!==null} onClick={start}>{progress!==null?'Uploading…':'Upload material'}</Button></div></div></div>
-    <div className="panel upload-tips"><h3><Sparkles size={18}/> What happens next?</h3><ol><li><b>Upload your material</b><span>Choose a lecture file or class notes.</span></li><li><b>AI processes the content</b><span>KNOXIA extracts and organizes the key information.</span></li><li><b>Start learning</b><span>Generate reviewers, flashcards, and practice quizzes.</span></li></ol><div className="privacy-note"><LockKeyhole size={16}/> Your learning materials are private by default.</div></div></div></>;
+      <label className="ufield"><span>Tags (optional, separated by commas)</span><input value={tags} onChange={e=>setTags(e.target.value)} placeholder="midterm, chapter 3"/></label>
+      <label className="ufield"><span>Description (optional)</span><textarea rows="2" maxLength={300} value={desc} onChange={e=>setDesc(e.target.value)} placeholder="What are these materials about?"/></label>
+      <div className="form-actions"><Button variant="outline" onClick={()=>go('/materials')}>Cancel</Button><Button icon={Upload} loading={busy} onClick={start}>{busy?'Uploading…':ready.length>1?`Upload ${ready.length} files`:'Upload material'}</Button></div></div></div>
+    <div className="panel upload-tips"><h3><Sparkles size={18}/> What happens next?</h3><ol><li><b>Upload your material</b><span>Choose lecture files or class notes.</span></li><li><b>AI processes the content</b><span>KNOXIA extracts and organizes the key information.</span></li><li><b>Start learning</b><span>Generate reviewers, flashcards, and practice quizzes.</span></li></ol><div className="privacy-note"><LockKeyhole size={16}/> Your learning materials are private by default.</div></div></div></>;
 }
-
 function CreateReviewer() { const go=useGo();
  const [style,setStyle]=useState('Detailed reviewer'); const [topic,setTopic]=useState(''); const [rt,setRt]=useState('My study reviewer'); const [file,setFile]=useState('Introduction to Machine Learning');
  return <><SectionTitle title="Create AI Reviewer" subtitle="Turn your learning materials into a reviewer that works for you."/><div className="builder-layout"><div className="panel builder-form"><label className="field-label">Reviewer title</label><input className="field" value={rt} onChange={e=>setRt(e.target.value)}/><label className="field-label">Choose a source material</label><select className="field" value={file} onChange={e=>setFile(e.target.value)}><option>Introduction to Machine Learning</option><option>Automata Theory — Module 03</option><option>Computer Architecture Notes</option></select><label className="field-label">Reviewer format</label><div className="choice-grid">{['Quick summary','Detailed reviewer','Exam cram','Topic-by-topic'].map(x=><button className={`choice ${style===x?'chosen':''}`} onClick={()=>setStyle(x)} key={x}><BookOpen size={18}/><b>{x}</b><small>{x==='Quick summary'?'Key ideas at a glance':x==='Detailed reviewer'?'Comprehensive notes and examples':x==='Exam cram'?'Important points before exams':'Organized by lesson topic'}</small></button>)}</div><label className="field-label">Additional instructions <span>Optional</span></label><textarea className="field textarea" placeholder="e.g. Focus on definitions and real-world examples..." value={topic} onChange={e=>setTopic(e.target.value)}/><Button icon={Sparkles} onClick={()=>go('/reviewers/'+saveReviewer({title:rt.trim()||'My study reviewer',file,style,notes:topic}))}>Generate reviewer</Button></div><div className="panel preview-panel"><div className="preview-icon"><Sparkles size={20}/></div><h3>Your reviewer preview</h3><p>Your generated reviewer will appear here, organized into clear sections with key terms, explanations, and examples.</p><div className="preview-lines"><i/><i/><i/><i/><i/></div><div className="preview-badges"><span>Key concepts</span><span>Definitions</span><span>Examples</span></div></div></div><SavedReviewers/></>;
@@ -313,19 +335,34 @@ function GenericPage({title}) { const data={
  return <><SectionTitle title={title} subtitle={d[1]} action={<Button icon={Plus} onClick={()=>alert('This action is a frontend demo.')}>{d[2]}</Button>}/>{title==='Settings'?<div className="settings-layout"><div className="panel settings-menu">{['Profile information','Account security','Notifications','Privacy','Appearance'].map((x,i)=><button className={i===0?'active':''} key={x}>{x}<ChevronRight size={16}/></button>)}</div><div className="panel settings-form"><h3>Profile information</h3><p>Update the details associated with your account.</p><div className="profile-edit"><Avatar initials="KP" size="lg"/><div><b>Kenneth Punla</b><small>JPG or PNG · Max 2 MB</small></div><Button variant="outline">Change photo</Button></div><label className="field-label">Full name</label><input className="field" defaultValue="Kenneth Punla"/><label className="field-label">Username</label><input className="field" defaultValue="kennethpunla"/><label className="field-label">Email address</label><input className="field" defaultValue="kenneth@example.com"/><Button onClick={()=>alert('Demo: settings saved locally only.')}>Save changes</Button></div></div>:<><div className="stats-grid compact"><StatCard label="Total" value={title==='Notifications'?'4':title==='Activity Logs'?'128':'12'} change="Updated just now" icon={Activity}/><StatCard label="This month" value="08" change="Across your workspace" icon={CalendarCheck} tone="purple"/><StatCard label="Completed" value="06" change="Keep it up" icon={CheckCircle2} tone="green"/></div><div className="panel list-panel"><div className="list-head"><h3>{d[3]}</h3><button className="filter-btn"><Filter size={16}/> Filter</button></div>{d.slice(3).map((x,i)=><div className="generic-row" key={i}><div className={`activity-dot ${['blue','purple','green'][i%3]}`}>{title.includes('Achievement')?<Trophy size={16}/>:title.includes('Analytics')?<ChartNoAxesCombined size={16}/>:title.includes('Moderation')?<ShieldCheck size={16}/>:<Activity size={16}/>}</div><div><b>{x}</b><small>{title==='Notifications'?'A few moments ago':title==='Activity Logs'?'System event · Today':`Updated ${i+1} hour${i?'s':''} ago`}</small></div><span className="row-status">{i===0?'Active':i===1?'In progress':'View details'}</span><button className="plain-icon"><ChevronRight size={18}/></button></div>)}</div></>}</>;
 }
 function MaterialDetail() { const go=useGo();
-  const {id}=useParams(); const {items,update,remove}=useMaterials(); const m=items.find(x=>x.id===id);
-  const [editing,setEditing]=useState(false); const [name,setName]=useState('');
+  const {id}=useParams(); const {items,update,remove}=useMaterials(); const m=items.find(x=>x.id===id); const kind=m&&m.type;
+  const [editing,setEditing]=useState(false); const [form,setForm]=useState(null); const [err,setErr]=useState(''); const [del,setDel]=useState(false);
+  const [file,setFile]=useState(undefined); const [url,setUrl]=useState('');
+  useEffect(()=>{ let live=true,u=''; setFile(undefined); setUrl('');
+    if(id) getFile(id).then(b=>{ if(!live)return; setFile(b||null); if(b&&kind==='PDF'){u=URL.createObjectURL(b);setUrl(u)} });
+    return()=>{live=false; if(u)URL.revokeObjectURL(u)}; },[id,kind]);
   if(!m) return <div className="empty-state"><FolderOpen size={32}/><b>Material not found</b><p>It may have been deleted.</p><Button onClick={()=>go('/materials')}>Back to My Materials</Button></div>;
-  const url=previews.get(m.id);
-  const save=e=>{e.preventDefault(); if(name.trim()){update(m.id,{name:name.trim()});toast('Title updated')} setEditing(false);};
-  return <><SectionTitle title="Material Details" subtitle="Review your uploaded learning material." action={<div className="head-actions"><Button variant="outline" icon={Pencil} onClick={()=>{setName(m.name);setEditing(true)}}>Rename</Button><Button variant="outline" icon={Trash2} onClick={()=>{if(confirm(`Delete "${m.name}"?`)){remove(m.id);toast('Material deleted');go('/materials')}}}>Delete</Button></div>}/>
-    <div className="panel detail-panel"><div className={`file-tile ${m.color||colorOf(m.type)}`}><FileText size={24}/></div><div>
-      {editing?<form className="rename-form" onSubmit={save}><input autoFocus aria-label="Material title" value={name} onChange={e=>setName(e.target.value)}/><Button type="submit">Save</Button><Button variant="outline" onClick={()=>setEditing(false)}>Cancel</Button></form>:<h2>{m.name}</h2>}
-      <p>{m.type} · {m.size} · Uploaded {fmtDate(m.uploaded)}</p>{m.desc&&<p>{m.desc}</p>}
-      <div className="post-tags"><span>{m.subject}</span></div></div></div>
-    <div className="detail-grid"><div className="panel"><h3>Document preview</h3>{url&&m.type==='PDF'?<iframe className="doc-frame" title="Document preview" src={url}/>:<div className="empty-state"><FileText size={32}/><b>{url?'Preview is available for PDF files':'Preview not available'}</b><p>{url?'Your file is saved in this session.':'Original files are not stored yet. Re-upload to preview in this session.'}</p></div>}</div>
-    <div className="panel"><h3>Extracted text</h3><p className="muted">Sample text. Real extraction will appear here once the backend is connected.</p><pre className="extract">{`${m.name}\n\n${m.subject}\n\nKey topics, definitions and examples from this material will be listed here so KNOXIA can build reviewers, flashcards and quizzes from them.`}</pre></div></div>
-    <div className="quick-tools"><div className="panel quick-tool"><Sparkles/><h3>Generate reviewer</h3><p>Create organized notes from this material.</p><Button variant="soft" onClick={()=>go('/reviewers/create')}>Create reviewer</Button></div><div className="panel quick-tool"><BookOpen/><h3>Generate quiz</h3><p>Test your knowledge with practice questions.</p><Button variant="soft" onClick={()=>go('/quizzes/create')}>Create quiz</Button></div><div className="panel quick-tool"><BrainCircuit/><h3>Ask AI</h3><p>Get help understanding difficult concepts.</p><Button variant="soft" onClick={()=>go('/study-companion')}>Ask companion</Button></div></div></>;
+  const edit=()=>{setForm({name:m.name,subject:m.subject,tags:(m.tags||[]).join(', '),desc:m.desc||''});setErr('');setEditing(true)};
+  const save=e=>{e.preventDefault(); const name=form.name.trim();
+    if(!name){setErr('Give this material a title.');return}
+    update(m.id,{name:name.slice(0,120),subject:form.subject,tags:parseTags(form.tags),desc:form.desc.trim()}); setEditing(false); toast('Details saved'); };
+  const download=()=>{ const u=URL.createObjectURL(file); const a=document.createElement('a'); a.href=u; a.download=m.fileName||m.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); };
+  const rows=[['File name',m.fileName||m.name],['Type',m.type],['Size',m.size],['Uploaded',fmtDate(m.uploaded)],['Subject',m.subject]];
+  return <><SectionTitle title="Material Details" subtitle="Review and manage your uploaded learning material." action={<div className="head-actions">{!editing&&<Button variant="outline" icon={Pencil} onClick={edit}>Edit details</Button>}{file&&<Button variant="outline" icon={Download} onClick={download}>Download</Button>}<Button variant="outline" icon={Trash2} onClick={()=>setDel(true)}>Delete</Button></div>}/>
+    <div className="panel detail-panel"><div className={`file-tile ${m.color||colorOf(m.type)}`}><FileText size={26}/></div><div>
+      <h2>{m.name}</h2><p>{m.type} · {m.size} · Uploaded {fmtDate(m.uploaded)}</p>{m.desc&&<p>{m.desc}</p>}
+      <div className="post-tags"><span>{m.subject}</span>{(m.tags||[]).map(t=><span key={t}>{t}</span>)}</div></div></div>
+    {editing&&<form className="panel upload-form" onSubmit={save} noValidate><h3>Edit details</h3>
+      <label className="ufield"><span>Title</span><input autoFocus value={form.name} maxLength={120} onChange={e=>setForm({...form,name:e.target.value})}/></label>
+      <label className="ufield"><span>Subject</span><select value={form.subject} onChange={e=>setForm({...form,subject:e.target.value})}>{[...new Set([...SUBJECTS,form.subject])].map(x=><option key={x}>{x}</option>)}</select></label>
+      <label className="ufield"><span>Tags (separated by commas)</span><input value={form.tags} onChange={e=>setForm({...form,tags:e.target.value})}/></label>
+      <label className="ufield"><span>Description</span><textarea rows="2" maxLength={300} value={form.desc} onChange={e=>setForm({...form,desc:e.target.value})}/></label>
+      {err&&<div className="notice error" role="alert"><AlertCircle size={16}/>{err}</div>}
+      <div className="form-actions"><Button variant="outline" onClick={()=>setEditing(false)}>Cancel</Button><Button type="submit">Save changes</Button></div></form>}
+    <div className="detail-grid"><div className="panel"><h3>Document preview</h3>{url?<iframe className="doc-frame" title="Document preview" src={url}/>:<div className="empty-state"><FileText size={32}/><b>{file===undefined?'Loading file…':file?'Preview is available for PDF files':'No original file stored'}</b><p>{file===undefined?'':file?'Download the file to open it in Word or PowerPoint.':'This is a sample material, so there is no file to preview.'}</p></div>}</div>
+    <div className="panel"><h3>File details</h3><dl className="info-list">{rows.map(([k,v])=><React.Fragment key={k}><dt>{k}</dt><dd>{v}</dd></React.Fragment>)}</dl></div></div>
+    <div className="quick-tools"><div className="panel quick-tool"><Sparkles/><h3>Generate reviewer</h3><p>Create organized notes from this material.</p><Button variant="soft" onClick={()=>go('/reviewers/create')}>Create reviewer</Button></div><div className="panel quick-tool"><BookOpen/><h3>Generate quiz</h3><p>Test your knowledge with practice questions.</p><Button variant="soft" onClick={()=>go('/quizzes/create')}>Create quiz</Button></div><div className="panel quick-tool"><BrainCircuit/><h3>Ask AI</h3><p>Get help understanding difficult concepts.</p><Button variant="soft" onClick={()=>go('/study-companion')}>Ask companion</Button></div></div>
+    {del&&<ConfirmDialog icon={Trash2} title={`Delete "${m.name}"?`} body="This removes the file and its details from your library. This can't be undone." confirmLabel="Delete" onCancel={()=>setDel(false)} onConfirm={()=>{remove(m.id);toast('Material deleted');go('/materials')}}/>}</>;
 }
 function StudyMode({type}) { const go=useGo(); const [revealed,setRevealed]=useState(false); return <><SectionTitle title={type==='flash'?'Flashcard Study Session':type==='quiz'?'Take Quiz':type==='result'?'Quiz Results':'Study Session'} subtitle="Focus on understanding, one question at a time."/><div className="study-center"><div className="study-progress"><span>Question 1 of 10</span><span>10% complete</span></div><div className="progress-track"><span style={{width:'10%'}}/></div><div className="panel study-card">{type==='flash'?<><small>FLASHCARD · MACHINE LEARNING</small><h2>What is supervised learning?</h2>{revealed&&<p className="answer-reveal">A type of machine learning where a model learns from labeled training data.</p>}<Button onClick={()=>setRevealed(!revealed)}>{revealed?'Hide answer':'Reveal answer'}</Button></>:<><small>QUESTION 01 · MULTIPLE CHOICE</small><h2>Which of the following best describes supervised learning?</h2>{['Learning from labeled data','Learning without any data','Learning through rewards only','Learning by random guessing'].map((x,i)=><button className="answer-option" key={x} onClick={e=>e.currentTarget.classList.toggle('picked')}><span>{String.fromCharCode(65+i)}</span>{x}</button>)}<Button onClick={()=>alert('Demo: answer submission is not connected.')}>Submit answer</Button></>}</div><div className="study-footer"><span>Take your time. Learning is a process.</span><Button variant="outline" onClick={()=>go('/dashboard')}>Exit session</Button></div></div></>; }
 function Profile() {
