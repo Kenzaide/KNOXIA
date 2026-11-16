@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ThemeToggle } from './theme.jsx';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, BrainCircuit, GraduationCap, MailCheck, KeyRound, PartyPopper, AlertCircle, Camera, Check, Circle } from 'lucide-react';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, BrainCircuit, GraduationCap, MailCheck, KeyRound, PartyPopper, AlertCircle, Camera, Check, Circle, Info } from 'lucide-react';
 import { toast } from './materials.jsx';
 import { logEvent } from './data.js';
+import { useAuth, REMEMBER_DAYS } from './session.js';
 
 const store = { get: k => { try { return sessionStorage.getItem(k) || ''; } catch { return ''; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch { /* ignore */ } } };
 const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'];
@@ -32,15 +33,19 @@ const Match = ({ a, b }) => b ? <small className={`pw-match ${a === b ? 'ok' : '
 const useFake = (done) => { const [busy, setBusy] = useState(false); return [busy, () => { setBusy(true); setTimeout(() => { setBusy(false); done(); }, 700); }]; };
 
 export function Login() {
-  const nav = useNavigate(); const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [remember, setRemember] = useState(true);
-  const [busy, go] = useFake(() => { try { localStorage.setItem('knoxia-remember', remember ? '1' : ''); } catch { /* ignore */ } nav('/dashboard'); });
+  const { login } = useAuth(); const st = useLocation().state; const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [remember, setRemember] = useState(true);
+  // Starting the session is enough: the app's route guard then sends the user to the page they originally asked for (or the dashboard).
+  const [busy, go] = useFake(() => login({ email, remember }));
+  const note = st && st.notice === 'logged-out' ? 'You’ve been logged out.' : st && st.from ? 'Please log in to continue.' : '';
   return <Shell><Card icon={BrainCircuit} title="Welcome back!" sub="Sign in to continue learning and growing.">
+    {note && <div className="notice" role="status"><Info size={16} />{note}</div>}
     <form onSubmit={e => { e.preventDefault(); if (!busy) go(); }}>
       <Field label="Email address"><input className="field" type="email" required autoComplete="email" placeholder="Enter your email address" value={email} onChange={e => setEmail(e.target.value)} /></Field>
       <Field label="Password"><Password value={pw} onChange={e => setPw(e.target.value)} autoComplete="current-password" /></Field>
-      <div className="login-opts"><label className="check-inline"><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} /> Remember me</label><Link to="/forgot-password">Forgot password?</Link></div>
+      <div className="login-opts"><label className="check-inline" title={`Stay signed in on this device for ${REMEMBER_DAYS} days`}><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} /> Remember me</label><Link to="/forgot-password">Forgot password?</Link></div>
       <Submit busy={busy}>Log in</Submit></form>
     <div className="auth-switch">New to KNOXIA? <Link to="/register">Sign up</Link></div>
+    <p className="auth-legal">Demo mode: any email and password signs you in.</p>
     <p className="auth-legal"><Legal /></p></Card></Shell>;
 }
 
@@ -49,7 +54,7 @@ export function Register() {
   const DRAFT = 'knoxia-reg-draft'; const [f, setF] = useState(() => { try { return { ...blank, ...JSON.parse(sessionStorage.getItem(DRAFT) || '{}') }; } catch { return blank; } });
   useEffect(() => { const { pw, pw2, ...rest } = f; try { sessionStorage.setItem(DRAFT, JSON.stringify(rest)); } catch { /* ignore */ } }, [f]); const [err, setErr] = useState(''); const [photo, setPhoto] = useState('');
   const set = k => e => setF(x => ({ ...x, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
-  const [busy, go] = useFake(() => { try { sessionStorage.removeItem(DRAFT); } catch { /* ignore */ } store.set('knoxia-email', f.email); store.set('knoxia-name', f.first); logEvent(`New user registered: ${f.first} ${f.last}`); nav('/verify-email'); });
+  const [busy, go] = useFake(() => { try { sessionStorage.removeItem(DRAFT); } catch { /* ignore */ } store.set('knoxia-pending-email', f.email); store.set('knoxia-name', f.first); logEvent(`New user registered: ${f.first} ${f.last}`); nav('/verify-email'); });
   const submit = e => { e.preventDefault(); if (busy) return;
     if (!/^[a-zA-Z0-9_.]{3,20}$/.test(f.username)) return setErr('Username must be 3–20 characters: letters, numbers, dots or underscores.');
     if (!pwOk(f.pw)) return setErr('Your password doesn’t meet all the requirements listed under the password fields.');
@@ -94,9 +99,13 @@ export function ResetPassword() {
 }
 
 export function VerifyEmail() {
-  const nav = useNavigate(); const email = store.get('knoxia-email') || 'your email'; const [code, setCode] = useState(Array(6).fill('')); const [err, setErr] = useState(''); const [wait, setWait] = useState(30);
-  const [busy, go] = useFake(() => nav('/welcome'));
+  const { isAuthenticated, login } = useAuth(); const pending = store.get('knoxia-pending-email'); const email = pending || 'your email'; const verified = useRef(false);
+  const [code, setCode] = useState(Array(6).fill('')); const [err, setErr] = useState(''); const [wait, setWait] = useState(30);
+  // Verifying the code finishes sign-up and signs the new user in (for this tab only; they did not choose "remember me").
+  const [busy, go] = useFake(() => { verified.current = true; login({ email: pending, name: store.get('knoxia-name'), remember: false }); store.set('knoxia-pending-email', ''); });
   useEffect(() => { if (wait <= 0) return; const t = setTimeout(() => setWait(w => w - 1), 1000); return () => clearTimeout(t); }, [wait]);
+  if (isAuthenticated) return <Navigate to={verified.current ? '/welcome' : '/dashboard'} replace />;
+  if (!pending) return <Navigate to="/register" replace />; // nothing to verify: this page is only reachable from sign-up
   const put = (i, v) => { const d = v.replace(/\D/g, '').slice(-1); setCode(c => c.map((x, k) => k === i ? d : x)); if (d && i < 5) document.getElementById('otp' + (i + 1))?.focus(); };
   const paste = e => { const d = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6); if (d) { e.preventDefault(); setCode(Array.from({ length: 6 }, (_, k) => d[k] || '')); } };
   return <Shell><Card icon={MailCheck} title="Verify your email" sub={`Enter the 6-digit code we sent to ${email}.`}>

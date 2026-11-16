@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Routes, Route, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Routes, Route, NavLink, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useMaterials, toast, previews, colorOf, fmtSize, fmtDate, SUBJECTS } from './materials.jsx';
 import { ReviewerEditor, SavedReviewers, RecentAttempts, FlashStudy, QuizTake, QuizResults, StudyRooms, RoomDetail, Challenges, ChallengePlay, Leaderboards, Achievements, Analytics, Planner, Notifications, SettingsPage, Moderation, Logs } from './pages.jsx';
 import { saveReviewer, useLocal, NOTES } from './data.js';
 import { authPage } from './auth.jsx';
 import { Knowl, KnowlAvatar } from './knowl.jsx';
 import { ThemeToggle } from './theme.jsx';
+import { useAuth, accessFor, normalizePath, safeRedirect } from './session.js';
 
 let navTo = (p) => { location.href = p; };
 const go = (p) => navTo(p);
@@ -97,7 +98,9 @@ function ConfirmDialog({title,body,confirmLabel,onConfirm,onCancel}) {
     </div></div>,document.body);
 }
 function Sidebar({admin=false,close}) {
-  const [confirming,setConfirming]=useState(false); const nav=useNavigate(); const logout=()=>{try{localStorage.removeItem('knoxia-remember')}catch{} close&&close(); nav('/login')};
+  const [confirming,setConfirming]=useState(false); const nav=useNavigate(); const {logout}=useAuth();
+  // Navigate and clear the session in the same event so the login page shows the "logged out" notice, not a redirect.
+  const signOut=()=>{close&&close(); nav('/login',{replace:true,state:{notice:'logged-out'}}); logout()};
   return <aside className="sidebar">
     <div className="sidebar-top"><Logo/><button className="mobile-close" onClick={close}><X size={18}/></button></div>
     
@@ -109,7 +112,7 @@ function Sidebar({admin=false,close}) {
       
       <NavLink viewTransition to="/settings" className="nav-link"><Settings size={18}/><span>Settings</span></NavLink>
       <button type="button" className="nav-link logout" onClick={()=>setConfirming(true)}><LogOut size={18}/><span>Log out</span></button>
-      {confirming&&<ConfirmDialog title="Log out of KNOXIA?" body="You will need to sign in again to continue studying." confirmLabel="Log out" onConfirm={()=>{setConfirming(false);logout()}} onCancel={()=>setConfirming(false)}/>}
+      {confirming&&<ConfirmDialog title="Log out of KNOXIA?" body="You will need to sign in again to continue studying." confirmLabel="Log out" onConfirm={()=>{setConfirming(false);signOut()}} onCancel={()=>setConfirming(false)}/>}
       <div className="side-user"><Avatar initials={admin?'AD':'KP'} online/><div><b>{admin?'Admin User':'Kenneth Punla'}</b><small>{admin?'Administrator':'3rd Year • BSCS'}</small></div><MoreHorizontal size={18}/></div>
     </div>
   </aside>;
@@ -325,11 +328,17 @@ function Onboarding() { return <div className="auth-screen"><div className="auth
 function NotFound() { return <div className="not-found"><Logo/><h1>404</h1><h2>Looks like this page got lost.</h2><p>The page you're looking for doesn't exist or may have moved.</p><Button onClick={()=>go('/dashboard')}>Back to dashboard</Button></div>; }
 
 export default function App() {
- const navigate=useNavigate(); navTo=(p)=>navigate(p,{viewTransition:true}); const loc=useLocation(); const path=loc.pathname;
+ const navigate=useNavigate(); navTo=(p)=>navigate(p,{viewTransition:true}); const loc=useLocation(); const path=loc.pathname; const {isAuthenticated}=useAuth();
+ // Route protection (demo): see src/session.js for which paths are public, guest-only or private.
+ if(normalizePath(path)!==path) return <Navigate to={normalizePath(path)+loc.search+loc.hash} replace/>;
+ const access=accessFor(path);
+ if(access==='guest'&&isAuthenticated) return <Navigate to={safeRedirect(loc.state&&loc.state.from)} replace/>;
+ if(access==='private'&&!isAuthenticated) return <Navigate to="/login" replace state={{from:{pathname:path,search:loc.search,hash:loc.hash}}}/>;
  const ap=authPage(path); if(ap) return ap;
  if(path==='/') return <Landing/>;
  if(['/login','/register','/forgot-password'].includes(path)) return <AuthPage mode={path==='/register'?'register':path==='/forgot-password'?'forgot':'login'}/>;
  if(path==='/onboarding') return <Onboarding/>;
+ if(!isAuthenticated) return <Navigate to="/login" replace/>; // safety net: never render the app shell without a session
  const admin=path.startsWith('/admin');
  let title=titleMap[path]||'KNOXIA';
  if(path.startsWith('/materials/')&&path!=='/materials/upload') title='Material Details';
