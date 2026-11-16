@@ -20,6 +20,12 @@ const resolve = (pref) => (pref === 'system' ? (systemDark() ? 'dark' : 'light')
 function apply(pref) {
   const theme = resolve(pref);
   const root = document.documentElement;
+  const changed = !!root.dataset.theme && root.dataset.theme !== theme;
+  if (changed) { // fade colours smoothly while the theme flips
+    root.classList.add('theme-fade');
+    clearTimeout(window.__knoxiaThemeFade);
+    window.__knoxiaThemeFade = setTimeout(() => root.classList.remove('theme-fade'), 420);
+  }
   root.dataset.theme = theme;
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', COLORS[theme]);

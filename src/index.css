@@ -291,3 +291,19 @@ input,select,textarea{transition:border-color .15s,box-shadow .15s}
 :is(.stats-grid,.material-grid,.feature-cards,.dashboard-grid)>:nth-child(4){animation-delay:.12s}
 :is(.stats-grid,.material-grid,.feature-cards,.dashboard-grid)>:nth-child(n+5){animation-delay:.16s}
 @keyframes itemIn{from{opacity:0;transform:translateY(8px)}}
+
+/* ===== Sidebar: no scroll bars (menu still scrolls with the wheel on short screens) ===== */
+.side-nav{overflow-x:hidden;overflow-y:auto;scrollbar-width:none;overscroll-behavior:contain}
+.side-nav::-webkit-scrollbar{display:none}
+
+/* ===== Smooth theme switch ===== */
+@media(prefers-reduced-motion:no-preference){
+html.theme-fade,html.theme-fade *,html.theme-fade *::before,html.theme-fade *::after{transition:background-color .3s ease,color .3s ease,border-color .3s ease,fill .3s ease,stroke .3s ease,box-shadow .3s ease!important}
+}
+
+/* ===== Smooth page changes (cross-fade; sidebar and top bar stay put) ===== */
+.sidebar{view-transition-name:sidebar}
+.topbar{view-transition-name:topbar}
+::view-transition-old(root),::view-transition-new(root){animation-duration:.26s;animation-timing-function:cubic-bezier(.2,.7,.2,1)}
+@supports (view-transition-name:none){.page-fade{animation:none}}
+@media(prefers-reduced-motion:reduce){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}}

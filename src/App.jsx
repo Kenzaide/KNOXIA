@@ -102,12 +102,12 @@ function Sidebar({admin=false,close}) {
     <div className="sidebar-top"><Logo/><button className="mobile-close" onClick={close}><X size={18}/></button></div>
     
     <nav className="side-nav">
-      {!admin ? navGroups.map(group=><div className="nav-group" key={group.label}><label>{group.label}</label>{group.items.map(([name,path,Icon])=><NavLink key={path} to={path} onClick={close} className={({isActive})=>`nav-link ${isActive?'active':''}`}><Icon size={18}/><span>{name}</span></NavLink>)}</div>) :
-      <div className="nav-group"><label>Administration</label>{adminNav.map(([name,path,Icon])=><NavLink key={path} to={path} onClick={close} className={({isActive})=>`nav-link ${isActive?'active':''}`}><Icon size={18}/><span>{name}</span></NavLink>)}</div>}
+      {!admin ? navGroups.map(group=><div className="nav-group" key={group.label}><label>{group.label}</label>{group.items.map(([name,path,Icon])=><NavLink viewTransition key={path} to={path} onClick={close} className={({isActive})=>`nav-link ${isActive?'active':''}`}><Icon size={18}/><span>{name}</span></NavLink>)}</div>) :
+      <div className="nav-group"><label>Administration</label>{adminNav.map(([name,path,Icon])=><NavLink viewTransition key={path} to={path} onClick={close} className={({isActive})=>`nav-link ${isActive?'active':''}`}><Icon size={18}/><span>{name}</span></NavLink>)}</div>}
     </nav>
     <div className="sidebar-bottom">
       
-      <NavLink to="/settings" className="nav-link"><Settings size={18}/><span>Settings</span></NavLink>
+      <NavLink viewTransition to="/settings" className="nav-link"><Settings size={18}/><span>Settings</span></NavLink>
       <button type="button" className="nav-link logout" onClick={()=>setConfirming(true)}><LogOut size={18}/><span>Log out</span></button>
       {confirming&&<ConfirmDialog title="Log out of KNOXIA?" body="You will need to sign in again to continue studying." confirmLabel="Log out" onConfirm={()=>{setConfirming(false);logout()}} onCancel={()=>setConfirming(false)}/>}
       <div className="side-user"><Avatar initials={admin?'AD':'KP'} online/><div><b>{admin?'Admin User':'Kenneth Punla'}</b><small>{admin?'Administrator':'3rd Year • BSCS'}</small></div><MoreHorizontal size={18}/></div>
@@ -212,11 +212,11 @@ function Dashboard() {
       </div>
     </section>
     <div className="kn-grid">
-      <section className="panel"><SectionTitle title="Continue studying" subtitle="Your latest uploads." action={<NavLink to="/materials">View all</NavLink>}/>
+      <section className="panel"><SectionTitle title="Continue studying" subtitle="Your latest uploads." action={<NavLink viewTransition to="/materials">View all</NavLink>}/>
         {items.slice(0,3).map(m=><div className="continue-item" key={m.id}><div className={`file-tile ${m.color||colorOf(m.type)}`}><FileText size={20}/></div><div className="continue-info"><b>{m.name}</b><small>{m.subject} · Uploaded {fmtDate(m.uploaded)}</small></div><button className="round-arrow" aria-label={`Open ${m.name}`} onClick={()=>go('/materials/'+m.id)}><ArrowUpRight size={18}/></button></div>)}
         {items.length===0&&<div className="empty-state"><FolderOpen size={32}/><b>No materials yet</b><p>Upload your first file to get started.</p></div>}
       </section>
-      <section className="panel"><SectionTitle title="This week" action={<NavLink to="/analytics">Details</NavLink>}/>
+      <section className="panel"><SectionTitle title="This week" action={<NavLink viewTransition to="/analytics">Details</NavLink>}/>
         {[[Flame,'orange',`${streak} days`,'Study streak. Best is 12.'],[Target,'green','86.5%','Quiz average, up 4.2%.'],[Clock3,'blue','8h 35m','Studied, up 18% on last week.']].map(([I,tone,v,l])=><div className="kn-stat" key={l}><div className={`activity-dot ${tone}`}><I size={18}/></div><div><b>{v}</b><small>{l}</small></div></div>)}
       </section>
     </div>
@@ -325,7 +325,7 @@ function Onboarding() { return <div className="auth-screen"><div className="auth
 function NotFound() { return <div className="not-found"><Logo/><h1>404</h1><h2>Looks like this page got lost.</h2><p>The page you're looking for doesn't exist or may have moved.</p><Button onClick={()=>go('/dashboard')}>Back to dashboard</Button></div>; }
 
 export default function App() {
- navTo=useNavigate(); const loc=useLocation(); const path=loc.pathname;
+ const navigate=useNavigate(); navTo=(p)=>navigate(p,{viewTransition:true}); const loc=useLocation(); const path=loc.pathname;
  const ap=authPage(path); if(ap) return ap;
  if(path==='/') return <Landing/>;
  if(['/login','/register','/forgot-password'].includes(path)) return <AuthPage mode={path==='/register'?'register':path==='/forgot-password'?'forgot':'login'}/>;
