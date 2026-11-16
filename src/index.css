@@ -307,3 +307,14 @@ html.theme-fade,html.theme-fade *,html.theme-fade *::before,html.theme-fade *::a
 ::view-transition-old(root),::view-transition-new(root){animation-duration:.26s;animation-timing-function:cubic-bezier(.2,.7,.2,1)}
 @supports (view-transition-name:none){.page-fade{animation:none}}
 @media(prefers-reduced-motion:reduce){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}}
+
+/* ===== Theme switch transitions ===== */
+/* Circular reveal (View Transitions API), origin set from JS in src/theme.jsx */
+::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+::view-transition-old(root){z-index:1}
+::view-transition-new(root){z-index:2}
+/* Fallback: smooth colour cross-fade on everything for a moment */
+html.theme-fade *,html.theme-fade *::before,html.theme-fade *::after{transition:background-color .45s ease,color .45s ease,border-color .45s ease,fill .45s ease,stroke .45s ease,box-shadow .45s ease,outline-color .45s ease!important}
+/* Sun/Moon icon swap */
+.theme-icon{display:grid;place-items:center;animation:themeIcon .5s var(--ease,ease)}
+@keyframes themeIcon{from{opacity:0;transform:rotate(-90deg) scale(.4)}to{opacity:1;transform:none}}
