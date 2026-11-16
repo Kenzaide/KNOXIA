@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ThemePicker } from './theme.jsx';
 import { Sparkles, Layers, CheckCircle2, Trophy, Crown, Flame, Clock3, Target, Bell, ShieldCheck, Activity, Plus, Trash2, Send, Play, Pause, RotateCcw, Check, Download, Users, Zap, BookOpen, Medal, ArrowUpRight, Lock, CalendarDays, Swords } from 'lucide-react';
 import { toast } from './materials.jsx';
+import { useProfile } from './accounts.js';
+import { ProfileEditor } from './profile.jsx';
 import { DECKS, BANK, ROOMS, CHALLENGES, BOARD, BADGES, NOTES, REPORTS, LOGS, useLocal, pushLS, logEvent } from './data.js';
 
 const Btn = ({ children, v = 'primary', icon: I, ...p }) => <button type="button" className={`btn ${v}`} {...p}>{I && <I size={16} />}<span>{children}</span></button>;
@@ -82,7 +84,7 @@ export function StudyRooms() {
     <div className="friend-grid">{rooms.map(r => <div className="panel friend-card" key={r.id}><div className="stat-icon" style={{ margin: '0 auto 10px' }}><Users size={18} /></div><h3>{r.name}</h3><p>{r.topic}</p><span className="friend-status">{r.members.length} studying</span><Btn v="soft" onClick={() => nav('/study-rooms/' + r.id)}>Join room</Btn></div>)}</div></>;
 }
 export function RoomDetail() {
-  const { id } = useParams(); const nav = useNavigate(); const [rooms] = useLocal('knoxia-rooms', ROOMS); const r = rooms.find(x => x.id === id);
+  const { id } = useParams(); const nav = useNavigate(); const [rooms] = useLocal('knoxia-rooms', ROOMS); const r = rooms.find(x => x.id === id); const me = useProfile();
   const [sec, setSec] = useState(1500); const [run, setRun] = useState(false); const [msgs, setMsgs] = useState([['MS', 'Starting a 25-minute focus block.']]); const [text, setText] = useState('');
   useEffect(() => { if (!run) return; const t = setInterval(() => setSec(s => { if (s <= 1) { setRun(false); return 0; } return s - 1; }), 1000); return () => clearInterval(t); }, [run]);
   if (!r) return <Empty icon={Users} title="Room not found" text="It may have been closed." action={<Btn onClick={() => nav('/study-rooms')}>Back to study rooms</Btn>} />;
@@ -91,7 +93,7 @@ export function RoomDetail() {
     <div className="chat-layout"><div className="chat-main panel"><div className="chat-messages">{msgs.map((m, i) => <div className={`message ${m[0] === 'KP' ? 'user' : 'assistant'}`} key={i}>{m[0] !== 'KP' && <div className="mini-avatar">{m[0]}</div>}<div className="bubble">{m[1]}</div></div>)}</div>
       <div className="chat-input"><input aria-label="Message" placeholder="Message the room…" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()} /><button className="send-btn" aria-label="Send" onClick={send}><Send size={18} /></button></div></div>
       <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}><div className="panel" style={{ textAlign: 'center' }}><h3>Focus timer</h3><h1 style={{ fontSize: 44, margin: '8px 0' }}>{String(Math.floor(sec / 60)).padStart(2, '0')}:{String(sec % 60).padStart(2, '0')}</h1><div className="friend-buttons"><Btn icon={run ? Pause : Play} onClick={() => setRun(!run)}>{run ? 'Pause' : 'Start'}</Btn><Btn v="outline" icon={RotateCcw} onClick={() => { setRun(false); setSec(1500); }}>Reset</Btn></div></div>
-        <div className="panel"><h3>In this room</h3>{r.members.map(m => <div className="friend-row" key={m}><div className="avatar sm">{m}</div><div><b>{m === 'KP' ? 'Kenneth Punla' : m}</b></div></div>)}</div></div></div></>;
+        <div className="panel"><h3>In this room</h3>{r.members.map(m => <div className="friend-row" key={m}><div className="avatar sm">{m === 'KP' ? (me.avatar ? <img src={me.avatar} alt="" /> : me.initials) : m}</div><div><b>{m === 'KP' ? me.displayName : m}</b></div></div>)}</div></div></div></>;
 }
 
 /* ---------- Challenges ---------- */
@@ -110,14 +112,14 @@ export function ChallengePlay() {
 
 /* ---------- Gamification & analytics ---------- */
 export function Leaderboards() {
-  const [tab, setTab] = useState('This week'); const [scope, setScope] = useState('Everyone'); const k = { 'This week': .2, 'This month': .6, 'All time': 1 }[tab];
-  const all = BOARD.filter(r => scope === 'Everyone' || r[1] === 'KP' || r[4]).map(r => ({ name: r[0], init: r[1], xp: Math.round(r[2] * k), streak: r[3], me: r[1] === 'KP' })).sort((a, b) => b.xp - a.xp).map((r, i) => ({ ...r, rank: i + 1 }));
+  const profile = useProfile(); const [tab, setTab] = useState('This week'); const [scope, setScope] = useState('Everyone'); const k = { 'This week': .2, 'This month': .6, 'All time': 1 }[tab];
+  const all = BOARD.filter(r => scope === 'Everyone' || r[1] === 'KP' || r[4]).map(r => { const me = r[1] === 'KP'; return { name: me ? profile.displayName : r[0], init: me ? profile.initials : r[1], av: me ? profile.avatar : '', xp: Math.round(r[2] * k), streak: r[3], me }; }).sort((a, b) => b.xp - a.xp).map((r, i) => ({ ...r, rank: i + 1 }));
   const me = all.find(r => r.me); const above = all[me.rank - 2]; const top = all.slice(0, 3);
   return <><Head title="Leaderboards" sub="See how your learning journey compares with others." action={<div className="segmented" role="group" aria-label="Who to show">{['Everyone', 'Friends'].map(t => <button key={t} className={scope === t ? 'selected' : ''} onClick={() => setScope(t)}>{t}</button>)}</div>} />
     <div className="tabs">{['This week', 'This month', 'All time'].map(t => <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
     <div className="stats-grid compact"><Stat label="Your rank" value={'#' + me.rank} note={`of ${all.length} students`} icon={Trophy} tone="orange" /><Stat label="Your XP" value={me.xp.toLocaleString()} note={tab} icon={Zap} /><Stat label={above ? 'To next rank' : 'Position'} value={above ? (above.xp - me.xp).toLocaleString() + ' XP' : 'Top spot'} note={above ? `Behind ${above.name}` : 'Keep it up'} icon={Target} tone="green" /></div>
-    <div className="podium">{[1, 0, 2].map(i => top[i] && <div key={i} className={`pod p${i + 1} ${top[i].me ? 'me' : ''}`}>{i === 0 && <Crown size={22} />}<div className="avatar lg">{top[i].init}</div><b>{top[i].name}{top[i].me ? ' (you)' : ''}</b><span>{top[i].xp.toLocaleString()} XP</span><div className="pod-step">{i + 1}</div></div>)}</div>
-    {all.length > 3 && <div className="panel lb-list"><div className="lb-row lb-head"><span>Rank</span><span>Student</span><span>Streak</span><span>XP</span></div>{all.slice(3).map(r => <div className={`lb-row ${r.me ? 'me' : ''}`} key={r.name}><b>{r.rank}</b><span className="lb-user"><span className="avatar sm">{r.init}</span>{r.name}{r.me ? ' (you)' : ''}</span><span><Flame size={14} /> {r.streak}d</span><b>{r.xp.toLocaleString()}</b></div>)}</div>}</>;
+    <div className="podium">{[1, 0, 2].map(i => top[i] && <div key={i} className={`pod p${i + 1} ${top[i].me ? 'me' : ''}`}>{i === 0 && <Crown size={22} />}<div className="avatar lg">{top[i].av ? <img src={top[i].av} alt="" /> : top[i].init}</div><b>{top[i].name}{top[i].me ? ' (you)' : ''}</b><span>{top[i].xp.toLocaleString()} XP</span><div className="pod-step">{i + 1}</div></div>)}</div>
+    {all.length > 3 && <div className="panel lb-list"><div className="lb-row lb-head"><span>Rank</span><span>Student</span><span>Streak</span><span>XP</span></div>{all.slice(3).map(r => <div className={`lb-row ${r.me ? 'me' : ''}`} key={r.rank}><b>{r.rank}</b><span className="lb-user"><span className="avatar sm">{r.av ? <img src={r.av} alt="" /> : r.init}</span>{r.name}{r.me ? ' (you)' : ''}</span><span><Flame size={14} /> {r.streak}d</span><b>{r.xp.toLocaleString()}</b></div>)}</div>}</>;
 }
 export function Achievements() {
   const got = BADGES.filter(b => b[3]).length;
@@ -149,11 +151,11 @@ export function Notifications() {
     <div className="panel list-panel">{items.map(x => <Row key={x.id} icon={Bell} tone={x.read ? 'blue' : 'orange'} title={x.t} sub={x.s} style={{ cursor: 'pointer' }} onClick={() => { setItems(a => a.map(y => y.id === x.id ? { ...y, read: true } : y)); nav(x.to); }}><span className="row-status">{x.read ? 'Read' : 'New'}</span></Row>)}</div></>;
 }
 export function SettingsPage() {
-  const [s, setS] = useLocal('knoxia-settings', { name: 'Kenneth Punla', username: 'kennethpunla', email: 'kenneth@example.com', notif: true, reminders: true, pub: true, board: true });
+  const [s, setS] = useLocal('knoxia-settings', { notif: true, reminders: true, pub: true, board: true });
   const [f, setF] = useState(s); const [tab, setTab] = useState('Profile'); const set = (k, v) => setF(x => ({ ...x, [k]: v }));
   const tog = (k, l) => <label className="check-list" key={k}><span><input type="checkbox" checked={f[k]} onChange={e => set(k, e.target.checked)} /> {l}</span></label>;
   return <><Head title="Settings" sub="Customize your KNOXIA experience." /><div className="settings-layout"><div className="panel settings-menu">{['Profile', 'Security', 'Preferences'].map(t => <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
-    <div className="panel settings-form">{tab === 'Profile' && <><h3>Profile information</h3><label className="field-label">Full name</label><input className="field" value={f.name} onChange={e => set('name', e.target.value)} /><label className="field-label">Username</label><input className="field" value={f.username} onChange={e => set('username', e.target.value)} /><label className="field-label">Email address</label><input className="field" type="email" value={f.email} onChange={e => set('email', e.target.value)} /><Btn onClick={() => { setS(f); toast('Settings saved'); }}>Save changes</Btn></>}
+    <div className="panel settings-form">{tab === 'Profile' && <ProfileEditor />}
       {tab === 'Security' && <><h3>Account security</h3><label className="field-label">Current password</label><input className="field" type="password" /><label className="field-label">New password</label><input className="field" type="password" /><Btn onClick={() => toast('Password update needs a backend')}>Update password</Btn></>}
       {tab === 'Preferences' && <><h3>Preferences</h3><label className="field-label">Appearance</label><ThemePicker />{tog('notif', 'Email notifications')}{tog('reminders', 'Study reminders')}{tog('pub', 'Public profile')}{tog('board', 'Show me on leaderboards')}<Btn onClick={() => { setS(f); toast('Settings saved'); }}>Save changes</Btn></>}</div></div></>;
 }

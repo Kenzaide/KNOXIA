@@ -5,9 +5,10 @@ import { Eye, EyeOff, BrainCircuit, GraduationCap, MailCheck, KeyRound, PartyPop
 import { toast } from './materials.jsx';
 import { logEvent } from './data.js';
 import { useAuth, REMEMBER_DAYS } from './session.js';
+import { registerAccount, authenticate, verifyAccount, useProfile, ALLOW_DEMO_LOGIN, YEARS, USERNAME_RE, USERNAME_HELP } from './accounts.js';
+import { fileToAvatar, AVATAR_ACCEPT } from './avatar.js';
 
 const store = { get: k => { try { return sessionStorage.getItem(k) || ''; } catch { return ''; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch { /* ignore */ } } };
-const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'];
 
 function Shell({ children, wide }) {
   return <div className={`auth-screen ${wide ? 'auth-long' : ''}`}><div className="auth-brand"><Link to="/" className="brand"><img className="brand-logo" src="/logo.png" alt="" width="36" height="36" /><span>KNOXIA</span></Link></div><ThemeToggle className="auth-theme" />{children}<div className="auth-footer">© 2026 KNOXIA. Learn smarter. Grow together.</div></div>;
@@ -30,12 +31,17 @@ function PasswordRules({ pw }) {
     <ul>{RULES.map(([l, t]) => <li key={l} className={t(pw) ? 'ok' : ''}>{t(pw) ? <Check size={14} /> : <Circle size={14} />}{l}</li>)}</ul><small>Tip: a passphrase of 3–4 random words is easy to remember and hard to guess. Avoid your name, birthday or common words.</small></div>;
 }
 const Match = ({ a, b }) => b ? <small className={`pw-match ${a === b ? 'ok' : ''}`}>{a === b ? 'Passwords match' : 'Passwords do not match yet'}</small> : null;
-const useFake = (done) => { const [busy, setBusy] = useState(false); return [busy, () => { setBusy(true); setTimeout(() => { setBusy(false); done(); }, 700); }]; };
+const useFake = (done) => { const [busy, setBusy] = useState(false); return [busy, () => { setBusy(true); setTimeout(async () => { try { await done(); } catch (e) { console.error(e); } finally { setBusy(false); } }, 700); }]; };
 
 export function Login() {
-  const { login } = useAuth(); const st = useLocation().state; const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [remember, setRemember] = useState(true);
-  // Starting the session is enough: the app's route guard then sends the user to the page they originally asked for (or the dashboard).
-  const [busy, go] = useFake(() => login({ email, remember }));
+  const { login } = useAuth(); const nav = useNavigate(); const st = useLocation().state; const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [remember, setRemember] = useState(true); const [err, setErr] = useState('');
+  // Registered accounts must match their password; starting the session is then enough: the app's route guard sends the user to the page they originally asked for (or the dashboard).
+  const [busy, go] = useFake(async () => {
+    const r = await authenticate(email, pw);
+    if (r.reason === 'unverified') { store.set('knoxia-pending-email', r.account.email); store.set('knoxia-name', r.account.first); nav('/verify-email'); return; }
+    if (!r.ok) { setErr('Incorrect email or password.'); return; }
+    setErr(''); login({ email: r.account.email, name: r.account.first, remember });
+  });
   const note = st && st.notice === 'logged-out' ? 'You’ve been logged out.' : st && st.from ? 'Please log in to continue.' : '';
   return <Shell><Card icon={BrainCircuit} title="Welcome back!" sub="Sign in to continue learning and growing.">
     {note && <div className="notice" role="status"><Info size={16} />{note}</div>}
@@ -43,9 +49,9 @@ export function Login() {
       <Field label="Email address"><input className="field" type="email" required autoComplete="email" placeholder="Enter your email address" value={email} onChange={e => setEmail(e.target.value)} /></Field>
       <Field label="Password"><Password value={pw} onChange={e => setPw(e.target.value)} autoComplete="current-password" /></Field>
       <div className="login-opts"><label className="check-inline" title={`Stay signed in on this device for ${REMEMBER_DAYS} days`}><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} /> Remember me</label><Link to="/forgot-password">Forgot password?</Link></div>
-      <Submit busy={busy}>Log in</Submit></form>
+      <Err msg={err} /><Submit busy={busy}>Log in</Submit></form>
     <div className="auth-switch">New to KNOXIA? <Link to="/register">Sign up</Link></div>
-    <p className="auth-legal">Demo mode: any email and password signs you in.</p>
+    {ALLOW_DEMO_LOGIN && <p className="auth-legal">Demo mode: an email that isn’t registered yet signs in with any password.</p>}
     <p className="auth-legal"><Legal /></p></Card></Shell>;
 }
 
@@ -54,9 +60,16 @@ export function Register() {
   const DRAFT = 'knoxia-reg-draft'; const [f, setF] = useState(() => { try { return { ...blank, ...JSON.parse(sessionStorage.getItem(DRAFT) || '{}') }; } catch { return blank; } });
   useEffect(() => { const { pw, pw2, ...rest } = f; try { sessionStorage.setItem(DRAFT, JSON.stringify(rest)); } catch { /* ignore */ } }, [f]); const [err, setErr] = useState(''); const [photo, setPhoto] = useState('');
   const set = k => e => setF(x => ({ ...x, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
-  const [busy, go] = useFake(() => { try { sessionStorage.removeItem(DRAFT); } catch { /* ignore */ } store.set('knoxia-pending-email', f.email); store.set('knoxia-name', f.first); logEvent(`New user registered: ${f.first} ${f.last}`); nav('/verify-email'); });
+  // Saves the account (persisted in this browser, see src/accounts.js), then asks for the email code.
+  const [busy, go] = useFake(async () => {
+    const r = await registerAccount({ ...f, avatar: photo });
+    if (r.error) { setErr(r.error); return; }
+    try { sessionStorage.removeItem(DRAFT); } catch { /* ignore */ }
+    store.set('knoxia-pending-email', r.account.email); store.set('knoxia-name', r.account.first);
+    logEvent(`New user registered: ${f.first} ${f.last}`); nav('/verify-email');
+  });
   const submit = e => { e.preventDefault(); if (busy) return;
-    if (!/^[a-zA-Z0-9_.]{3,20}$/.test(f.username)) return setErr('Username must be 3–20 characters: letters, numbers, dots or underscores.');
+    if (!USERNAME_RE.test(f.username.trim())) return setErr(USERNAME_HELP);
     if (!pwOk(f.pw)) return setErr('Your password doesn’t meet all the requirements listed under the password fields.');
     if (f.pw !== f.pw2) return setErr('Passwords do not match.');
     if (!f.terms || !f.privacy) return setErr('Please agree to the Terms and Conditions and the Privacy Policy.');
@@ -64,7 +77,7 @@ export function Register() {
   return <Shell wide><Card wide icon={GraduationCap} title="Create your account" sub="Tell us about yourself so KNOXIA can personalize your study space.">
     <form onSubmit={submit}>
       <fieldset><legend>Personal information</legend>
-        <label className="photo-pick">{photo ? <img src={photo} alt="Profile preview" /> : <Camera size={22} />}<input type="file" accept="image/png,image/jpeg" hidden onChange={e => { const x = e.target.files[0]; if (x) setPhoto(URL.createObjectURL(x)); }} /><span>Upload your profile picture <em>(optional)</em></span></label>
+        <label className="photo-pick">{photo ? <img src={photo} alt="Profile preview" /> : <Camera size={22} />}<input type="file" accept={AVATAR_ACCEPT} hidden onChange={async e => { const x = e.target.files[0]; e.target.value = ''; if (!x) return; try { setPhoto(await fileToAvatar(x)); setErr(''); } catch (ex) { setErr(ex.message || 'That picture could not be used.'); } }} /><span>Upload your profile picture <em>(optional)</em></span></label>
         <div className="form-grid"><Field label="First name"><input className="field" required autoComplete="given-name" placeholder="Enter your first name" value={f.first} onChange={set('first')} /></Field><Field label="Middle name" optional><input className="field" autoComplete="additional-name" placeholder="Enter your middle name (optional)" value={f.middle} onChange={set('middle')} /></Field>
           <Field label="Last name"><input className="field" required autoComplete="family-name" placeholder="Enter your last name" value={f.last} onChange={set('last')} /></Field><Field label="Suffix" optional><input className="field" placeholder="Enter your suffix (optional)" value={f.suffix} onChange={set('suffix')} /></Field></div></fieldset>
       <fieldset><legend>Account information</legend>
@@ -102,7 +115,7 @@ export function VerifyEmail() {
   const { isAuthenticated, login } = useAuth(); const pending = store.get('knoxia-pending-email'); const email = pending || 'your email'; const verified = useRef(false);
   const [code, setCode] = useState(Array(6).fill('')); const [err, setErr] = useState(''); const [wait, setWait] = useState(30);
   // Verifying the code finishes sign-up and signs the new user in (for this tab only; they did not choose "remember me").
-  const [busy, go] = useFake(() => { verified.current = true; login({ email: pending, name: store.get('knoxia-name'), remember: false }); store.set('knoxia-pending-email', ''); });
+  const [busy, go] = useFake(() => { verifyAccount(pending); verified.current = true; login({ email: pending, name: store.get('knoxia-name'), remember: false }); store.set('knoxia-pending-email', ''); });
   useEffect(() => { if (wait <= 0) return; const t = setTimeout(() => setWait(w => w - 1), 1000); return () => clearTimeout(t); }, [wait]);
   if (isAuthenticated) return <Navigate to={verified.current ? '/welcome' : '/dashboard'} replace />;
   if (!pending) return <Navigate to="/register" replace />; // nothing to verify: this page is only reachable from sign-up
@@ -117,7 +130,7 @@ export function VerifyEmail() {
 }
 
 export function Welcome() {
-  const nav = useNavigate(); const name = store.get('knoxia-name');
+  const nav = useNavigate(); const me = useProfile(); const name = me.exists ? me.first : store.get('knoxia-name');
   return <Shell><Card icon={PartyPopper} title={`Account created${name ? ', ' + name : ''}!`} sub="Your email is verified. Upload your first material to build a reviewer, flashcards or a quiz.">
     <div className="welcome-actions"><button className="btn primary" onClick={() => nav('/materials/upload')}>Upload your first file</button><button className="btn outline" onClick={() => nav('/dashboard')}>Go to dashboard</button></div></Card></Shell>;
 }

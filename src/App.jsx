@@ -8,6 +8,8 @@ import { authPage } from './auth.jsx';
 import { Knowl, KnowlAvatar } from './knowl.jsx';
 import { ThemeToggle } from './theme.jsx';
 import { useAuth, accessFor, normalizePath, safeRedirect } from './session.js';
+import { useProfile, profileByUsername, useAccounts, buildProfile } from './accounts.js';
+import { UserAvatar, ProfileHeader, ProfileDetails } from './profile.jsx';
 
 let navTo = (p) => { location.href = p; };
 const go = (p) => navTo(p);
@@ -68,7 +70,7 @@ const titleMap = {
   '/admin/logs':'Activity Logs'
 };
 function Logo({small=false}) { return <div className="brand"><img className={`brand-logo${small?' small':''}`} src="/logo.png" alt={small?'KNOXIA':''} width={small?28:36} height={small?28:36}/>{!small && <span>KNOXIA</span>}</div>; }
-function Avatar({initials='KP',size='md',online=false}) { return <div className={`avatar ${size}`}>{initials}{online&&<i/>}</div>; }
+function Avatar({initials='KP',size='md',online=false,src=''}) { return <div className={`avatar ${size}`}>{src?<img src={src} alt=""/>:initials}{online&&<i/>}</div>; }
 function Button({children,variant='primary',icon:Icon,onClick,type='button',loading=false}) { return <button type={type} onClick={onClick} disabled={loading} className={`btn ${variant}`}>{loading?<i className="spin" aria-hidden="true"/>:Icon&&<Icon size={16}/>}<span>{children}</span></button>; }
 // Stand-in for data fetching: shows skeletons briefly until a real API is connected.
 function usePending(ms=450) { const [p,setP]=useState(true); useEffect(()=>{const t=setTimeout(()=>setP(false),ms);return()=>clearTimeout(t)},[ms]); return p; }
@@ -98,7 +100,7 @@ function ConfirmDialog({title,body,confirmLabel,onConfirm,onCancel}) {
     </div></div>,document.body);
 }
 function Sidebar({admin=false,close}) {
-  const [confirming,setConfirming]=useState(false); const nav=useNavigate(); const {logout}=useAuth();
+  const [confirming,setConfirming]=useState(false); const nav=useNavigate(); const {logout}=useAuth(); const me=useProfile();
   // Navigate and clear the session in the same event so the login page shows the "logged out" notice, not a redirect.
   const signOut=()=>{close&&close(); nav('/login',{replace:true,state:{notice:'logged-out'}}); logout()};
   return <aside className="sidebar">
@@ -113,7 +115,8 @@ function Sidebar({admin=false,close}) {
       <NavLink viewTransition to="/settings" className="nav-link"><Settings size={18}/><span>Settings</span></NavLink>
       <button type="button" className="nav-link logout" onClick={()=>setConfirming(true)}><LogOut size={18}/><span>Log out</span></button>
       {confirming&&<ConfirmDialog title="Log out of KNOXIA?" body="You will need to sign in again to continue studying." confirmLabel="Log out" onConfirm={()=>{setConfirming(false);signOut()}} onCancel={()=>setConfirming(false)}/>}
-      <div className="side-user"><Avatar initials={admin?'AD':'KP'} online/><div><b>{admin?'Admin User':'Kenneth Punla'}</b><small>{admin?'Administrator':'3rd Year • BSCS'}</small></div><MoreHorizontal size={18}/></div>
+      {admin?<div className="side-user"><Avatar initials="AD" online/><div><b>Admin User</b><small>Administrator</small></div><MoreHorizontal size={18}/></div>
+      :<NavLink viewTransition to="/profile" onClick={close} className="side-user" aria-label="View your profile"><UserAvatar online/><div><b>{me.displayName}</b><small>{me.academic||`@${me.username}`}</small></div><MoreHorizontal size={18}/></NavLink>}
     </div>
   </aside>;
 }
@@ -161,7 +164,7 @@ function NotificationBell() {
 }
 function Topbar({title,admin=false,onMenu}) {
   const [search,setSearch]=useState('');
-  return <header className="topbar"><div className="top-left"><button className="menu-btn" onClick={onMenu}><Menu size={20}/></button><div className="crumb"><b>{title}</b></div></div><div className="top-actions"><Clock/><div className="top-search"><Search size={16}/><input placeholder="Search anything..." value={search} onChange={e=>setSearch(e.target.value)}/></div><ThemeToggle/><NotificationBell/><div className="top-divider"/><Avatar initials={admin?'AD':'KP'} size="sm"/></div></header>;
+  return <header className="topbar"><div className="top-left"><button className="menu-btn" onClick={onMenu}><Menu size={20}/></button><div className="crumb"><b>{title}</b></div></div><div className="top-actions"><Clock/><div className="top-search"><Search size={16}/><input placeholder="Search anything..." value={search} onChange={e=>setSearch(e.target.value)}/></div><ThemeToggle/><NotificationBell/><div className="top-divider"/>{admin?<Avatar initials="AD" size="sm"/>:<NavLink viewTransition to="/profile" className="top-avatar" aria-label="View your profile"><UserAvatar size="sm"/></NavLink>}</div></header>;
 }
 function Shell({children,admin=false,title}) {
   const [open,setOpen]=useState(false);
@@ -176,12 +179,12 @@ const TIPS=[
 ];
 const greetingFor=h=>h<5?'Still up':h<12?'Good morning':h<18?'Good afternoon':'Good evening';
 function Dashboard() {
-  const {items}=useMaterials(); const loading=usePending();
+  const {items}=useMaterials(); const loading=usePending(); const {firstName}=useProfile();
   const [said,setSaid]=useState(null); const [clicks,setClicks]=useState(0); const [focusing,setFocusing]=useState(false);
   const hour=new Date().getHours(); const night=hour>=22||hour<5;
   const goal={done:45,total:60}; const left=Math.max(0,goal.total-goal.done); const pct=Math.round(goal.done/goal.total*100);
   const streak=7; const first=items[0];
-  const resting=night?{pose:'sleepy',text:"It's late, Kenneth. Review something short, then get some sleep."}
+  const resting=night?{pose:'sleepy',text:`It's late, ${firstName}. Review something short, then get some sleep.`}
     :left===0?{pose:'happy',text:"Goal reached! Great work today."}
     :items.length===0?{pose:'think',text:"Upload a file and I'll help you turn it into a reviewer."}
     :{pose:'default',text:`Hoot! ${left} more minutes and today's goal is done.`};
@@ -201,7 +204,7 @@ function Dashboard() {
   return <>
     <section className="kn-hero">
       <div className="kn-hero-copy">
-        <h1>{greetingFor(hour)}, Kenneth</h1>
+        <h1>{greetingFor(hour)}, {firstName}</h1>
         <p className="kn-sub">{items.length} {items.length===1?'material is':'materials are'} ready to study.</p>
         <div className="kn-goal"><div className="kn-goal-top"><b>Today's goal</b><span>{goal.done} of {goal.total} min</span></div><div className="goal-progress" role="progressbar" aria-valuenow={pct} aria-valuemin="0" aria-valuemax="100" aria-label="Daily goal"><span style={{width:pct+'%'}}/></div></div>
         <div className="kn-actions">
@@ -315,8 +318,21 @@ function MaterialDetail() {
     <div className="quick-tools"><div className="panel quick-tool"><Sparkles/><h3>Generate reviewer</h3><p>Create organized notes from this material.</p><Button variant="soft" onClick={()=>go('/reviewers/create')}>Create reviewer</Button></div><div className="panel quick-tool"><BookOpen/><h3>Generate quiz</h3><p>Test your knowledge with practice questions.</p><Button variant="soft" onClick={()=>go('/quizzes/create')}>Create quiz</Button></div><div className="panel quick-tool"><BrainCircuit/><h3>Ask AI</h3><p>Get help understanding difficult concepts.</p><Button variant="soft" onClick={()=>go('/study-companion')}>Ask companion</Button></div></div></>;
 }
 function StudyMode({type}) { const [revealed,setRevealed]=useState(false); return <><SectionTitle title={type==='flash'?'Flashcard Study Session':type==='quiz'?'Take Quiz':type==='result'?'Quiz Results':'Study Session'} subtitle="Focus on understanding, one question at a time."/><div className="study-center"><div className="study-progress"><span>Question 1 of 10</span><span>10% complete</span></div><div className="progress-track"><span style={{width:'10%'}}/></div><div className="panel study-card">{type==='flash'?<><small>FLASHCARD · MACHINE LEARNING</small><h2>What is supervised learning?</h2>{revealed&&<p className="answer-reveal">A type of machine learning where a model learns from labeled training data.</p>}<Button onClick={()=>setRevealed(!revealed)}>{revealed?'Hide answer':'Reveal answer'}</Button></>:<><small>QUESTION 01 · MULTIPLE CHOICE</small><h2>Which of the following best describes supervised learning?</h2>{['Learning from labeled data','Learning without any data','Learning through rewards only','Learning by random guessing'].map((x,i)=><button className="answer-option" key={x} onClick={e=>e.currentTarget.classList.toggle('picked')}><span>{String.fromCharCode(65+i)}</span>{x}</button>)}<Button onClick={()=>alert('Demo: answer submission is not connected.')}>Submit answer</Button></>}</div><div className="study-footer"><span>Take your time. Learning is a process.</span><Button variant="outline" onClick={()=>go('/dashboard')}>Exit session</Button></div></div></>; }
-function Profile() { const {username}=useParams(); return <><div className="panel profile-cover"><div className="profile-avatar"><Avatar initials={(username||'KP').slice(0,2).toUpperCase()} size="xl"/></div><div className="profile-info"><h1>{username||'kennethpunla'}</h1><p>@{username||'kennethpunla'} · 3rd Year BSCS</p><span>Learning every day, one concept at a time.</span></div><Button variant="outline">Add friend</Button></div><div className="stats-grid compact"><StatCard label="Total XP" value="3,240" change="Level 8" icon={Zap}/><StatCard label="Achievements" value="12" change="Collected badges" icon={Medal} tone="orange"/><StatCard label="Study streak" value="7 days" change="Current streak" icon={Flame} tone="green"/></div></>; }
-function AdminUsers() { return <><SectionTitle title="User Management" subtitle="View and manage registered KNOXIA accounts." action={<Button icon={Plus}>Add user</Button>}/><div className="toolbar"><div className="search-field"><Search size={16}/><input placeholder="Search users..."/></div><button className="filter-btn"><Filter size={16}/> All roles</button></div><div className="panel table-panel"><table><thead><tr><th>USER</th><th>ROLE</th><th>STATUS</th><th>JOINED</th><th>ACTION</th></tr></thead><tbody>{[['Kenneth Punla','kenneth@example.com','Student','Active','Nov 01, 2026'],['Mika Santos','mika@example.com','Student','Active','Oct 28, 2026'],['Alex Rivera','alex@example.com','Student','Active','Oct 21, 2026'],['Jordan Lee','jordan@example.com','Moderator','Pending','Oct 19, 2026']].map((u,i)=><tr key={u[0]}><td><div className="table-user"><Avatar initials={u[0].split(' ').map(x=>x[0]).join('')}/><div><b>{u[0]}</b><small>{u[1]}</small></div></div></td><td>{u[2]}</td><td><span className={`status-pill ${u[3].toLowerCase()}`}>{u[3]}</span></td><td>{u[4]}</td><td><button className="plain-icon"><MoreHorizontal/></button></td></tr>)}</tbody></table></div></>; }
+function Profile() {
+  const {username}=useParams(); const me=useProfile();
+  if(!username) return <Navigate to={`/profile/${me.username}`} replace/>;
+  const mine=username.toLowerCase()===me.username.toLowerCase();
+  // Someone else who registered in this browser shows their real profile; seeded demo users keep the placeholder profile.
+  const other=mine?null:profileByUsername(username);
+  const p=mine?me:other||{...buildProfile(null,''),displayName:username,username,initials:username.slice(0,2).toUpperCase(),academic:'3rd Year • BSCS',bio:'Learning every day, one concept at a time.',createdAt:0};
+  return <><ProfileHeader p={p} mine={mine} action={<Button variant="outline">Add friend</Button>}/><div className="stats-grid compact"><StatCard label="Total XP" value="3,240" change="Level 8" icon={Zap}/><StatCard label="Achievements" value="12" change="Collected badges" icon={Medal} tone="orange"/><StatCard label="Study streak" value="7 days" change="Current streak" icon={Flame} tone="green"/></div>{(mine||other)&&<ProfileDetails p={p} mine={mine}/>}</>;
+}
+function AdminUsers() {
+  // People who registered in this browser come first (see src/accounts.js), followed by the sample users.
+  const accs=useAccounts();
+  const real=accs.map(a=>{const p=buildProfile(a,a.email); return [p.displayName,a.email,'Student',a.verified?'Active':'Pending',fmtDate(a.createdAt),p.initials,p.avatar];});
+  const rows=[...real,...[['Kenneth Punla','kenneth@example.com','Student','Active','Nov 01, 2026'],['Mika Santos','mika@example.com','Student','Active','Oct 28, 2026'],['Alex Rivera','alex@example.com','Student','Active','Oct 21, 2026'],['Jordan Lee','jordan@example.com','Moderator','Pending','Oct 19, 2026']].filter(u=>!accs.some(a=>a.email===u[1]))];
+  return <><SectionTitle title="User Management" subtitle="View and manage registered KNOXIA accounts." action={<Button icon={Plus}>Add user</Button>}/><div className="toolbar"><div className="search-field"><Search size={16}/><input placeholder="Search users..."/></div><button className="filter-btn"><Filter size={16}/> All roles</button></div><div className="panel table-panel"><table><thead><tr><th>USER</th><th>ROLE</th><th>STATUS</th><th>JOINED</th><th>ACTION</th></tr></thead><tbody>{rows.map(u=><tr key={u[1]}><td><div className="table-user"><Avatar initials={u[5]||u[0].split(' ').map(x=>x[0]).join('')} src={u[6]}/><div><b>{u[0]}</b><small>{u[1]}</small></div></div></td><td>{u[2]}</td><td><span className={`status-pill ${u[3].toLowerCase()}`}>{u[3]}</span></td><td>{u[4]}</td><td><button className="plain-icon"><MoreHorizontal/></button></td></tr>)}</tbody></table></div></>; }
 function AdminDashboard() { return <><div className="welcome-row"><div><h1>Platform overview</h1><p>Monitor KNOXIA activity and keep the community healthy.</p></div><Button variant="outline" icon={Download}>Export report</Button></div><div className="stats-grid"><StatCard label="Registered users" value="1,284" change="↑ 8.2% this month" icon={Users}/><StatCard label="Active today" value="326" change="↑ 12.4% today" icon={Activity} tone="green"/><StatCard label="Materials uploaded" value="4,892" change="+184 this week" icon={FolderOpen} tone="purple"/><StatCard label="Reports pending" value="07" change="Requires attention" icon={AlertCircle} tone="orange"/></div><div className="dashboard-grid"><section className="panel activity-panel"><SectionTitle title="Recent platform activity" subtitle="Latest system events."/><div className="activity-row"><div className="activity-dot blue"><UserRound size={16}/></div><div><b>New user registered</b><small>Mika Santos joined KNOXIA</small></div><time>5 min ago</time></div><div className="activity-row"><div className="activity-dot green"><Upload size={16}/></div><div><b>Materials uploaded</b><small>3 new learning resources</small></div><time>22 min ago</time></div><div className="activity-row"><div className="activity-dot orange"><ShieldCheck size={16}/></div><div><b>Content reported</b><small>A post needs moderator review</small></div><time>1 hour ago</time></div></section><section className="panel weekly-panel"><SectionTitle title="Platform growth" subtitle="New registrations this week."/><div className="weekly-total"><b>+126</b><span className="positive">↑ 8.2%</span></div><div className="bar-chart">{[['M',35],['T',52],['W',68],['T',48],['F',82],['S',100],['S',73]].map(([d,v],i)=><div className="bar-column" key={i}><div className="bar-bg"><span style={{height:v+'%'}}/></div><small>{d}</small></div>)}</div></section></div></>; }
 function AuthPage({mode}) { const [show,setShow]=useState(false); const [sent,setSent]=useState(false); const [busy,setBusy]=useState(false); const nav=useNavigate(); const isRegister=mode==='register'; return <div className="auth-screen"><div className="auth-brand"><Logo/></div><ThemeToggle className="auth-theme"/><div className="auth-card"><div className="auth-icon"><BrainCircuit size={24}/></div><h1>{isRegister?'Create your account':mode==='forgot'?'Reset your password':'Welcome back'}</h1><p>{isRegister?'Start your smarter learning journey with KNOXIA.':mode==='forgot'?'Enter your email and we’ll send you a reset link.':'Sign in to continue learning and growing.'}</p><form onSubmit={e=>{e.preventDefault();if(busy)return;setBusy(true);setTimeout(()=>{setBusy(false);if(mode==='forgot')setSent(true);else nav(mode==='register'?'/onboarding':'/dashboard');},700);}}>{isRegister&&<><label className="field-label">Full name</label><input className="field" required placeholder="Your full name"/></>}<label className="field-label">Email address</label><input className="field" type="email" required placeholder="you@example.com"/>{mode!=='forgot'&&<><label className="field-label">Password</label><div className="password-field"><input className="field" type={show?'text':'password'} required placeholder="Enter your password"/><button type="button" onClick={()=>setShow(!show)}>{show?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></>}{mode==='login'&&<div className="forgot-line"><a href="/forgot-password">Forgot password?</a></div>}<Button type="submit" loading={busy}>{isRegister?'Create account':mode==='forgot'?'Send reset link':'Sign in'}</Button>{sent&&<p className="auth-sent">If an account exists for that email, a reset link is on its way.</p>}</form><div className="auth-switch">{isRegister?'Already have an account?':"Don't have an account?"} <a href={isRegister?'/login':'/register'}>{isRegister?'Sign in':'Create account'}</a></div></div><div className="auth-footer">© 2026 KNOXIA. Learn smarter. Grow together.</div></div>; }
 function Landing() { return <div className="landing"><header className="landing-nav"><Logo/><div><a href="#features">Features</a><a href="#how">How it works</a><a href="/login">Sign in</a><ThemeToggle/><Button variant="outline" onClick={()=>go('/register')}>Create account</Button></div></header>
@@ -342,6 +358,7 @@ export default function App() {
  const admin=path.startsWith('/admin');
  let title=titleMap[path]||'KNOXIA';
  if(path.startsWith('/materials/')&&path!=='/materials/upload') title='Material Details';
+ if(path.startsWith('/profile')) title='Profile';
  if(path.startsWith('/reviewers/')) title='Reviewer Details / Editor';
  if(path.startsWith('/flashcards/')&&path!=='/flashcards') title='Flashcard Study Session';
  if(path.startsWith('/quizzes/')) title=path.includes('/attempts/')?'Quiz Results / Review':'Take Quiz';
@@ -350,7 +367,7 @@ export default function App() {
  return <Shell admin={admin} title={title}><div className="page-fade" key={path}><Routes>
    <Route path="/dashboard" element={<Dashboard/>}/><Route path="/materials" element={<Materials/>}/><Route path="/materials/upload" element={<UploadPage/>}/><Route path="/materials/:id" element={<MaterialDetail/>}/>
    <Route path="/reviewers/create" element={<CreateReviewer/>}/><Route path="/reviewers/:id" element={<ReviewerEditor/>}/><Route path="/study-companion" element={<Companion/>}/><Route path="/flashcards" element={<Flashcards/>}/><Route path="/flashcards/:id/study" element={<FlashStudy/>}/><Route path="/quizzes/create" element={<QuizCreate/>}/><Route path="/quizzes/:id/take" element={<QuizTake/>}/><Route path="/quizzes/attempts/:id" element={<QuizResults/>}/>
-   <Route path="/feed" element={<Feed/>}/><Route path="/friends" element={<Friends/>}/><Route path="/profile/:username" element={<Profile/>}/><Route path="/study-rooms" element={<StudyRooms/>}/><Route path="/study-rooms/:id" element={<RoomDetail/>}/><Route path="/challenges" element={<Challenges/>}/><Route path="/challenges/:id/play" element={<ChallengePlay/>}/>
+   <Route path="/feed" element={<Feed/>}/><Route path="/friends" element={<Friends/>}/><Route path="/profile" element={<Profile/>}/><Route path="/profile/:username" element={<Profile/>}/><Route path="/study-rooms" element={<StudyRooms/>}/><Route path="/study-rooms/:id" element={<RoomDetail/>}/><Route path="/challenges" element={<Challenges/>}/><Route path="/challenges/:id/play" element={<ChallengePlay/>}/>
    <Route path="/leaderboards" element={<Leaderboards/>}/><Route path="/achievements" element={<Achievements/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/study-planner" element={<Planner/>}/>
    <Route path="/settings" element={<SettingsPage/>}/><Route path="/notifications" element={<Notifications/>}/>
    <Route path="/admin/dashboard" element={<AdminDashboard/>}/><Route path="/admin/users" element={<AdminUsers/>}/><Route path="/admin/moderation" element={<Moderation/>}/><Route path="/admin/logs" element={<Logs/>}/>
