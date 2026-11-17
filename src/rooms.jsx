@@ -11,6 +11,7 @@ import { toast } from './materials.jsx';
 import {
   MAX_NAME, MAX_TOPIC, MAX_MESSAGE, myRooms, invitesFor, otherRooms, invitable, isMember, isInvited, isOwner, messagesOf, lastMessage,
 } from './roomsCalc.js';
+import { GroupActivities } from './activities.jsx';
 import {
   useRoomsData, createStudyRoom, joinStudyRoom, leaveStudyRoom, deleteStudyRoom, inviteFriend,
   acceptRoomInvite, declineRoomInvite, removePerson, postMessage, removeMessage,
@@ -157,6 +158,7 @@ export function RoomDetail() {
       <Conversation room={room} data={data} />
       <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}><FocusTimer /><People room={room} data={data} /></div>
     </div>
+    <GroupActivities room={room} data={data} />
     {dlg === 'leave' && <ConfirmDialog icon={LogOut} title={`Leave ${room.name}?`} body="You can join again later. Your earlier messages stay in the conversation." confirmLabel="Leave" onConfirm={leave} onCancel={() => setDlg(null)} />}
     {dlg === 'delete' && <ConfirmDialog icon={Trash2} title={`Delete ${room.name}?`} body="This removes the room and its whole conversation for everyone. This can't be undone." confirmLabel="Delete" onConfirm={del} onCancel={() => setDlg(null)} />}
   </>;

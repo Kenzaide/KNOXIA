@@ -13,3 +13,31 @@
 .msg-meta .link-btn{display:inline-flex;padding:0;color:var(--muted)}
 .msg-meta .link-btn:hover{color:var(--blue)}
 .bubble{overflow-wrap:anywhere}
+
+/* Group study activities (Patch 22) */
+.act-section{margin-top:var(--s-5)}
+.act-section .section-title{flex-wrap:wrap}
+.act-actions{display:flex;gap:var(--s-2);flex-wrap:wrap}
+.room-form select{height:38px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);padding:0 8px}
+.act-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.act-card{display:grid;gap:var(--s-3);align-content:start}
+.act-head{display:flex;align-items:flex-start;gap:var(--s-2)}
+.act-head>div:nth-child(2){flex:1;display:grid;gap:2px}
+.act-head b{font-size:13px}.act-head small{font-size:12px;color:var(--muted)}
+.act-head .link-btn{color:var(--muted)}.act-head .link-btn:hover{color:var(--blue)}
+.act-timer{font-family:'Plus Jakarta Sans',sans-serif;font-size:34px;font-weight:800;text-align:center}
+.act-people{display:flex;flex-wrap:wrap;gap:6px}
+.act-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;background:var(--soft);border-radius:20px;padding:3px 9px 3px 4px}
+.act-board{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.act-board li{display:flex;align-items:center;gap:8px;font-size:12px}
+.act-board li>span:nth-child(2){flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.act-board small{color:var(--muted)}
+.act-rank{width:22px;height:22px;border-radius:50%;background:var(--tint);color:var(--blue);display:grid;place-items:center;font-size:11px;font-weight:800}
+.act-goals{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.act-goals li{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}
+.act-goals label{display:flex;align-items:center;gap:8px}
+.act-goals .done{text-decoration:line-through;color:var(--muted)}
+.act-goals small{font-size:11px;color:var(--muted)}
+.act-add{display:flex;gap:6px}
+.act-add input{flex:1;min-width:0;height:36px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);padding:0 10px}
+.act-card>.btn{justify-self:start}

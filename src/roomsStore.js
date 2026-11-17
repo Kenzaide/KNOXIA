@@ -16,11 +16,13 @@ import {
   SEED_ROOMS, SEED_MESSAGES, cleanRooms, cleanMessages, createRoom, joinRoom, leaveRoom, deleteRoom,
   inviteToRoom, acceptInvite, declineInvite, removeFromRoom, sendMessage, deleteMessage, dropRoomMessages,
 } from './roomsCalc.js';
+import { dropRoomActivities } from './activitiesCalc.js';
 
 export const ROOMS_KEY = 'knoxia-study-rooms';
 export const MESSAGES_KEY = 'knoxia-room-messages';
+export const ACTIVITIES_KEY = 'knoxia-room-activities'; // group study activities (Patch 22), see activitiesStore.js
 const isList = Array.isArray;
-const savedRooms = () => local.get(ROOMS_KEY, SEED_ROOMS, isList);        // the demo rooms until the first change is saved
+export const savedRooms = () => local.get(ROOMS_KEY, SEED_ROOMS, isList);        // the demo rooms until the first change is saved
 const savedMessages = () => local.get(MESSAGES_KEY, SEED_MESSAGES, isList);
 
 function useShared(key, read, server) {
@@ -52,7 +54,10 @@ export function joinStudyRoom(me, roomId) { return applyRooms((r) => joinRoom(r,
 export const leaveStudyRoom = (me, roomId) => applyRooms((r) => leaveRoom(r, me.id, roomId));
 export function deleteStudyRoom(me, roomId) {
   const out = applyRooms((r) => deleteRoom(r, me.id, roomId));
-  if (out.ok) local.set(MESSAGES_KEY, dropRoomMessages(savedMessages(), roomId));
+  if (out.ok) { // the room's conversation and activities go with it
+    local.set(MESSAGES_KEY, dropRoomMessages(savedMessages(), roomId));
+    local.set(ACTIVITIES_KEY, dropRoomActivities(local.get(ACTIVITIES_KEY, [], Array.isArray), roomId));
+  }
   return out;
 }
 export function inviteFriend(me, room, person, friendIds) {
