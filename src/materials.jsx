@@ -15,6 +15,7 @@ const seed = [
   { id: '7', name: 'Neural Networks Lab Guide', type: 'DOCX', size: '1.1 MB', bytes: 1153434, uploaded: '2026-10-15T08:00:00', subject: 'Artificial Intelligence', tags: ['lab', 'ml'], desc: 'Step-by-step lab on training a small network.' },
   { id: '8', name: 'Operating Systems Summary', type: 'PDF', size: '960 KB', bytes: 983040, uploaded: '2026-09-28T08:00:00', subject: 'Computer Systems', tags: ['reviewer'], desc: 'Processes, scheduling and memory management.' },
 ];
+export const SEED_MATERIALS = seed; // the sample library a new account starts with, shown until it saves its own
 
 export const colorOf = (t) => ({ PDF: 'blue', DOCX: 'green', PPTX: 'orange' }[t] || 'blue');
 export const fmtSize = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');

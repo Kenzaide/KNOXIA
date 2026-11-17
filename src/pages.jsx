@@ -9,6 +9,7 @@ import { QuizRunner } from './quizRunner.jsx'; // the shared quiz runner (Patch 
 import { ConfirmDialog, PromptDialog } from './ui.jsx';
 import { track, useProgressLog, useStudyProgress } from './progressStore.js'; // study progress (Patch 15)
 import { fmtTime, topicMastery } from './progressCalc.js';
+import { useMyBadges } from './profileStore.js';
 import { MAX_TITLE, MAX_FOLDER, cleanTitle, folderOf, folderCounts, resolveFolder, updatedAt, useReviewerLibrary } from './reviewerLib.js';
 import { BANK, ROOMS, CHALLENGES, BOARD, BADGES, useNotes, useReviewers, useRooms, useChallenges, usePlan, useSettings, useReports, useLogs, pushLS, logEvent } from './data.js';
 
@@ -106,9 +107,9 @@ export function Leaderboards() {
     {all.length > 3 && <div className="panel lb-list"><div className="lb-row lb-head"><span>Rank</span><span>Student</span><span>Streak</span><span>XP</span></div>{all.slice(3).map(r => <div className={`lb-row ${r.me ? 'me' : ''}`} key={r.rank}><b>{r.rank}</b><span className="lb-user"><span className="avatar sm">{r.av ? <img src={r.av} alt="" /> : r.init}</span>{r.name}{r.me ? ' (you)' : ''}</span><span><Flame size={14} /> {r.streak}d</span><b>{r.xp.toLocaleString()}</b></div>)}</div>}</>;
 }
 export function Achievements() {
-  const got = BADGES.filter(b => b[3]).length;
-  return <><Head title="Achievements & Badges" sub="Collect badges as you build better learning habits." /><div className="stats-grid compact"><Stat label="Earned" value={String(got)} note="Badges collected" icon={Medal} tone="orange" /><Stat label="Locked" value={String(BADGES.length - got)} note="Still to unlock" icon={Lock} /><Stat label="Progress" value={Math.round(got / BADGES.length * 100) + '%'} note="Of all badges" icon={Trophy} tone="green" /></div>
-    <div className="friend-grid">{BADGES.map(([n, d, ic, on]) => { const I = ICONS[ic]; return <div className="panel friend-card" key={n} style={on ? undefined : { opacity: .6 }}><div className={`stat-icon ${on ? 'orange' : ''}`} style={{ margin: '0 auto 10px' }}>{on ? <I size={18} /> : <Lock size={18} />}</div><h3>{n}</h3><p>{d}</p><span className="friend-status">{on ? 'Earned' : 'Locked'}</span></div>; })}</div></>;
+  const badges = useMyBadges(); const got = badges.filter(b => b[3]).length; // earned from your real activity (Patch 19)
+  return <><Head title="Achievements & Badges" sub="Collect badges as you build better learning habits." /><div className="stats-grid compact"><Stat label="Earned" value={String(got)} note="Badges collected" icon={Medal} tone="orange" /><Stat label="Locked" value={String(badges.length - got)} note="Still to unlock" icon={Lock} /><Stat label="Progress" value={Math.round(got / badges.length * 100) + '%'} note="Of all badges" icon={Trophy} tone="green" /></div>
+    <div className="friend-grid">{badges.map(([n, d, ic, on]) => { const I = ICONS[ic]; return <div className="panel friend-card" key={n} style={on ? undefined : { opacity: .6 }}><div className={`stat-icon ${on ? 'orange' : ''}`} style={{ margin: '0 auto 10px' }}>{on ? <I size={18} /> : <Lock size={18} />}</div><h3>{n}</h3><p>{d}</p><span className="friend-status">{on ? 'Earned' : 'Locked'}</span></div>; })}</div></>;
 }
 export function Analytics() {
   // Real numbers from Study Progress (Patch 15) once there is activity; until then the sample values are shown and labelled as such.

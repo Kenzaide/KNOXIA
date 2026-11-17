@@ -23,6 +23,7 @@ import { useStudyProgress } from './progressStore.js';
 import { fmtTime } from './progressCalc.js';
 import { Friends, FriendAction, SuggestedPeople } from './friends.jsx';
 import Feed from './feed.jsx';
+import { ProfileSocial } from './profileSocial.jsx';
 import { useIncomingCount } from './friendsStore.js';
 import { samplePersonByUsername } from './friendsCalc.js';
 
@@ -340,7 +341,7 @@ function Profile() {
   const p=mine?me:other||{...buildProfile(null,''),displayName:username,username,initials:username.slice(0,2).toUpperCase(),academic:'3rd Year • BSCS',bio:'Learning every day, one concept at a time.',createdAt:0};
   // Friend button: real accounts and the sample people only. A made-up username in the address bar has no one to add.
   const person=other||samplePersonByUsername(username);
-  return <><ProfileHeader p={p} mine={mine} action={person?<FriendAction person={person}/>:null}/><div className="stats-grid compact"><StatCard label="Total XP" value="3,240" change="Level 8" icon={Zap}/><StatCard label="Achievements" value="12" change="Collected badges" icon={Medal} tone="orange"/><StatCard label="Study streak" value="7 days" change="Current streak" icon={Flame} tone="green"/></div>{(mine||other)&&<ProfileDetails p={p} mine={mine}/>}</>;
+  return <><ProfileHeader p={p} mine={mine} action={person?<FriendAction person={person}/>:null}/><ProfileSocial p={p} person={mine?me:person} mine={mine}/>{(mine||other)&&<ProfileDetails p={p} mine={mine}/>}</>;
 }
 function AdminUsers() {
   // People who registered in this browser come first (see src/accounts.js), followed by the sample users.

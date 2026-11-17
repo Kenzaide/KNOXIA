@@ -65,7 +65,7 @@ export const sessionOrder = (cards, { shuffled = false, only } = {}) => {
 /* ---------- the built-in sample decks, shown until the student changes anything ---------- */
 const SUBJECTS = { 1: 'Artificial Intelligence', 2: 'Computer Science', 3: 'Cybersecurity', 4: 'Computer Systems' };
 const SEED_DATE = '2026-11-01T08:00:00.000Z';
-const SEED = DECKS.map((d, i) => ({
+export const SEED = DECKS.map((d, i) => ({
   id: d.id, title: d.title, subject: SUBJECTS[d.id] || '', tone: TONES[i % TONES.length], created: SEED_DATE, updated: SEED_DATE,
   cards: d.cards.map(([front, back], k) => ({ id: `${d.id}-${k + 1}`, front, back, known: false })),
 }));

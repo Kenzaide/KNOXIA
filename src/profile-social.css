@@ -1,0 +1,22 @@
+/* Public profiles (Patch 19). Loaded after feed.css; uses the shared design tokens so dark mode follows automatically. */
+.profile-social{display:grid;gap:var(--s-4);margin-top:var(--s-4)}
+.profile-social+.profile-details{margin-top:var(--s-4)}
+.profile-social>.stats-grid{margin:0}
+.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-4)}
+.profile-social h3{margin-top:0}
+.panel h3 .muted-sm{font-weight:600;margin-left:6px}
+.profile-private{display:flex;gap:var(--s-3);align-items:flex-start;padding:var(--s-4)}
+.profile-private svg{flex:none;margin-top:2px;color:var(--muted)}.profile-private p{margin:0}
+.profile-badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:var(--s-3);margin-top:var(--s-3)}
+.profile-badge{display:grid;gap:2px;justify-items:start;padding:var(--s-3);border:1px solid var(--divider);border-radius:var(--r-ctl)}
+.profile-badge small,.profile-activity small,.profile-materials small,.profile-posts small,.profile-share-list small{color:var(--muted);font-size:12px}
+.profile-activity,.profile-materials,.profile-posts,.profile-share-list{list-style:none;margin:var(--s-2) 0 0;padding:0}
+.profile-activity li,.profile-materials li{display:flex;gap:var(--s-3);align-items:center;padding:var(--s-2) 0;border-top:1px solid var(--divider)}
+.profile-activity li>div,.profile-materials li>div{flex:1;min-width:0;display:grid}
+.profile-activity li>.chip{flex:none}
+.profile-posts li{padding:var(--s-3) 0;border-top:1px solid var(--divider)}.profile-posts .feed-text{margin:0 0 4px}
+.profile-privacy .segmented{margin:var(--s-2) 0}
+.profile-privacy .segmented button:focus-visible,.profile-share-list input:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+.profile-share-list li{display:flex;justify-content:space-between;gap:var(--s-3);padding:var(--s-2) 0;border-top:1px solid var(--divider)}
+.profile-share-list label{display:flex;gap:var(--s-2);align-items:center;min-width:0}.profile-share-list label span{overflow-wrap:anywhere}
+@media(max-width:760px){.profile-grid{grid-template-columns:1fr}}

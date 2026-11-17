@@ -31,7 +31,8 @@ npm run dev
 - Friends (`/friends`): search people by name or username, send, accept, decline and cancel friend requests, remove friends, and browse your friend list. Tabs for All friends, Requests, Sent and Find people; the sidebar shows how many requests are waiting. The same Add friend / Request sent / Accept / Friends button appears on profiles, and the feed's "People to connect with" card uses it too. Sending or accepting a request notifies the other person. If two people ask each other, they simply become friends. Registered accounts in this browser can find each other (to try it with two people, sign in as the second account in another tab); the three sample classmates are tagged **Sample** and accept right away. Rules are in `src/friendsCalc.js` (tested with `npm test`), storage, hooks and notifications in `src/friendsStore.js`, the screens in `src/friends.jsx`
 - Learning Feed (`/feed`): write a post (up to 500 characters, up to 3 tags), read everyone's posts newest first, and delete your own posts. Names link to profiles, and the feed starts with three sample posts from the sample classmates. Rules are in `src/feedCalc.js` (tested with `npm test`), storage and hooks in `src/feedStore.js`, the screens in `src/feed.jsx`
 - Reactions and comments (on the feed): react with Like, Insightful, Celebrate or Motivated (one reaction per person per post: press it again to take it back, press another to change it, and see who reacted). Comment on a post and reply to a comment (replies go one level deep). Edit your own comments (marked "edited"); delete your own comments, or any comment on your own post (deleting a comment also deletes its replies, after asking). Comments on your post and replies to your comments notify you; reactions do not. Posts saved with the old like button are read as Like reactions
-- Profile, study rooms, challenges
+- Public profiles (`/profile/:username`): a classmate's study streak, study time, achievements, recent learning activity (last 7 days and latest sessions), the materials they chose to share, and their posts from the feed. You choose who can see the activity, achievements and shared materials under **Privacy and sharing** on your own profile: Everyone, Friends only (the default) or Only me; materials are shared one by one and nothing is shared until you pick it. Posts are always public, because the feed is. The Achievements page now shows badges earned from your real activity (7-Day and 30-Day Streak, Quiz Master, Early Bird, Deck Builder, Bookworm); Team Player and Challenger stay locked until study rooms and challenges are real. Sample classmates have no study data, so their profile shows only their posts. Rules are in `src/profileCalc.js` (tested with `npm test`), data and hooks in `src/profileStore.js`, the screens in `src/profileSocial.jsx`
+- Study rooms, challenges
 - Leaderboards, achievements, analytics, study planner
 - Settings and notifications
 - Admin dashboard, user management, moderation, activity logs
@@ -43,7 +44,7 @@ npm run dev
 npm test
 ```
 
-Runs the study-progress calculations (`test/progressCalc.test.mjs`), the friends rules (`test/friendsCalc.test.mjs`) and the feed rules (`test/feedCalc.test.mjs`) with Node's built-in test runner. No extra packages are needed.
+Runs the study-progress calculations (`test/progressCalc.test.mjs`), the friends rules (`test/friendsCalc.test.mjs`) the feed rules (`test/feedCalc.test.mjs`) and the profile rules (`test/profileCalc.test.mjs`) with Node's built-in test runner. No extra packages are needed.
 
 ## Demo authentication
 
@@ -67,6 +68,7 @@ This is a frontend prototype using sample/demo data. It does not yet include:
 - A real AI model for reviewers: the AI reviewer is a **demo**. It reads your material in the browser and builds the reviewer with simple text rules (`src/reviewerGen.js`); the progress steps are simulated and nothing is sent anywhere. Swap `generateReviewer` for your AI service later
 - Friends across devices: friend requests are kept in this browser (`src/friendsStore.js`), so only accounts registered in the same browser can find each other, and nothing stops someone editing them. A backend must enforce who may send, accept and remove
 - Feed across devices: posts, reactions and comments are kept in this browser (`src/feedStore.js`), so only accounts in the same browser share a feed, and nothing stops someone editing them. A backend must enforce who may post and delete
+- Profile privacy across devices: who can see a profile is only enforced by the screens (`src/profileStore.js`). Every account's data sits in this browser's localStorage, so anyone using the browser could read it. A backend must check visibility on the server and send only what the viewer may see
 - Real-time chat, study rooms, notifications, or challenge synchronization
 - Backend authorization for admin routes
 
