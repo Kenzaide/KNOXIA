@@ -25,6 +25,8 @@ import { Friends, FriendAction, SuggestedPeople } from './friends.jsx';
 import Feed from './feed.jsx';
 import { StudyRooms, RoomDetail } from './rooms.jsx';
 import { Achievements } from './gamification.jsx';
+import { LeaderboardsV2, Missions, StreakPage } from './gamificationPhase5.jsx';
+import './gamificationPhase5.css';
 import { useGamificationSync } from './gamificationStore.js';
 import { GroupQuizPlay } from './activities.jsx';
 import { ProfileSocial } from './profileSocial.jsx';
@@ -64,10 +66,12 @@ const navGroups = [
     ['Friends','/friends',Users],
     ['Study Rooms','/study-rooms',UserRound],
     ['Challenges','/challenges',Swords],
+    ['Missions','/missions',Target],
   ]},
   { label: 'Your progress', items: [
     ['Study Progress','/progress',TrendingUp],
     ['Leaderboards','/leaderboards',Trophy],
+    ['Study Streaks','/streaks',Flame],
     ['Achievements','/achievements',Medal],
     ['Analytics','/analytics',ChartNoAxesCombined],
     ['Study Planner','/study-planner',CalendarDays],
@@ -85,6 +89,7 @@ const titleMap = {
   '/flashcards':'Flashcard Library','/quizzes/create':'Create Quiz','/quizzes/attempts':'Quiz History','/feed':'Learning Feed',
   '/friends':'Friends','/study-rooms':'Study Rooms','/challenges':'Quiz Challenges',
   '/progress':'Study Progress','/leaderboards':'Leaderboards','/achievements':'Achievements & Badges','/analytics':'Learning Analytics',
+  '/missions':'Challenges & Missions','/streaks':'Study Streaks',
   '/study-planner':'Study Planner','/settings':'Settings','/notifications':'Notifications',
   '/admin/dashboard':'Admin Dashboard','/admin/users':'User Management','/admin/moderation':'Content Moderation',
   '/admin/logs':'Activity Logs'
@@ -415,7 +420,7 @@ function AppRoutes() {
    <Route path="/dashboard" element={<Dashboard/>}/><Route path="/materials" element={<MaterialLibrary/>}/><Route path="/materials/upload" element={<UploadPage/>}/><Route path="/materials/:id" element={<MaterialDetail/>}/>
    <Route path="/reviewers" element={<ReviewerLibrary/>}/><Route path="/reviewers/create" element={<CreateReviewer/>}/><Route path="/reviewers/:id" element={<ReviewerEditor/>}/><Route path="/study-companion" element={<Companion/>}/><Route path="/flashcards" element={<FlashcardLibrary/>}/><Route path="/flashcards/:id" element={<DeckEditor/>}/><Route path="/flashcards/:id/study" element={<FlashStudy/>}/><Route path="/quizzes/create" element={<QuizCreate/>}/><Route path="/quizzes/:id/edit" element={<QuizEditor/>}/><Route path="/quizzes/:id/take" element={<QuizTake/>}/><Route path="/quizzes/attempts" element={<QuizHistory/>}/><Route path="/quizzes/attempts/:id" element={<QuizResults/>}/><Route path="/quizzes/attempts/:id/missed" element={<QuizMissed/>}/>
    <Route path="/feed" element={<Feed/>}/><Route path="/friends" element={<Friends/>}/><Route path="/profile" element={<Profile/>}/><Route path="/profile/:username" element={<Profile/>}/><Route path="/study-rooms" element={<StudyRooms/>}/><Route path="/study-rooms/:id" element={<RoomDetail/>}/><Route path="/study-rooms/:id/quiz/:activityId" element={<GroupQuizPlay/>}/><Route path="/challenges" element={<Challenges/>}/><Route path="/challenges/:id/play" element={<ChallengePlay/>}/>
-   <Route path="/progress" element={<StudyProgress/>}/><Route path="/leaderboards" element={<Leaderboards/>}/><Route path="/achievements" element={<Achievements/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/study-planner" element={<Planner/>}/>
+   <Route path="/progress" element={<StudyProgress/>}/><Route path="/leaderboards" element={<LeaderboardsV2/>}/><Route path="/achievements" element={<Achievements/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/study-planner" element={<Planner/>}/><Route path="/missions" element={<Missions/>}/><Route path="/streaks" element={<StreakPage/>}/>
    <Route path="/settings" element={<SettingsPage/>}/><Route path="/notifications" element={<Notifications/>}/>
    <Route path="/admin/dashboard" element={<AdminDashboard/>}/><Route path="/admin/users" element={<AdminUsers/>}/><Route path="/admin/moderation" element={<Moderation/>}/><Route path="/admin/logs" element={<Logs/>}/>
    <Route path="*" element={<NotFound/>}/>

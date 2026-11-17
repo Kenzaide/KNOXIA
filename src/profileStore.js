@@ -25,6 +25,7 @@ import { ROOMS_KEY, ACTIVITIES_KEY, savedRooms } from './roomsStore.js';
 import { cleanRooms } from './roomsCalc.js';
 import { cleanActivities } from './activitiesCalc.js';
 import { buildAwards, totalXp, levelFor } from './xpCalc.js';
+import { claimedAwards } from './gamificationPhase5Calc.js';
 import { achievementStatus, badgeTuples } from './achievementsCalc.js';
 
 export const SOCIAL_KEY = 'knoxia-social';
@@ -55,6 +56,7 @@ export function usePersonActivity(person, mine) {
   const reviewers = list(useStoredOf(person, mine, KEYS.reviewers, EMPTY_LIST));
   const attempts = list(useStoredOf(person, mine, KEYS.attempts, EMPTY_LIST));
   const log = useStoredOf(person, mine, PROGRESS_KEY, EMPTY_OBJ);
+  const missionClaims = useStoredOf(person, mine, 'knoxia-mission-claims', EMPTY_LIST);
   const socialRaw = useStoredOf(person, mine, SOCIAL_KEY, EMPTY_OBJ);
   const social = useMemo(() => cleanSocial(socialRaw), [socialRaw]);
   const { posts } = useFeed();
@@ -74,10 +76,12 @@ export function usePersonActivity(person, mine) {
       groupSessions: acts.filter((a) => a.kind === 'session').map((a) => a.startedAt),
       groupQuizzes: acts.filter((a) => a.kind === 'quiz').map((a) => a.results.find((r) => r.userId === id).at),
     });
+    awards.push(...claimedAwards(missionClaims));
+    awards.sort((a, b) => b.date - a.date);
     const xp = totalXp(awards); const level = levelFor(xp);
     const stats = profileStats(progress, { materials: materials.length, decks: decks.length, posts: own.length, rooms: myRooms.length, groupActivities: acts.length, level: level.level });
     return { progress, stats, badges: badgeTuples(stats), achievements: achievementStatus(stats), awards, xp, level, social, materials, shared: sharedMaterials(materials, social.shared), posts: own };
-  }, [materials, decks, reviewers, attempts, log, social, posts, person, mine, rooms, activities, today]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [materials, decks, reviewers, attempts, log, missionClaims, social, posts, person, mine, rooms, activities, today]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 /** Your own badges, from your real activity. Each is [name, description, icon, earned]. */

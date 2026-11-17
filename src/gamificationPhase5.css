@@ -1,0 +1,24 @@
+/* Phase 5: follows KNOXIA's existing card, typography, and theme variables. */
+.gm-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 16px}
+.gm-select{width:auto;min-width:190px;max-width:260px}
+.gm-board{padding:0;overflow:hidden}
+.gm-board-head,.gm-board-row{display:grid;grid-template-columns:70px minmax(0,1fr) 110px;align-items:center;gap:12px;padding:13px 18px}
+.gm-board-head{background:var(--soft);font-size:12px;font-weight:700;color:var(--muted)}
+.gm-board-row{border-top:1px solid var(--divider);font-size:13px}
+.gm-board-row>strong{text-align:right;font-variant-numeric:tabular-nums}
+.gm-board-row.gm-mine{background:var(--tint)}
+.gm-person{display:flex;align-items:center;gap:10px;min-width:0}
+.gm-person>span:last-child{display:grid;gap:3px;min-width:0}
+.gm-person b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-person small{font-size:11px;color:var(--muted)}
+.gm-missions{display:grid;gap:12px}
+.gm-mission{display:flex;align-items:center;gap:15px}
+.gm-mission-icon{background:var(--tint);color:var(--blue);border-radius:12px;width:42px;height:42px;display:grid;place-items:center;flex-shrink:0}
+.gm-mission-body{flex:1;min-width:0}.gm-mission-body>b{font-size:14px}.gm-mission-body p{font-size:12px;color:var(--muted);margin:5px 0 10px}.gm-mission-body small{color:var(--muted);font-size:11px}
+.gm-mission .btn:disabled{opacity:.65;cursor:default;transform:none}
+.gm-note{margin:18px 0;line-height:1.7}
+.gm-calendar h3{font-size:15px;margin:0 0 8px}.gm-day-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:9px;margin-top:18px}
+.gm-day{min-height:54px;border:1px solid var(--border);background:var(--soft);border-radius:10px;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--muted);font-size:13px}
+.gm-day.done{background:var(--tint);color:var(--blue);border-color:var(--blue)}.gm-day.today{box-shadow:inset 0 0 0 1px var(--blue)}
+.gm-streak-tip{display:flex;align-items:flex-start;gap:12px;margin-top:16px}.gm-streak-tip>svg{color:var(--orange);flex-shrink:0}.gm-streak-tip b{font-size:14px}.gm-streak-tip p{font-size:13px;color:var(--muted);line-height:1.7}
+@media(max-width:650px){.gm-board-head,.gm-board-row{grid-template-columns:45px minmax(0,1fr) 70px;padding:12px 10px;gap:7px}.gm-mission{flex-wrap:wrap}.gm-mission .btn{margin-left:57px}.gm-day{min-height:40px}.gm-person small{font-size:10px}}
