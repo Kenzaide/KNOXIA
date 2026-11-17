@@ -29,7 +29,7 @@ function useSavedPosts() {
 export function useFeed() {
   const me = useProfile(); const raw = useSavedPosts(); const people = usePeople();
   // First visit: start with the sample posts. Later visits (even with an empty feed) are left alone.
-  useEffect(() => { if (local.getRaw(FEED_KEY) === null) local.set(FEED_KEY, seedPosts()); }, []);
+  useEffect(() => { if (local.getRaw(FEED_KEY) === null) local.set(FEED_KEY, []); }, []);
   // Sessions from before accounts existed have no account to post as yet: create it once.
   useEffect(() => { if (!me.id && me.email) ensureAccount(me.email); }, [me.id, me.email]);
   return useMemo(() => {
