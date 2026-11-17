@@ -63,19 +63,19 @@ export const LOGS = [
   { id: 'l3', t: 'Report resolved: Duplicate post', time: '2026-11-13T15:20:00' },
   { id: 'l4', t: 'New user registered: Sam Cruz', time: '2026-11-12T10:05:00' },
 ];
-export const logEvent = (t) => pushLS('knoxia-logs', { id: String(Date.now()), t, time: new Date().toISOString() }, LOGS);
+export const logEvent = (t) => pushLS('knoxia-logs', { id: String(Date.now()), t, time: new Date().toISOString() }, NONE);
 
 /* ---------- App state: one named hook per saved collection ---------- */
 export const KEYS = { notes: 'knoxia-notes', reviewers: 'knoxia-reviewers', attempts: 'knoxia-attempts', rooms: 'knoxia-rooms', challenges: 'knoxia-challenges', plan: 'knoxia-plan', settings: 'knoxia-settings', reports: 'knoxia-reports', logs: 'knoxia-logs' };
 export const PLAN = [{ id: 'a', title: 'Machine Learning review', date: '2026-11-16', done: false }, { id: 'b', title: 'Automata Theory practice', date: '2026-11-17', done: false }, { id: 'c', title: 'Computer Architecture notes', date: '2026-11-18', done: true }];
 export const SETTINGS_DEFAULT = { notif: true, reminders: true, pub: true, board: true };
 const NONE = [];
-export const useNotes = () => useUserData(KEYS.notes, NOTES);
+export const useNotes = () => useUserData(KEYS.notes, NONE);
 export const useReviewers = () => useUserData(KEYS.reviewers, NONE);
 export const useAttempts = () => useUserData(KEYS.attempts, NONE);
-export const useRooms = () => useUserData(KEYS.rooms, ROOMS);
-export const useChallenges = () => useUserData(KEYS.challenges, CHALLENGES);
-export const usePlan = () => useUserData(KEYS.plan, PLAN);
+export const useRooms = () => useUserData(KEYS.rooms, NONE);
+export const useChallenges = () => useUserData(KEYS.challenges, NONE);
+export const usePlan = () => useUserData(KEYS.plan, NONE);
 export const useSettings = () => useUserData(KEYS.settings, SETTINGS_DEFAULT);
-export const useReports = () => useUserData(KEYS.reports, REPORTS);
-export const useLogs = () => useUserData(KEYS.logs, LOGS);
+export const useReports = () => useUserData(KEYS.reports, NONE);
+export const useLogs = () => useUserData(KEYS.logs, NONE);
