@@ -1,0 +1,15 @@
+/* Study rooms (Patches 20 and 21). Uses the shared design tokens, so dark mode follows automatically. */
+.room-form{display:flex;gap:var(--s-3);flex-wrap:wrap;margin-bottom:var(--s-4)}
+.room-form input{flex:1;min-width:160px;height:38px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);padding:0 11px}
+.room-heading{font-size:14px;margin:var(--s-4) 0 var(--s-3)}
+.room-invites{margin-bottom:var(--s-4)}
+.room-invites h3{font-size:14px;margin:0 0 var(--s-2)}
+.room-invites .friend-row .small-outline{display:inline-flex;align-items:center}
+.room-card .room-last{display:block;font-size:12px;color:var(--muted);margin:0 0 var(--s-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.room-chat .chat-messages{max-height:520px}
+.room-chat .message{align-items:flex-end}
+.msg-meta{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:11px;color:var(--muted)}
+.message.user .msg-meta{justify-content:flex-end}
+.msg-meta .link-btn{display:inline-flex;padding:0;color:var(--muted)}
+.msg-meta .link-btn:hover{color:var(--blue)}
+.bubble{overflow-wrap:anywhere}

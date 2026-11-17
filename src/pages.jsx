@@ -11,7 +11,7 @@ import { track, useProgressLog, useStudyProgress } from './progressStore.js'; //
 import { fmtTime, topicMastery } from './progressCalc.js';
 import { useMyBadges } from './profileStore.js';
 import { MAX_TITLE, MAX_FOLDER, cleanTitle, folderOf, folderCounts, resolveFolder, updatedAt, useReviewerLibrary } from './reviewerLib.js';
-import { BANK, ROOMS, CHALLENGES, BOARD, BADGES, useNotes, useReviewers, useRooms, useChallenges, usePlan, useSettings, useReports, useLogs, pushLS, logEvent } from './data.js';
+import { BANK, CHALLENGES, BOARD, BADGES, useNotes, useReviewers, useChallenges, usePlan, useSettings, useReports, useLogs, pushLS, logEvent } from './data.js';
 
 const Btn = ({ children, v = 'primary', icon: I, ...p }) => <button type="button" className={`btn ${v}`} {...p}>{I && <I size={16} />}<span>{children}</span></button>;
 const Head = ({ title, sub, action }) => <div className="section-title"><div><h2>{title}</h2>{sub && <p>{sub}</p>}</div>{action}</div>;
@@ -58,27 +58,6 @@ export function ReviewerEditor() {
       <div className="panel"><h3>Study with this reviewer</h3><p className="muted">Turn your notes into practice.</p><div className="friend-buttons" style={{ flexDirection: 'column', alignItems: 'stretch', marginTop: 12 }}><Btn v="soft" icon={Layers} onClick={() => nav('/flashcards')}>Open flashcards</Btn><Btn v="soft" icon={BookOpen} onClick={() => nav('/quizzes/create?reviewer=' + encodeURIComponent(r.id))}>Create a quiz</Btn><Btn v="soft" icon={Sparkles} onClick={() => nav('/study-companion')}>Ask the companion</Btn><Btn v="outline" icon={ArrowUpRight} onClick={() => nav('/reviewers')}>All my reviewers</Btn></div></div></div>
     {dlg === 'move' && <PromptDialog title={`Move “${r.title}”`} body="Type a folder name, or pick one below. Leave it empty to take it out of any folder." label="Folder name" value={fo} placeholder="e.g. Midterms" maxLength={MAX_FOLDER} suggestions={folderCounts(lib.items).map(x => x.name)} allowEmpty confirmLabel="Move" onSubmit={move} onCancel={() => setDlg(null)} />}
     {dlg === 'delete' && <ConfirmDialog icon={Trash2} title={`Delete “${r.title}”?`} body="This permanently removes the reviewer and anything you edited in it. This can't be undone." confirmLabel="Delete" onCancel={() => setDlg(null)} onConfirm={del} />}</>;
-}
-
-/* ---------- Study rooms ---------- */
-export function StudyRooms() {
-  const nav = useNavigate(); const [rooms, setRooms] = useRooms(); const [open, setOpen] = useState(false); const [name, setName] = useState('');
-  const create = e => { e.preventDefault(); if (!name.trim()) return; const r = { id: 'r' + Date.now(), name: name.trim(), topic: 'Open study', members: ['KP'] }; setRooms(a => [r, ...a]); toast('Room created'); nav('/study-rooms/' + r.id); };
-  return <><Head title="Study Rooms" sub="Study together, stay focused." action={<Btn icon={Plus} onClick={() => setOpen(!open)}>Create a room</Btn>} />
-    {open && <form className="panel rename-form" style={{ marginBottom: 16 }} onSubmit={create}><input autoFocus aria-label="Room name" placeholder="Room name" value={name} onChange={e => setName(e.target.value)} /><Btn type="submit">Create room</Btn></form>}
-    <div className="friend-grid">{rooms.map(r => <div className="panel friend-card" key={r.id}><div className="stat-icon" style={{ margin: '0 auto 10px' }}><Users size={18} /></div><h3>{r.name}</h3><p>{r.topic}</p><span className="friend-status">{r.members.length} studying</span><Btn v="soft" onClick={() => nav('/study-rooms/' + r.id)}>Join room</Btn></div>)}</div></>;
-}
-export function RoomDetail() {
-  const { id } = useParams(); const nav = useNavigate(); const [rooms] = useRooms(); const r = rooms.find(x => x.id === id); const me = useProfile();
-  const [sec, setSec] = useState(1500); const [run, setRun] = useState(false); const [msgs, setMsgs] = useState([['MS', 'Starting a 25-minute focus block.']]); const [text, setText] = useState('');
-  useEffect(() => { if (!run) return; const t = setInterval(() => setSec(s => { if (s <= 1) { setRun(false); return 0; } return s - 1; }), 1000); return () => clearInterval(t); }, [run]);
-  if (!r) return <Empty icon={Users} title="Room not found" text="It may have been closed." action={<Btn onClick={() => nav('/study-rooms')}>Back to study rooms</Btn>} />;
-  const send = () => { if (!text.trim()) return; setMsgs(m => [...m, ['KP', text.trim()]]); setText(''); };
-  return <><Head title={r.name} sub={r.topic} action={<Btn v="outline" onClick={() => nav('/study-rooms')}>Leave room</Btn>} />
-    <div className="chat-layout"><div className="chat-main panel"><div className="chat-messages">{msgs.map((m, i) => <div className={`message ${m[0] === 'KP' ? 'user' : 'assistant'}`} key={i}>{m[0] !== 'KP' && <div className="mini-avatar">{m[0]}</div>}<div className="bubble">{m[1]}</div></div>)}</div>
-      <div className="chat-input"><input aria-label="Message" placeholder="Message the room…" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()} /><button className="send-btn" aria-label="Send" onClick={send}><Send size={18} /></button></div></div>
-      <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}><div className="panel" style={{ textAlign: 'center' }}><h3>Focus timer</h3><h1 style={{ fontSize: 44, margin: '8px 0' }}>{String(Math.floor(sec / 60)).padStart(2, '0')}:{String(sec % 60).padStart(2, '0')}</h1><div className="friend-buttons"><Btn icon={run ? Pause : Play} onClick={() => setRun(!run)}>{run ? 'Pause' : 'Start'}</Btn><Btn v="outline" icon={RotateCcw} onClick={() => { setRun(false); setSec(1500); }}>Reset</Btn></div></div>
-        <div className="panel"><h3>In this room</h3>{r.members.map(m => <div className="friend-row" key={m}><div className="avatar sm">{m === 'KP' ? (me.avatar ? <img src={me.avatar} alt="" /> : me.initials) : m}</div><div><b>{m === 'KP' ? me.displayName : m}</b></div></div>)}</div></div></div></>;
 }
 
 /* ---------- Challenges ---------- */

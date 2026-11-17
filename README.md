@@ -32,7 +32,9 @@ npm run dev
 - Learning Feed (`/feed`): write a post (up to 500 characters, up to 3 tags), read everyone's posts newest first, and delete your own posts. Names link to profiles, and the feed starts with three sample posts from the sample classmates. Rules are in `src/feedCalc.js` (tested with `npm test`), storage and hooks in `src/feedStore.js`, the screens in `src/feed.jsx`
 - Reactions and comments (on the feed): react with Like, Insightful, Celebrate or Motivated (one reaction per person per post: press it again to take it back, press another to change it, and see who reacted). Comment on a post and reply to a comment (replies go one level deep). Edit your own comments (marked "edited"); delete your own comments, or any comment on your own post (deleting a comment also deletes its replies, after asking). Comments on your post and replies to your comments notify you; reactions do not. Posts saved with the old like button are read as Like reactions
 - Public profiles (`/profile/:username`): a classmate's study streak, study time, achievements, recent learning activity (last 7 days and latest sessions), the materials they chose to share, and their posts from the feed. You choose who can see the activity, achievements and shared materials under **Privacy and sharing** on your own profile: Everyone, Friends only (the default) or Only me; materials are shared one by one and nothing is shared until you pick it. Posts are always public, because the feed is. The Achievements page now shows badges earned from your real activity (7-Day and 30-Day Streak, Quiz Master, Early Bird, Deck Builder, Bookworm); Team Player and Challenger stay locked until study rooms and challenges are real. Sample classmates have no study data, so their profile shows only their posts. Rules are in `src/profileCalc.js` (tested with `npm test`), data and hooks in `src/profileStore.js`, the screens in `src/profileSocial.jsx`
-- Study rooms, challenges
+- Study rooms (`/study-rooms`): create a room (name and optional topic), join open rooms, and see the rooms you are in with their latest message. Inside a room you see who is in it (the host is marked), invite your friends (a real account gets an invitation and a notification, and accepts or declines it on the Study Rooms page; the sample classmates join right away), and the host can remove people or delete the room. Anyone else can leave. Rooms hold up to 20 people. Three sample rooms are included. Rules are in `src/roomsCalc.js` (tested with `npm test`), storage and hooks in `src/roomsStore.js`, the screens in `src/rooms.jsx`
+- Room messaging: each room has a saved conversation, oldest first, with the sender's name and a timestamp on every message. Only members can read and post (up to 500 characters; the newest 200 messages per room are kept). Your messages sit on the right; you can delete your own, and the host can delete anyone's. Messages stay after someone leaves, and go when the room is deleted. The focus timer is still in the room. Rooms and messages are shared by all accounts in this browser (open a second tab to try it with two people)
+- Challenges
 - Leaderboards, achievements, analytics, study planner
 - Settings and notifications
 - Admin dashboard, user management, moderation, activity logs
@@ -44,7 +46,7 @@ npm run dev
 npm test
 ```
 
-Runs the study-progress calculations (`test/progressCalc.test.mjs`), the friends rules (`test/friendsCalc.test.mjs`) the feed rules (`test/feedCalc.test.mjs`) and the profile rules (`test/profileCalc.test.mjs`) with Node's built-in test runner. No extra packages are needed.
+Runs the study-progress calculations (`test/progressCalc.test.mjs`), the friends rules (`test/friendsCalc.test.mjs`) the feed rules (`test/feedCalc.test.mjs`) the profile rules (`test/profileCalc.test.mjs`) and the study room rules (`test/roomsCalc.test.mjs`) with Node's built-in test runner. No extra packages are needed.
 
 ## Demo authentication
 

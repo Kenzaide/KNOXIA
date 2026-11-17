@@ -12,6 +12,7 @@ import './progress.css'; // study progress (Patch 15)
 import './friends.css'; // friends (Patch 16)
 import './feed.css'; // learning feed (Patches 17 and 18)
 import './profile-social.css'; // public profiles (Patch 19)
+import './rooms.css'; // study rooms and room messaging (Patches 20 and 21)
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode><BrowserRouter><MaterialsProvider><App /></MaterialsProvider></BrowserRouter></React.StrictMode>
