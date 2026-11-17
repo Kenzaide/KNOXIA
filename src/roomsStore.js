@@ -8,7 +8,7 @@
  *
  * Swapping in a backend later: keep the exported function names and make them call your API.
  */
-import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { local } from './storage.js';
 import { useProfile } from './accounts.js';
 import { useFriends, addNote, dropNote } from './friendsStore.js';
@@ -35,6 +35,15 @@ function useShared(key, read, server) {
 /** Everything the room screens need for the signed-in person. Re-renders on any change, also from another tab. */
 export function useRoomsData() {
   const me = useProfile(); const f = useFriends();
+  useEffect(() => {
+    const rooms = savedRooms();
+    const real = rooms.filter((r) => r && typeof r.ownerId === 'string' && !r.ownerId.startsWith('sample:'));
+    if (real.length !== rooms.length) {
+      const ids = new Set(real.map((r) => r.id));
+      local.set(ROOMS_KEY, real);
+      local.set(MESSAGES_KEY, savedMessages().filter((m) => ids.has(m.roomId)));
+    }
+  }, []);
   const rawRooms = useShared(ROOMS_KEY, savedRooms, EMPTY_ROOMS); const rawMessages = useShared(MESSAGES_KEY, savedMessages, EMPTY_MESSAGES);
   return useMemo(() => ({
     me, meId: me.id, ready: f.ready,
