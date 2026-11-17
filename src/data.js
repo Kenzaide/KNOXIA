@@ -26,9 +26,11 @@ export const BANK = [
   ['Which control verifies a user’s identity?', ['Authentication', 'Encryption', 'Backup', 'Logging'], 0, 'Authentication proves who is asking for access.'],
 ];
 
-export const makeReviewer = ({ title, file, style, notes }) => ({
+export const makeReviewer = ({ title, file, style, notes, body, generated }) => ({
   id: String(Date.now()), title, file, style, updated: new Date().toISOString(),
-  body: `SOURCE\n${file}\n\nFORMAT\n${style}\n\nKEY CONCEPTS\n- Add the main ideas from the material here.\n\nDEFINITIONS\n- Term: meaning\n\nEXAMPLES\n- Worked example${notes ? `\n\nNOTES\n${notes}` : ''}`,
+  // `body` comes from the reviewer generator (reviewerGen.js); without it the old starter template is used.
+  body: body || `SOURCE\n${file}\n\nFORMAT\n${style}\n\nKEY CONCEPTS\n- Add the main ideas from the material here.\n\nDEFINITIONS\n- Term: meaning\n\nEXAMPLES\n- Worked example${notes ? `\n\nNOTES\n${notes}` : ''}`,
+  ...(generated ? { generated } : {}),
 });
 export const saveReviewer = (o) => { const r = makeReviewer(o); pushLS('knoxia-reviewers', r); return r.id; };
 
