@@ -1,3 +1,4 @@
+import './authSupabase.css';
 import React, {useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import {supabase} from './lib/supabase.js';
@@ -15,7 +16,7 @@ function PasswordChecklist({password}) {
  const passed=PASSWORD_RULES.filter(([,test])=>test(password)).length;
  return <div className="pw-rules" aria-live="polite"><div className="pw-head"><b>Password requirements</b><small>{!password?'':passed<4?'Weak':passed===4?'Good':'Strong'}</small></div><div className="pw-meter"><span style={{width:(password?passed/5*100:0)+'%',background:passed<4?'#E0455A':passed===4?'#F5B942':'#16A37F'}}/></div><ul>{PASSWORD_RULES.map(([label,test])=><li key={label} className={test(password)?'ok':''}>{test(password)?'✓':'○'} {label}</li>)}</ul></div>;
 }
-function Wrap({title,subtitle,children,wide=false}) { return <div className={`auth-screen${wide ? " auth-screen-register" : ""}`}><div className="auth-brand"><Link to="/" className="brand">KNOXIA</Link><ThemeToggle/></div><div className={`auth-card${wide ? " auth-card-register" : ""}`}><h1>{title}</h1><p>{subtitle}</p>{children}</div></div>; }
+function Wrap({title,subtitle,children,wide=false}) { return <div className={`auth-screen knoxia-auth-screen${wide ? " auth-screen-register" : ""}`}><header className="knoxia-auth-header"><Link to="/" className="brand knoxia-auth-brand"><img src="/logo.png" alt="KNOXIA mascot" width="40" height="40" /><span>KNOXIA</span></Link><ThemeToggle className="knoxia-auth-theme"/></header><main className="knoxia-auth-main"><div className={`auth-card knoxia-auth-card${wide ? " auth-card-register" : ""}`}><h1>{title}</h1><p>{subtitle}</p>{children}</div></main><footer className="knoxia-auth-footer">© 2026 KNOXIA · Learn smarter. Grow together.</footer></div>; }
 function ErrorText({value}) { return value ? <div className="notice error" role="alert">{value}</div> : null; }
 export function LoginSupabase() {
  const {login} = useAuth(); const [email,setEmail]=useState(''),[password,setPassword]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
