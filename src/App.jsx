@@ -25,6 +25,8 @@ import { Friends, FriendAction, SuggestedPeople } from './friends.jsx';
 import Feed from './feed.jsx';
 import { StudyRooms, RoomDetail } from './rooms.jsx';
 import { Achievements } from './gamification.jsx';
+import { Planner as ProductivityPlanner, StudyCalendar, Notifications as ProductivityNotifications, SettingsPage as ProductivitySettings, DashboardExtras } from './productivity.jsx';
+import './productivity.css';
 import { LeaderboardsV2, Missions, StreakPage } from './gamificationPhase5.jsx';
 import './gamificationPhase5.css';
 import { useGamificationSync } from './gamificationStore.js';
@@ -70,6 +72,7 @@ const navGroups = [
   ]},
   { label: 'Your progress', items: [
     ['Study Progress','/progress',TrendingUp],
+    ['Study Calendar','/study-calendar',CalendarDays],
     ['Leaderboards','/leaderboards',Trophy],
     ['Study Streaks','/streaks',Flame],
     ['Achievements','/achievements',Medal],
@@ -90,7 +93,7 @@ const titleMap = {
   '/friends':'Friends','/study-rooms':'Study Rooms','/challenges':'Quiz Challenges',
   '/progress':'Study Progress','/leaderboards':'Leaderboards','/achievements':'Achievements & Badges','/analytics':'Learning Analytics',
   '/missions':'Challenges & Missions','/streaks':'Study Streaks',
-  '/study-planner':'Study Planner','/settings':'Settings','/notifications':'Notifications',
+  '/study-planner':'Study Planner','/study-calendar':'Study Calendar','/settings':'Settings','/notifications':'Notifications',
   '/admin/dashboard':'Admin Dashboard','/admin/users':'User Management','/admin/moderation':'Content Moderation',
   '/admin/logs':'Activity Logs'
 };
@@ -417,11 +420,11 @@ function AppRoutes() {
  const admin=path.startsWith('/admin');
  const title=pageTitle(path);
  return <Shell admin={admin} title={title}><div className="page-fade" key={path}><Routes>
-   <Route path="/dashboard" element={<Dashboard/>}/><Route path="/materials" element={<MaterialLibrary/>}/><Route path="/materials/upload" element={<UploadPage/>}/><Route path="/materials/:id" element={<MaterialDetail/>}/>
+   <Route path="/dashboard" element={<><Dashboard/><DashboardExtras/></>}/><Route path="/materials" element={<MaterialLibrary/>}/><Route path="/materials/upload" element={<UploadPage/>}/><Route path="/materials/:id" element={<MaterialDetail/>}/>
    <Route path="/reviewers" element={<ReviewerLibrary/>}/><Route path="/reviewers/create" element={<CreateReviewer/>}/><Route path="/reviewers/:id" element={<ReviewerEditor/>}/><Route path="/study-companion" element={<Companion/>}/><Route path="/flashcards" element={<FlashcardLibrary/>}/><Route path="/flashcards/:id" element={<DeckEditor/>}/><Route path="/flashcards/:id/study" element={<FlashStudy/>}/><Route path="/quizzes/create" element={<QuizCreate/>}/><Route path="/quizzes/:id/edit" element={<QuizEditor/>}/><Route path="/quizzes/:id/take" element={<QuizTake/>}/><Route path="/quizzes/attempts" element={<QuizHistory/>}/><Route path="/quizzes/attempts/:id" element={<QuizResults/>}/><Route path="/quizzes/attempts/:id/missed" element={<QuizMissed/>}/>
    <Route path="/feed" element={<Feed/>}/><Route path="/friends" element={<Friends/>}/><Route path="/profile" element={<Profile/>}/><Route path="/profile/:username" element={<Profile/>}/><Route path="/study-rooms" element={<StudyRooms/>}/><Route path="/study-rooms/:id" element={<RoomDetail/>}/><Route path="/study-rooms/:id/quiz/:activityId" element={<GroupQuizPlay/>}/><Route path="/challenges" element={<Challenges/>}/><Route path="/challenges/:id/play" element={<ChallengePlay/>}/>
-   <Route path="/progress" element={<StudyProgress/>}/><Route path="/leaderboards" element={<LeaderboardsV2/>}/><Route path="/achievements" element={<Achievements/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/study-planner" element={<Planner/>}/><Route path="/missions" element={<Missions/>}/><Route path="/streaks" element={<StreakPage/>}/>
-   <Route path="/settings" element={<SettingsPage/>}/><Route path="/notifications" element={<Notifications/>}/>
+   <Route path="/progress" element={<StudyProgress/>}/><Route path="/leaderboards" element={<LeaderboardsV2/>}/><Route path="/achievements" element={<Achievements/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/study-planner" element={<ProductivityPlanner/>}/><Route path="/study-calendar" element={<StudyCalendar/>}/><Route path="/missions" element={<Missions/>}/><Route path="/streaks" element={<StreakPage/>}/>
+   <Route path="/settings" element={<ProductivitySettings/>}/><Route path="/notifications" element={<ProductivityNotifications/>}/>
    <Route path="/admin/dashboard" element={<AdminDashboard/>}/><Route path="/admin/users" element={<AdminUsers/>}/><Route path="/admin/moderation" element={<Moderation/>}/><Route path="/admin/logs" element={<Logs/>}/>
    <Route path="*" element={<NotFound/>}/>
  </Routes></div></Shell>;
