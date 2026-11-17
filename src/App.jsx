@@ -411,11 +411,10 @@ function RouteEffects() {
 export default function App() { return <><RouteEffects/><AppRoutes/></>; }
 
 function AppRoutes() {
- const loc=useLocation(); const path=loc.pathname; const {isAuthenticated,role,ready}=useAuth(); const useProfileForAdmin=useProfile();
+ const loc=useLocation(); const path=loc.pathname; const {isAuthenticated}=useAuth(); const useProfileForAdmin=useProfile(); const role=isDemoAdmin(useProfileForAdmin) ? 'admin' : 'student';
  // Route protection (demo): see src/session.js for which paths are public, guest-only or private.
  if(normalizePath(path)!==path) return <Navigate to={normalizePath(path)+loc.search+loc.hash} replace/>;
  const access=accessFor(path);
- if(!ready) return <div className="auth-screen" role="status">Loading KNOXIA session…</div>;
  if(access==='guest'&&isAuthenticated) return <Navigate to={safeRedirect(loc.state&&loc.state.from, role === 'admin' ? '/admin/dashboard' : '/dashboard')} replace/>;
  if(access==='private'&&!isAuthenticated) return <Navigate to="/login" replace state={{from:{pathname:path,search:loc.search,hash:loc.hash}}}/>;
  const ap=authPage(path); if(ap) return ap;
