@@ -28,8 +28,12 @@ function useSavedPosts() {
 /** Everything the feed screen needs: newest-first posts, who wrote them, and who is signed in. */
 export function useFeed() {
   const me = useProfile(); const raw = useSavedPosts(); const people = usePeople();
-  // First visit: start with the sample posts. Later visits (even with an empty feed) are left alone.
-  useEffect(() => { if (local.getRaw(FEED_KEY) === null) local.set(FEED_KEY, []); }, []);
+  // Remove legacy sample posts once; preserve posts authored by real accounts.
+  useEffect(() => {
+    const current = saved();
+    const real = current.filter((p) => p && typeof p.authorId === 'string' && !p.authorId.startsWith('sample:'));
+    if (local.getRaw(FEED_KEY) === null || real.length !== current.length) local.set(FEED_KEY, real);
+  }, []);
   // Sessions from before accounts existed have no account to post as yet: create it once.
   useEffect(() => { if (!me.id && me.email) ensureAccount(me.email); }, [me.id, me.email]);
   return useMemo(() => {
