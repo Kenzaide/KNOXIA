@@ -1,0 +1,81 @@
+/* Quiz taking (Patch 13) and results (Patch 14). Loaded after fc.css. */
+
+/* ---- taking a quiz ---- */
+.quiz-card h2{overflow-wrap:anywhere;white-space:pre-line}
+.quiz-card .answer-option{font-size:var(--t-md);color:var(--text);transition:border-color .15s,background .15s}
+.quiz-card .answer-option:hover{border-color:var(--blue)}
+.quiz-card .answer-option span{flex:none;transition:background .15s,color .15s}
+.answer-option.picked span{background:var(--blue-solid);color:#fff}
+:is(.quiz-card .answer-option,.q-dots button,.qr-flag,.qr-list button):focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+.qr-meta{display:flex;align-items:center;gap:var(--s-3)}
+.qr-time{display:inline-flex;align-items:center;gap:4px;color:var(--muted);font-variant-numeric:tabular-nums;font-weight:600}
+.q-dots button{position:relative}
+.q-dots .flag::after{content:'';position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:var(--accent,#F5B942);border:2px solid var(--card)}
+.qr-card-top{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);flex-wrap:wrap}
+.qr-flag{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:20px;padding:4px 10px;font-size:var(--t-sm);font-weight:600}
+.qr-flag.on{background:var(--bg-fff4df);color:var(--fg-bd8424);border-color:currentColor}
+.qr-clear{margin-top:var(--s-2)}
+.qr-hint{margin:var(--s-4) 0 0;color:var(--muted-3);font-size:var(--t-sm)}
+.qr-hint kbd{font:inherit;font-size:11px;font-weight:700;border:1px solid var(--border);border-radius:5px;padding:0 5px;background:var(--soft)}
+@media(hover:none){.qr-hint{display:none}}
+.qr-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.qr-foot{display:flex;justify-content:center;gap:var(--s-4);margin-top:12px;flex-wrap:wrap}
+.qr-review{margin-top:var(--s-3)}
+.qr-review h2{font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--t-xl);margin:0 0 var(--s-2)}
+.qr-review h2:focus{outline:none}
+.qr-list{list-style:none;margin:var(--s-4) 0 0;padding:0;display:grid}
+.qr-list li+li{border-top:1px solid var(--divider)}
+.qr-list button{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s-3);align-items:center;width:100%;text-align:left;border:0;background:none;color:var(--text);padding:10px 6px;border-radius:var(--r-ctl)}
+.qr-list button:hover{background:var(--soft)}
+.qr-n{color:var(--muted-3);font-weight:700;font-size:var(--t-sm)}
+.qr-q{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qr-state{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-sm);font-weight:600}
+.qr-state.ok{color:var(--green-text)}
+.qr-state.skip{color:var(--red)}
+.qr-state svg{color:var(--fg-bd8424)}
+@media(max-width:520px){.qr-list button{grid-template-columns:24px minmax(0,1fr)}.qr-list .qr-state{grid-column:2}}
+
+/* ---- results ---- */
+.qres-delta{display:flex;align-items:center;gap:6px;font-weight:600;margin:6px 0 0}
+.qres-delta.up{color:var(--green-text)}
+.qres-delta.down{color:var(--red)}
+.qres-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--s-3);margin-top:var(--s-4)}
+.qres-stat{display:flex;align-items:center;gap:var(--s-3);padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--card);color:var(--muted)}
+.qres-stat strong{display:block;font-family:'Plus Jakarta Sans',sans-serif;font-size:var(--t-xl);line-height:1.2;color:var(--text)}
+.qres-stat span{font-size:var(--t-sm)}
+.qres-stat.ok svg{color:var(--green-text)}
+.qres-stat.bad svg{color:var(--red)}
+.qres-stat.skip svg{color:var(--fg-bd8424)}
+.qres-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);flex-wrap:wrap;margin:var(--s-5) 0 var(--s-3)}
+.qres-head h3{margin:0}
+.qres-item .deck-bottom{align-items:flex-start;gap:var(--s-3)}
+.qres-item .deck-bottom b{overflow-wrap:anywhere;white-space:pre-line;font-size:var(--t-md);line-height:1.4}
+.qres-item .status-pill{flex:none;font-weight:600}
+.qres-note{margin:0 0 var(--s-2);color:var(--fg-bd8424);font-weight:600}
+.qres-expl{margin-top:var(--s-3);padding:10px 12px;border-radius:var(--r-ctl);background:var(--highlight);font-size:var(--t-sm)}
+.qres-expl b{display:block;margin-bottom:2px}
+.qres-expl p{margin:0;white-space:pre-line;overflow-wrap:anywhere}
+.qres-foot{display:flex;justify-content:flex-end;margin-top:var(--s-5)}
+
+/* ---- history ---- */
+.qh-toolbar{display:flex;gap:var(--s-4);flex-wrap:wrap;margin-bottom:var(--s-4)}
+.qh-pick{display:flex;align-items:center;gap:var(--s-2)}
+.qh-pick .field{width:auto;min-width:180px;max-width:100%}
+.qh-trend{display:flex;align-items:stretch;gap:6px;height:120px;margin-top:var(--s-3)}
+.qh-bar{flex:1;max-width:44px;min-width:12px;display:flex;align-items:flex-end;background:var(--soft);border-radius:6px;overflow:hidden}
+.qh-bar span{display:block;width:100%;border-radius:6px 6px 0 0;background:var(--blue-solid);transition:opacity .15s}
+.qh-labels{display:flex;gap:6px;margin-top:6px}
+.qh-labels small{flex:1;max-width:44px;min-width:12px;text-align:center;color:var(--muted);font-size:11px;font-weight:600}
+.qh-bar.good span{background:var(--green-text)}
+.qh-bar.low span{background:var(--fg-bd8424)}
+.qh-bar:hover span{opacity:.75}
+.qh-bar:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+.qh-row{display:flex;align-items:center;gap:var(--s-3);padding:var(--s-3) 0;border-top:1px solid var(--divider);flex-wrap:wrap}
+.qh-score{flex:none;width:56px;height:56px;border-radius:14px;display:grid;place-items:center;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800}
+.qh-score.good{background:var(--green-bg);color:var(--green-text)}
+.qh-score.mid{background:var(--tint);color:var(--blue)}
+.qh-score.low{background:var(--bg-fff4df);color:var(--fg-bd8424)}
+.qh-main{flex:1;min-width:180px;display:grid;gap:2px}
+.qh-main b{overflow-wrap:anywhere}
+.qh-main small{color:var(--muted)}
+@media(prefers-reduced-motion:reduce){.quiz-card .answer-option,.quiz-card .answer-option span,.qh-bar span{transition:none}}

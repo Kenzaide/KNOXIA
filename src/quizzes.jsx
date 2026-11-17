@@ -1,12 +1,13 @@
 import React, { useEffect, useId, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { AlertCircle, ArrowUpRight, BookOpen, BrainCircuit, Check, CheckCircle2, Pencil, Play, Plus, RotateCcw, Sparkles, Target, Trash2, X } from 'lucide-react';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { AlertCircle, ArrowUpRight, BookOpen, BrainCircuit, Check, CheckCircle2, History as HistoryIcon, Pencil, Play, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import { Button, SectionTitle, ConfirmDialog } from './ui.jsx';
 import { toast } from './materials.jsx';
 import { useProfile } from './accounts.js';
-import { BANK, useAttempts, useReviewers, pushLS, logEvent } from './data.js';
+import { BANK, useReviewers, logEvent } from './data.js';
 import { updatedAt } from './reviewerLib.js';
-import { QuizRunner } from './pages.jsx';
+import { QuizRunner } from './quizRunner.jsx';
+import { RecentAttempts, saveAttempt } from './quizResults.jsx';
 import {
   COUNTS, MAX_OPTIONS, MAX_Q, MAX_QUESTIONS, MAX_QUIZZES, MAX_TITLE, MAX_EXPLANATION, MIN_OPTIONS, SAMPLE_MAX, TF, TYPE_LABELS,
   cleanQuizTitle, generateFromReviewer, makeQuiz, sampleQuestions, sourceLabel, toTuple, useQuizLibrary,
@@ -21,8 +22,8 @@ import {
  * against, so its results stay correct even if the quiz is edited or deleted later.
  *   /quizzes/create            create, and the list of saved quizzes
  *   /quizzes/:id/edit          review, edit and add questions
- *   /quizzes/:id/take          take a quiz
- *   /quizzes/attempts/:id      results and answer review
+ *   /quizzes/:id/take          take a quiz (the runner is in quizRunner.jsx, Patch 13)
+ * Results, history and missed-question retakes are in quizResults.jsx (Patch 14).
  */
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const when = (d) => new Date(d).toLocaleString('en-US', { month: 'short', day: '2-digit', hour: 'numeric', minute: '2-digit' });
@@ -60,7 +61,7 @@ export function QuizCreate() {
   };
 
   return <>
-    <SectionTitle title="Create Quiz" subtitle="Check your understanding with a practice quiz." />
+    <SectionTitle title="Create Quiz" subtitle="Check your understanding with a practice quiz." action={<div className="head-actions"><Btn v="outline" icon={HistoryIcon} onClick={() => nav('/quizzes/attempts')}>History</Btn></div>} />
     <div className="builder-layout"><form className="panel builder-form" onSubmit={create} noValidate>
       <div className="segmented qz-mode" role="group" aria-label="How to make the quiz">{[['reviewer', 'From a reviewer'], ['manual', 'Write my own'], ['sample', 'Sample quiz']].map(([k, l]) => <button type="button" key={k} className={mode === k ? 'selected' : ''} aria-pressed={mode === k} onClick={() => switchMode(k)}>{l}</button>)}</div>
       {mode === 'reviewer' && (sorted.length === 0 ? <Empty icon={Sparkles} title="No reviewers yet" text="Build a reviewer first and the quiz can use its definitions and key points."><Btn icon={Sparkles} onClick={() => nav('/reviewers/create')}>Create a reviewer</Btn></Empty> : <>
@@ -169,32 +170,9 @@ export function QuizTake() {
   if (!quiz) return <Empty icon={BookOpen} title="Quiz not found" text="It may have been deleted."><Btn onClick={() => nav('/quizzes/create')}>Back to quizzes</Btn></Empty>;
   if (!quiz.questions.length) return <Empty icon={BookOpen} title="This quiz has no questions yet" text="Add at least one question, then take the quiz."><Btn icon={Pencil} onClick={() => nav(`/quizzes/${id}/edit`)}>Add questions</Btn></Empty>;
   const qs = quiz.questions.map(toTuple);
-  const finish = (ans) => {
-    const a = { id: String(Date.now()), n: qs.length, ans, score: ans.filter((x, i) => x === qs[i][2]).length, date: new Date().toISOString(), quizId: quiz.quizId, title: quiz.title, questions: quiz.questions };
-    pushLS('knoxia-attempts', a); logEvent(`Quiz submitted by ${me.displayName}: ${quiz.title.slice(0, 80)}`); nav('/quizzes/attempts/' + a.id);
+  const finish = (ans, meta) => { // `ans` has null for any question left unanswered
+    const attemptId = saveAttempt({ questions: quiz.questions, ans, secs: meta.secs, title: quiz.title, quizId: quiz.quizId }, me);
+    nav('/quizzes/attempts/' + attemptId, { replace: true }); // Back should not return to a finished quiz
   };
-  return <><SectionTitle title="Take Quiz" subtitle={quiz.title} /><QuizRunner key={id} qs={qs} label="PRACTICE QUIZ" onFinish={finish} /></>;
-}
-
-/* ---------- Results ---------- */
-export function QuizResults() {
-  const { id } = useParams(); const nav = useNavigate(); const [att] = useAttempts(); const lib = useQuizLibrary(); const a = att.find((x) => x.id === id);
-  if (!a) return <Empty icon={BookOpen} title="Attempt not found" text="Take a quiz to see your results here."><Btn onClick={() => nav('/quizzes/create')}>Create a quiz</Btn></Empty>;
-  // Attempts keep the questions they were graded against. Attempts from before Patch 12 used the first N sample questions.
-  const qs = Array.isArray(a.questions) && a.questions.length ? a.questions.map(toTuple) : BANK.slice(0, a.n);
-  const pct = Math.round((a.score / a.n) * 100);
-  const retake = a.quizId ? (lib.items.some((x) => x.id === a.quizId) ? `/quizzes/${a.quizId}/take` : '') : `/quizzes/ml-${a.n}/take`;
-  return <><SectionTitle title="Quiz Results / Review" subtitle={`${a.title ? a.title + ' · ' : ''}Taken ${when(a.date)}`} />
-    <div className="panel result-hero"><div className="score-ring" style={{ '--pct': pct }}><b>{pct}%</b></div><div style={{ flex: 1, minWidth: 220 }}><h3 style={{ fontSize: 20, margin: '0 0 4px' }}>{pct >= 80 ? 'Great work!' : pct >= 50 ? 'Good effort. Review the misses below.' : 'Keep practicing. Review the answers below.'}</h3><p className="muted">You got {a.score} of {a.n} questions right{a.n - a.score ? `, and ${a.n - a.score} to review` : ''}.</p>
-      <div className="head-actions" style={{ justifyContent: 'flex-start' }}>{retake && <Btn icon={RotateCcw} onClick={() => nav(retake)}>Retake quiz</Btn>}<Btn v="outline" onClick={() => nav('/quizzes/create')}>All quizzes</Btn></div></div></div>
-    <h3 style={{ margin: '24px 0 12px' }}>Answer review</h3>
-    <div style={{ display: 'grid', gap: 13 }}>{qs.map((q, i) => { const ok = a.ans[i] === q[2]; return <div className="panel" key={i}><div className="deck-bottom"><b>{i + 1}. {q[0]}</b><span className={`status-pill ${ok ? 'active' : 'wrong'}`}>{ok ? 'Correct' : 'Incorrect'}</span></div>
-      <ul className="opts">{q[1].map((o, k) => <li key={k} className={k === q[2] ? 'right' : k === a.ans[i] ? 'wrong' : ''}><span>{LETTERS[k]}</span>{o}{(k === q[2] || k === a.ans[i]) && <em>{k === q[2] ? (k === a.ans[i] ? 'Your answer' : 'Correct answer') : 'Your answer'}</em>}</li>)}</ul>{q[3] && <p className="muted">{q[3]}</p>}</div>; })}</div></>;
-}
-
-/* ---------- Recent attempts ---------- */
-export function RecentAttempts() {
-  const [att] = useAttempts();
-  return <div className="panel list-panel" style={{ marginTop: 17 }}><div className="list-head"><h3>Recent attempts</h3></div>{att.length === 0 && <p className="muted">Your quiz results will appear here.</p>}
-    {att.slice(0, 5).map((a) => <div className="generic-row" key={a.id}><div className={`activity-dot ${a.score / a.n >= 0.8 ? 'green' : 'orange'}`}><Target size={16} /></div><div><b>{a.score} / {a.n} correct{a.title ? ` · ${a.title}` : ''}</b><small>{when(a.date)}</small></div><Link className="link-btn" to={'/quizzes/attempts/' + a.id}>Review <ArrowUpRight size={16} /></Link></div>)}</div>;
+  return <><SectionTitle title="Take Quiz" subtitle={quiz.title} /><QuizRunner key={id} qs={qs} label="PRACTICE QUIZ" exitTo={saved ? '/quizzes/create' : '/dashboard'} onFinish={finish} /></>;
 }

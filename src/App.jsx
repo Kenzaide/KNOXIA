@@ -16,7 +16,8 @@ import MaterialLibrary from './library.jsx';
 import CreateReviewer from './reviewer.jsx';
 import ReviewerLibrary from './reviewers.jsx';
 import { FlashcardLibrary, DeckEditor, FlashStudy } from './flashcards.jsx';
-import { QuizCreate, QuizEditor, QuizTake, QuizResults } from './quizzes.jsx';
+import { QuizCreate, QuizEditor, QuizTake } from './quizzes.jsx';
+import { QuizResults, QuizHistory, QuizMissed } from './quizResults.jsx';
 
 // In-app navigation helper. Always goes through the router (no full page reloads).
 function useGo() {
@@ -73,7 +74,7 @@ const friends = [
 const titleMap = {
   '/dashboard':'Dashboard','/materials':'My Materials','/materials/upload':'Upload Materials',
   '/reviewers':'My Reviewers','/reviewers/create':'Create AI Reviewer','/study-companion':'Knowl · Study Companion',
-  '/flashcards':'Flashcard Library','/quizzes/create':'Create Quiz','/feed':'Learning Feed',
+  '/flashcards':'Flashcard Library','/quizzes/create':'Create Quiz','/quizzes/attempts':'Quiz History','/feed':'Learning Feed',
   '/friends':'Friends','/study-rooms':'Study Rooms','/challenges':'Quiz Challenges',
   '/leaderboards':'Leaderboards','/achievements':'Achievements & Badges','/analytics':'Learning Analytics',
   '/study-planner':'Study Planner','/settings':'Settings','/notifications':'Notifications',
@@ -360,7 +361,7 @@ function pageTitle(path) {
   if (path.startsWith('/profile')) return 'Profile';
   if (path.startsWith('/reviewers/')) return 'Reviewer Details / Editor';
   if (path.startsWith('/flashcards/')) return path.endsWith('/study') ? 'Flashcard Study Session' : 'Edit Deck';
-  if (path.startsWith('/quizzes/')) return path.includes('/attempts/') ? 'Quiz Results / Review' : path.endsWith('/edit') ? 'Edit Quiz' : 'Take Quiz';
+  if (path.startsWith('/quizzes/')) return path.endsWith('/missed') ? 'Retake Missed Questions' : path.includes('/attempts/') ? 'Quiz Results / Review' : path.endsWith('/edit') ? 'Edit Quiz' : 'Take Quiz';
   if (path.startsWith('/study-rooms/')) return 'Study Room Details';
   if (path.startsWith('/challenges/')) return 'Challenge Game / Quiz Battle';
   return 'KNOXIA';
@@ -402,7 +403,7 @@ function AppRoutes() {
  const title=pageTitle(path);
  return <Shell admin={admin} title={title}><div className="page-fade" key={path}><Routes>
    <Route path="/dashboard" element={<Dashboard/>}/><Route path="/materials" element={<MaterialLibrary/>}/><Route path="/materials/upload" element={<UploadPage/>}/><Route path="/materials/:id" element={<MaterialDetail/>}/>
-   <Route path="/reviewers" element={<ReviewerLibrary/>}/><Route path="/reviewers/create" element={<CreateReviewer/>}/><Route path="/reviewers/:id" element={<ReviewerEditor/>}/><Route path="/study-companion" element={<Companion/>}/><Route path="/flashcards" element={<FlashcardLibrary/>}/><Route path="/flashcards/:id" element={<DeckEditor/>}/><Route path="/flashcards/:id/study" element={<FlashStudy/>}/><Route path="/quizzes/create" element={<QuizCreate/>}/><Route path="/quizzes/:id/edit" element={<QuizEditor/>}/><Route path="/quizzes/:id/take" element={<QuizTake/>}/><Route path="/quizzes/attempts/:id" element={<QuizResults/>}/>
+   <Route path="/reviewers" element={<ReviewerLibrary/>}/><Route path="/reviewers/create" element={<CreateReviewer/>}/><Route path="/reviewers/:id" element={<ReviewerEditor/>}/><Route path="/study-companion" element={<Companion/>}/><Route path="/flashcards" element={<FlashcardLibrary/>}/><Route path="/flashcards/:id" element={<DeckEditor/>}/><Route path="/flashcards/:id/study" element={<FlashStudy/>}/><Route path="/quizzes/create" element={<QuizCreate/>}/><Route path="/quizzes/:id/edit" element={<QuizEditor/>}/><Route path="/quizzes/:id/take" element={<QuizTake/>}/><Route path="/quizzes/attempts" element={<QuizHistory/>}/><Route path="/quizzes/attempts/:id" element={<QuizResults/>}/><Route path="/quizzes/attempts/:id/missed" element={<QuizMissed/>}/>
    <Route path="/feed" element={<Feed/>}/><Route path="/friends" element={<Friends/>}/><Route path="/profile" element={<Profile/>}/><Route path="/profile/:username" element={<Profile/>}/><Route path="/study-rooms" element={<StudyRooms/>}/><Route path="/study-rooms/:id" element={<RoomDetail/>}/><Route path="/challenges" element={<Challenges/>}/><Route path="/challenges/:id/play" element={<ChallengePlay/>}/>
    <Route path="/leaderboards" element={<Leaderboards/>}/><Route path="/achievements" element={<Achievements/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/study-planner" element={<Planner/>}/>
    <Route path="/settings" element={<SettingsPage/>}/><Route path="/notifications" element={<Notifications/>}/>

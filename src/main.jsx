@@ -7,6 +7,7 @@ import './index.css';
 import './profile.css'; // loaded after index.css so its rules win ties
 import './reviewer.css';
 import './fc.css'; // flashcards and quizzes
+import './quiz.css'; // quiz taking and results (Patches 13 and 14)
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode><BrowserRouter><MaterialsProvider><App /></MaterialsProvider></BrowserRouter></React.StrictMode>

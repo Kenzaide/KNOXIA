@@ -5,6 +5,7 @@ import { Bookmark, FolderInput, Sparkles, Layers, CheckCircle2, Trophy, Crown, F
 import { toast } from './materials.jsx';
 import { useProfile } from './accounts.js';
 import { ProfileEditor } from './profile.jsx';
+import { QuizRunner } from './quizRunner.jsx'; // the shared quiz runner (Patch 13), used here by Quiz Challenges
 import { ConfirmDialog, PromptDialog } from './ui.jsx';
 import { MAX_TITLE, MAX_FOLDER, cleanTitle, folderOf, folderCounts, resolveFolder, updatedAt, useReviewerLibrary } from './reviewerLib.js';
 import { BANK, ROOMS, CHALLENGES, BOARD, BADGES, useNotes, useReviewers, useAttempts, useRooms, useChallenges, usePlan, useSettings, useReports, useLogs, pushLS, logEvent } from './data.js';
@@ -49,18 +50,6 @@ export function ReviewerEditor() {
       <div className="panel"><h3>Study with this reviewer</h3><p className="muted">Turn your notes into practice.</p><div className="friend-buttons" style={{ flexDirection: 'column', alignItems: 'stretch', marginTop: 12 }}><Btn v="soft" icon={Layers} onClick={() => nav('/flashcards')}>Open flashcards</Btn><Btn v="soft" icon={BookOpen} onClick={() => nav('/quizzes/create?reviewer=' + encodeURIComponent(r.id))}>Create a quiz</Btn><Btn v="soft" icon={Sparkles} onClick={() => nav('/study-companion')}>Ask the companion</Btn><Btn v="outline" icon={ArrowUpRight} onClick={() => nav('/reviewers')}>All my reviewers</Btn></div></div></div>
     {dlg === 'move' && <PromptDialog title={`Move “${r.title}”`} body="Type a folder name, or pick one below. Leave it empty to take it out of any folder." label="Folder name" value={fo} placeholder="e.g. Midterms" maxLength={MAX_FOLDER} suggestions={folderCounts(lib.items).map(x => x.name)} allowEmpty confirmLabel="Move" onSubmit={move} onCancel={() => setDlg(null)} />}
     {dlg === 'delete' && <ConfirmDialog icon={Trash2} title={`Delete “${r.title}”?`} body="This permanently removes the reviewer and anything you edited in it. This can't be undone." confirmLabel="Delete" onCancel={() => setDlg(null)} onConfirm={del} />}</>;
-}
-
-/* ---------- Quizzes ---------- */
-// The runner is shared: Quiz Challenges use it here and quizzes.jsx (Patch 12) uses it for saved quizzes.
-export function QuizRunner({ qs, label, onFinish }) {
-  const nav = useNavigate(); const [i, setI] = useState(0); const [ans, setAns] = useState([]); const q = qs[i]; const last = i === qs.length - 1;
-  const left = qs.filter((_, k) => ans[k] === undefined).length;
-  return <div className="quiz-wrap"><div className="quiz-top"><span className="post-tags"><span>{label}</span></span><span className="muted">{qs.length - left} of {qs.length} answered</span></div><div className="progress-track"><span style={{ width: (qs.length - left) / qs.length * 100 + '%' }} /></div>
-    <div className="q-dots">{qs.map((_, k) => <button key={k} aria-label={`Go to question ${k + 1}`} aria-current={k === i} className={`${ans[k] !== undefined ? 'done' : ''} ${k === i ? 'now' : ''}`} onClick={() => setI(k)}>{k + 1}</button>)}</div>
-    <div className="panel quiz-card"><small>Question {i + 1} of {qs.length}</small><h2>{q[0]}</h2>{q[1].map((o, k) => <button key={k} className={`answer-option ${ans[i] === k ? 'picked' : ''}`} onClick={() => setAns(a => { const b = [...a]; b[i] = k; return b; })}><span>{'ABCD'[k]}</span>{o}</button>)}</div>
-    <div className="quiz-nav"><Btn v="outline" disabled={i === 0} onClick={() => setI(i - 1)}>Previous</Btn><span className="muted">{left ? `${left} left to answer` : 'All answered'}</span>{last ? <Btn disabled={left > 0} onClick={() => onFinish(qs.map((_, k) => ans[k]))}>Submit quiz</Btn> : <Btn onClick={() => setI(i + 1)}>Next</Btn>}</div>
-    <div style={{ textAlign: 'center', marginTop: 12 }}><button className="link-btn" onClick={() => nav('/dashboard')}>Exit quiz</button></div></div>;
 }
 
 /* ---------- Study rooms ---------- */
