@@ -73,11 +73,11 @@ function notesOf(email) {
   const key = noteKey(email);
   return local.getRaw(key) !== null ? local.get(key, NONE, isList) : local.get(KEYS.notes, NOTES, isList); // same fallback as userData
 }
-function addNote(email, note) {
+export function addNote(email, note) {
   if (!email) return; const list = notesOf(email); if (list.some((n) => n.id === note.id)) return;
   local.set(noteKey(email), [{ ...note, read: false }, ...list].slice(0, 100));
 }
-function dropNote(email, id) {
+export function dropNote(email, id) {
   if (!email) return; const list = notesOf(email); if (!list.some((n) => n.id === id)) return;
   local.set(noteKey(email), list.filter((n) => n.id !== id));
 }

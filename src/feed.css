@@ -9,14 +9,29 @@
 .feed-text{white-space:pre-wrap;overflow-wrap:anywhere;margin:var(--s-3) 0}
 .feed-name:hover{text-decoration:underline}
 .post-head{position:relative}.post-head>.plain-icon{margin-left:auto}
+.post-actions{align-items:center;flex-wrap:wrap;gap:var(--s-3) 20px}
+.post-actions>.feed-comment-btn{margin-left:auto}
 .post-actions button{display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:var(--muted);font-weight:600;padding:0}
-.post-actions button:hover,.post-actions .feed-like.on{color:var(--blue)}
-.post-actions button:focus-visible,.feed-name:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;border-radius:4px}
+.post-actions button:hover{color:var(--blue)}
+.post-actions button:focus-visible,.feed-name:focus-visible,.feed-comment-actions button:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;border-radius:4px}
+.feed-reactions{display:grid;gap:var(--s-2)}
+.feed-react-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.post-actions .feed-react{border:1px solid var(--border);background:var(--soft);border-radius:99px;padding:3px 10px;gap:5px;font-size:var(--t-sm)}
+.post-actions .feed-react b{font-size:12px;color:var(--muted)}
+.post-actions .feed-react.on{background:var(--tint);border-color:var(--blue);color:var(--blue)}.post-actions .feed-react.on b{color:var(--blue)}
+.post-actions .feed-who-btn{font-size:12px;text-decoration:underline;text-underline-offset:2px;margin-left:4px}
+.feed-who{list-style:none;margin:0;padding:var(--s-2) var(--s-3);border:1px solid var(--divider);border-radius:var(--r-ctl);display:grid;gap:4px;font-size:var(--t-sm);max-height:160px;overflow:auto}
+.feed-who small{color:var(--muted);margin-left:4px}
 .feed-comments{border-top:1px solid var(--divider);margin-top:var(--s-3);padding-top:var(--s-3);display:grid;gap:var(--s-3)}
 .feed-comment{display:flex;gap:var(--s-2);align-items:flex-start}
-.feed-comment>div{flex:1;min-width:0}
+.feed-comment>div:last-child{flex:1;min-width:0}.feed-comment>.avatar{flex:none}
 .feed-comment p{margin:0}.feed-comment .feed-text{margin:2px 0 0}
 .feed-comment small{color:var(--muted);margin-left:6px}
+.feed-thread{display:grid;gap:var(--s-2)}
+.feed-comment.reply{margin-left:calc(31px + var(--s-2));padding-left:var(--s-3);border-left:2px solid var(--divider)}
+.feed-comment-actions{display:flex;gap:var(--s-3);margin-top:2px}
+.feed-comment-actions button{display:inline-flex;align-items:center;gap:4px;background:none;border:0;padding:0;color:var(--muted);font-size:12px;font-weight:600}
+.feed-comment-actions button:hover{color:var(--blue)}
 .feed-comment-form{display:flex;gap:var(--s-2)}
 .feed-comment-form .field{flex:1;min-width:0}
 @media(max-width:560px){.feed-compose-foot{flex-wrap:wrap}.feed-compose-foot .field{flex-basis:100%}.feed-count{margin-left:auto}}
