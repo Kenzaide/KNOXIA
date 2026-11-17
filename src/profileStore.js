@@ -13,14 +13,19 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { local, userData, userKey, useUserData } from './storage.js';
 import { useProfile, emailKey } from './accounts.js';
-import { KEYS, BADGES } from './data.js';
+import { KEYS } from './data.js';
 import { KEY as DECKS_KEY, SEED as SEED_DECKS } from './flashcards.js';
 import { SEED_MATERIALS } from './materials.jsx';
 import { KEY as PROGRESS_KEY } from './progressStore.js';
 import { buildProgress } from './progressCalc.js';
 import { useFeed } from './feedStore.js';
 import { postsBy } from './feedCalc.js';
-import { DEFAULT_SOCIAL, cleanSocial, toggleShared, profileStats, badgeStatus, sharedMaterials } from './profileCalc.js';
+import { DEFAULT_SOCIAL, cleanSocial, toggleShared, profileStats, sharedMaterials } from './profileCalc.js';
+import { ROOMS_KEY, ACTIVITIES_KEY, savedRooms } from './roomsStore.js';
+import { cleanRooms } from './roomsCalc.js';
+import { cleanActivities } from './activitiesCalc.js';
+import { buildAwards, totalXp, levelFor } from './xpCalc.js';
+import { achievementStatus, badgeTuples } from './achievementsCalc.js';
 
 export const SOCIAL_KEY = 'knoxia-social';
 const MATERIALS_KEY = 'knoxia-materials';
@@ -37,6 +42,9 @@ function useStoredOf(person, mine, key, fallback) {
   return useSyncExternalStore(subscribe, read, () => fallback);
 }
 const list = (v) => (Array.isArray(v) ? v : EMPTY_LIST);
+const savedActivities = () => local.get(ACTIVITIES_KEY, EMPTY_LIST, Array.isArray);
+/** Study rooms and group activities are shared by everyone in this browser (roomsStore.js, activitiesStore.js). */
+function useShared(key, read) { const subscribe = useCallback((fn) => local.subscribe(key, fn), [key]); return useSyncExternalStore(subscribe, read, () => EMPTY_LIST); }
 
 /** Everything about a person's learning that a profile can show, before visibility is applied. */
 export function usePersonActivity(person, mine) {
@@ -50,17 +58,29 @@ export function usePersonActivity(person, mine) {
   const socialRaw = useStoredOf(person, mine, SOCIAL_KEY, EMPTY_OBJ);
   const social = useMemo(() => cleanSocial(socialRaw), [socialRaw]);
   const { posts } = useFeed();
+  const rooms = useShared(ROOMS_KEY, savedRooms); const activities = useShared(ACTIVITIES_KEY, savedActivities);
   const today = new Date().toDateString(); // recompute when the day changes
   return useMemo(() => {
     const records = log && typeof log.reviewers === 'object' && !Array.isArray(log.reviewers) ? log.reviewers : {};
-    const progress = buildProgress({ reviewers, records, sessions: list(log && log.sessions), decks, attempts });
+    const sessions = list(log && log.sessions);
+    const progress = buildProgress({ reviewers, records, sessions, decks, attempts });
     const own = person && person.id ? postsBy(posts, person.id) : [];
-    const stats = profileStats(progress, { materials: materials.length, decks: decks.length, posts: own.length });
-    return { progress, stats, badges: badgeStatus(stats, BADGES), social, materials, shared: sharedMaterials(materials, social.shared), posts: own };
-  }, [materials, decks, reviewers, attempts, log, social, posts, person, today]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Rooms and group activities belong to the account id; sample classmates have no study data of their own.
+    const id = person && person.id && (person.email || mine) ? person.id : '';
+    const myRooms = id ? cleanRooms(rooms).filter((r) => r.memberIds.includes(id)) : [];
+    const acts = id ? cleanActivities(activities).filter((a) => a.kind === 'quiz' ? a.results.some((r) => r.userId === id) : a.kind === 'session' ? a.joinedIds.includes(id) : a.items.some((i) => i.doneBy === id)) : [];
+    const awards = buildAwards({
+      attempts, sessions, posts: own.map((p) => p.createdAt),
+      groupSessions: acts.filter((a) => a.kind === 'session').map((a) => a.startedAt),
+      groupQuizzes: acts.filter((a) => a.kind === 'quiz').map((a) => a.results.find((r) => r.userId === id).at),
+    });
+    const xp = totalXp(awards); const level = levelFor(xp);
+    const stats = profileStats(progress, { materials: materials.length, decks: decks.length, posts: own.length, rooms: myRooms.length, groupActivities: acts.length, level: level.level });
+    return { progress, stats, badges: badgeTuples(stats), achievements: achievementStatus(stats), awards, xp, level, social, materials, shared: sharedMaterials(materials, social.shared), posts: own };
+  }, [materials, decks, reviewers, attempts, log, social, posts, person, mine, rooms, activities, today]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
-/** Your own badges, from your real activity. Same shape as `BADGES` in data.js. */
+/** Your own badges, from your real activity. Each is [name, description, icon, earned]. */
 export function useMyBadges() {
   const me = useProfile();
   return usePersonActivity(me, true).badges;

@@ -3,12 +3,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   MAX_SHARED, VISIBILITY, DEFAULT_SOCIAL, isVisibility, cleanSocial, canSee, toggleShared, sharedMaterials,
-  profileStats, badgeStatus, BADGE_RULES, recentEvents,
+  profileStats, recentEvents,
 } from '../src/profileCalc.js';
 
-const BADGES = [['7-Day Streak', 'd', 'Flame', true], ['Quiz Master', 'd', 'Target', true], ['Early Bird', 'd', 'Zap', true], ['Deck Builder', 'd', 'Layers', false],
-  ['Team Player', 'd', 'Users', false], ['Bookworm', 'd', 'BookOpen', false], ['Challenger', 'd', 'Trophy', false], ['30-Day Streak', 'd', 'Medal', false]];
-const earned = (stats) => badgeStatus(stats, BADGES).filter((b) => b[3]).map((b) => b[0]);
 const progress = (over = {}) => ({ events: [], streak: { current: 0, best: 0, days: 0 }, quizzes: { taken: 0, avg: null, best: null }, secs: 0, ...over });
 
 test('default privacy is friends only, and every visibility option is valid', () => {
@@ -52,21 +49,10 @@ test('profileStats reads progress safely', () => {
   assert.equal(profileStats(progress({ events: [{ date: 'nonsense' }] })).earlyBird, false);
 });
 
-test('badges are earned from real numbers', () => {
-  assert.deepEqual(earned(profileStats(progress())), []);
-  assert.deepEqual(earned(profileStats(progress({ streak: { current: 1, best: 7, days: 7 } }))), ['7-Day Streak']);
-  assert.deepEqual(earned(profileStats(progress({ streak: { current: 30, best: 30, days: 30 } }))), ['7-Day Streak', '30-Day Streak']);
-  assert.deepEqual(earned(profileStats(progress({ quizzes: { taken: 1, avg: 90, best: 90 } }))), ['Quiz Master']);
-  assert.deepEqual(earned(profileStats(progress({ quizzes: { taken: 1, avg: 89, best: 89 } }))), []);
-  assert.deepEqual(earned(profileStats(progress(), { decks: 5, materials: 10 })), ['Deck Builder', 'Bookworm']);
-  assert.deepEqual(earned(profileStats(progress(), { decks: 4, materials: 9 })), []);
-});
-
-test('Team Player and Challenger stay locked, and badge rows keep the data.js shape', () => {
-  const all = { streakBest: 99, quizBest: 100, earlyBird: true, decks: 99, materials: 99 };
-  assert.equal(BADGE_RULES['Team Player'](all), false); assert.equal(BADGE_RULES['Challenger'](all), false);
-  const rows = badgeStatus(all, BADGES); assert.equal(rows.length, BADGES.length); assert.deepEqual(rows[0].slice(0, 3), ['7-Day Streak', 'd', 'Flame']);
-  assert.equal(badgeStatus(all, [['Unknown badge', 'd', 'Medal']])[0][3], false);
+test('profileStats carries the counts achievements need, with safe defaults', () => {
+  const s = profileStats(progress({ reviewers: { done: 4 } }), { rooms: 3, groupActivities: 2, level: 5 });
+  assert.equal(s.reviewersDone, 4); assert.equal(s.rooms, 3); assert.equal(s.groupActivities, 2); assert.equal(s.level, 5);
+  const d = profileStats(undefined); assert.equal(d.reviewersDone, 0); assert.equal(d.rooms, 0); assert.equal(d.level, 1);
 });
 
 test('recentEvents takes the newest few', () => {

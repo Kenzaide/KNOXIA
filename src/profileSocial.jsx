@@ -13,8 +13,9 @@ import { reactionSummary, timeAgo } from './feedCalc.js';
 import { VISIBILITY, MAX_SHARED, canSee, recentEvents } from './profileCalc.js';
 import { usePersonActivity, useMySocial } from './profileStore.js';
 import { useMaterials } from './materials.jsx';
+import { BADGE_ICONS } from './badgeIcons.js';
 
-const ICONS = { Flame, Trophy, Target, Zap, Layers, Users, BookOpen, Medal };
+const ICONS = BADGE_ICONS;
 const KIND = { flashcards: 'Flashcards', reviewer: 'Reviewer', quiz: 'Quiz' };
 
 const Stat = ({ label, value, note, icon: Icon, tone = 'blue' }) => <div className="stat-card"><div className={`stat-icon ${tone}`}><Icon size={18} /></div><div className="stat-copy"><span>{label}</span><strong>{value}</strong><small className="positive">{note}</small></div></div>;

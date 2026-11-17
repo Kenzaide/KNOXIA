@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Routes, Route, NavLink, Link, Navigate, useLocation, useNavigate, useNavigationType, useParams } from 'react-router-dom';
 import { useMaterials, toast, colorOf, fmtSize, fmtDate, SUBJECTS, MAX_MB, MAX_BATCH, validateFile, fileExt, parseTags } from './materials.jsx';
 import { saveFile, getFile, hashFile, newId } from './files.js';
-import { ReviewerEditor, SavedReviewers, Challenges, ChallengePlay, Leaderboards, Achievements, Analytics, Planner, Notifications, SettingsPage, Moderation, Logs } from './pages.jsx';
+import { ReviewerEditor, SavedReviewers, Challenges, ChallengePlay, Leaderboards, Analytics, Planner, Notifications, SettingsPage, Moderation, Logs } from './pages.jsx';
 import { useNotes } from './data.js';
 import { authPage } from './auth.jsx';
 import { Knowl, KnowlAvatar } from './knowl.jsx';
@@ -24,6 +24,8 @@ import { fmtTime } from './progressCalc.js';
 import { Friends, FriendAction, SuggestedPeople } from './friends.jsx';
 import Feed from './feed.jsx';
 import { StudyRooms, RoomDetail } from './rooms.jsx';
+import { Achievements } from './gamification.jsx';
+import { useGamificationSync } from './gamificationStore.js';
 import { GroupQuizPlay } from './activities.jsx';
 import { ProfileSocial } from './profileSocial.jsx';
 import { useIncomingCount } from './friendsStore.js';
@@ -165,6 +167,7 @@ function Topbar({title,admin=false,onMenu}) {
   return <header className="topbar"><div className="top-left"><button className="menu-btn" onClick={onMenu}><Menu size={20}/></button><div className="crumb"><b>{title}</b></div></div><div className="top-actions"><Clock/><div className="top-search"><Search size={16}/><input placeholder="Search anything..." value={search} onChange={e=>setSearch(e.target.value)}/></div><ThemeToggle/><NotificationBell/><div className="top-divider"/>{admin?<Avatar initials="AD" size="sm"/>:<NavLink viewTransition to="/profile" className="top-avatar" aria-label="View your profile"><UserAvatar size="sm"/></NavLink>}</div></header>;
 }
 function Shell({children,admin=false,title}) {
+  useGamificationSync(); // announces new badges and level-ups (Patches 23 and 24)
   const [open,setOpen]=useState(false); const {pathname}=useLocation();
   useEffect(()=>{setOpen(false)},[pathname]);
   useEffect(()=>{ if(!open)return; const k=e=>{if(e.key==='Escape')setOpen(false)}; document.addEventListener('keydown',k); return()=>document.removeEventListener('keydown',k); },[open]);

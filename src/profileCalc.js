@@ -1,5 +1,5 @@
 /**
- * Public profile rules (Patch 19): who may see what, what a person shares, and which badges they have earned.
+ * Public profile rules (Patch 19): who may see what, what a person shares, and the numbers their badges are earned from.
  *
  * Pure functions only: no storage, no React (so `npm test` can cover them). Storage and hooks live in
  * `src/profileStore.js`, the screens in `src/profileSocial.jsx`.
@@ -57,32 +57,19 @@ export function sharedMaterials(materials, shared) {
 /* ---------- Stats and badges ---------- */
 const hour = (d) => { const t = new Date(d); return Number.isNaN(t.getTime()) ? -1 : t.getHours(); };
 
-/** The numbers badges and the profile need, from the study progress (progressCalc.buildProgress) and a few counts. */
-export function profileStats(progress, { materials = 0, decks = 0, posts = 0 } = {}) {
+/** The numbers achievements and the profile need, from the study progress (progressCalc.buildProgress) and a few counts. */
+export function profileStats(progress, { materials = 0, decks = 0, posts = 0, rooms = 0, groupActivities = 0, level = 1 } = {}) {
   const p = progress || {}; const events = Array.isArray(p.events) ? p.events : [];
   const streak = p.streak || { current: 0, best: 0, days: 0 }; const quizzes = p.quizzes || { taken: 0, avg: null, best: null };
   return {
     streakCurrent: streak.current, streakBest: streak.best, studyDays: streak.days, secs: p.secs || 0,
     quizzesTaken: quizzes.taken, quizAvg: quizzes.avg, quizBest: quizzes.best,
     earlyBird: events.some((e) => { const h = hour(e.date); return h >= 0 && h < 7; }),
-    materials, decks, posts,
+    reviewersDone: p.reviewers && Number.isFinite(p.reviewers.done) ? p.reviewers.done : 0,
+    materials, decks, posts, rooms, groupActivities, level,
   };
 }
-
-/** What earns each badge. Team Player and Challenger depend on study rooms and challenges, which are demo-only for now, so they stay locked. */
-export const BADGE_RULES = {
-  '7-Day Streak': (s) => s.streakBest >= 7,
-  'Quiz Master': (s) => s.quizBest !== null && s.quizBest >= 90,
-  'Early Bird': (s) => s.earlyBird,
-  'Deck Builder': (s) => s.decks >= 5,
-  'Team Player': () => false,
-  'Bookworm': (s) => s.materials >= 10,
-  'Challenger': () => false,
-  '30-Day Streak': (s) => s.streakBest >= 30,
-};
-
-/** `badges` is the list from data.js ([name, description, icon, _]); the result has the same shape with `earned` filled in from real activity. */
-export const badgeStatus = (stats, badges) => badges.map(([name, desc, icon]) => [name, desc, icon, !!(BADGE_RULES[name] && BADGE_RULES[name](stats))]);
+// Which badges these numbers earn is decided in achievementsCalc.js (Patch 24).
 
 /** The most recent `n` events, for a short "recent activity" list. */
 export const recentEvents = (events, n = 5) => (Array.isArray(events) ? events.slice(0, n) : []);

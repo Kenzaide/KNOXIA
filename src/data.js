@@ -46,12 +46,6 @@ export const CHALLENGES = [
   { id: 'c3', title: 'Cybersecurity Challenge', opp: 'Jordan Lee', init: 'JL', q: 5, score: 2 },
 ];
 export const BOARD = [['Kenneth Punla', 'KP', 3240, 7, false], ['Alex Rivera', 'AR', 2840, 9, true], ['Mika Santos', 'MS', 2510, 12, true], ['Jordan Lee', 'JL', 1960, 4, true], ['Sam Cruz', 'SC', 1720, 3, false], ['Bea Reyes', 'BR', 1540, 6, false], ['Carlo Tan', 'CT', 1210, 2, false], ['Dana Lim', 'DL', 980, 1, false]];
-export const BADGES = [
-  ['7-Day Streak', 'Study 7 days in a row', 'Flame', true], ['Quiz Master', 'Score 90% or higher on a quiz', 'Target', true],
-  ['Early Bird', 'Study before 7 AM', 'Zap', true], ['Deck Builder', 'Create 5 flashcard decks', 'Layers', false],
-  ['Team Player', 'Join 3 study rooms', 'Users', false], ['Bookworm', 'Upload 10 materials', 'BookOpen', false],
-  ['Challenger', 'Win 5 quiz challenges', 'Trophy', false], ['30-Day Streak', 'Study 30 days in a row', 'Medal', false],
-];
 export const NOTES = [
   { id: 'n1', t: 'Your quiz result is ready', s: 'Open your latest attempt to review answers.', to: '/analytics', read: false },
   { id: 'n3', t: 'You earned a new achievement', s: '7-Day Streak', to: '/achievements', read: false },

@@ -9,9 +9,9 @@ import { QuizRunner } from './quizRunner.jsx'; // the shared quiz runner (Patch 
 import { ConfirmDialog, PromptDialog } from './ui.jsx';
 import { track, useProgressLog, useStudyProgress } from './progressStore.js'; // study progress (Patch 15)
 import { fmtTime, topicMastery } from './progressCalc.js';
-import { useMyBadges } from './profileStore.js';
+import { useMyGamification } from './gamificationStore.js'; // XP and levels (Patches 23 and 24)
 import { MAX_TITLE, MAX_FOLDER, cleanTitle, folderOf, folderCounts, resolveFolder, updatedAt, useReviewerLibrary } from './reviewerLib.js';
-import { BANK, CHALLENGES, BOARD, BADGES, useNotes, useReviewers, useChallenges, usePlan, useSettings, useReports, useLogs, pushLS, logEvent } from './data.js';
+import { BANK, CHALLENGES, BOARD, useNotes, useReviewers, useChallenges, usePlan, useSettings, useReports, useLogs, pushLS, logEvent } from './data.js';
 
 const Btn = ({ children, v = 'primary', icon: I, ...p }) => <button type="button" className={`btn ${v}`} {...p}>{I && <I size={16} />}<span>{children}</span></button>;
 const Head = ({ title, sub, action }) => <div className="section-title"><div><h2>{title}</h2>{sub && <p>{sub}</p>}</div>{action}</div>;
@@ -76,19 +76,14 @@ export function ChallengePlay() {
 
 /* ---------- Gamification & analytics ---------- */
 export function Leaderboards() {
-  const profile = useProfile(); const [tab, setTab] = useState('This week'); const [scope, setScope] = useState('Everyone'); const k = { 'This week': .2, 'This month': .6, 'All time': 1 }[tab];
-  const all = BOARD.filter(r => scope === 'Everyone' || r[1] === 'KP' || r[4]).map(r => { const me = r[1] === 'KP'; return { name: me ? profile.displayName : r[0], init: me ? profile.initials : r[1], av: me ? profile.avatar : '', xp: Math.round(r[2] * k), streak: r[3], me }; }).sort((a, b) => b.xp - a.xp).map((r, i) => ({ ...r, rank: i + 1 }));
+  const profile = useProfile(); const game = useMyGamification(); const [tab, setTab] = useState('This week'); const [scope, setScope] = useState('Everyone'); const k = { 'This week': .2, 'This month': .6, 'All time': 1 }[tab];
+  const all = BOARD.filter(r => scope === 'Everyone' || r[1] === 'KP' || r[4]).map(r => { const me = r[1] === 'KP'; return { name: me ? profile.displayName : r[0], init: me ? profile.initials : r[1], av: me ? profile.avatar : '', xp: me ? { 'This week': game.week, 'This month': game.month, 'All time': game.xp }[tab] : Math.round(r[2] * k), streak: me ? game.streak.current : r[3], me }; }).sort((a, b) => b.xp - a.xp).map((r, i) => ({ ...r, rank: i + 1 }));
   const me = all.find(r => r.me); const above = all[me.rank - 2]; const top = all.slice(0, 3);
   return <><Head title="Leaderboards" sub="See how your learning journey compares with others." action={<div className="segmented" role="group" aria-label="Who to show">{['Everyone', 'Friends'].map(t => <button key={t} className={scope === t ? 'selected' : ''} onClick={() => setScope(t)}>{t}</button>)}</div>} />
     <div className="tabs">{['This week', 'This month', 'All time'].map(t => <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
     <div className="stats-grid compact"><Stat label="Your rank" value={'#' + me.rank} note={`of ${all.length} students`} icon={Trophy} tone="orange" /><Stat label="Your XP" value={me.xp.toLocaleString()} note={tab} icon={Zap} /><Stat label={above ? 'To next rank' : 'Position'} value={above ? (above.xp - me.xp).toLocaleString() + ' XP' : 'Top spot'} note={above ? `Behind ${above.name}` : 'Keep it up'} icon={Target} tone="green" /></div>
     <div className="podium">{[1, 0, 2].map(i => top[i] && <div key={i} className={`pod p${i + 1} ${top[i].me ? 'me' : ''}`}>{i === 0 && <Crown size={22} />}<div className="avatar lg">{top[i].av ? <img src={top[i].av} alt="" /> : top[i].init}</div><b>{top[i].name}{top[i].me ? ' (you)' : ''}</b><span>{top[i].xp.toLocaleString()} XP</span><div className="pod-step">{i + 1}</div></div>)}</div>
     {all.length > 3 && <div className="panel lb-list"><div className="lb-row lb-head"><span>Rank</span><span>Student</span><span>Streak</span><span>XP</span></div>{all.slice(3).map(r => <div className={`lb-row ${r.me ? 'me' : ''}`} key={r.rank}><b>{r.rank}</b><span className="lb-user"><span className="avatar sm">{r.av ? <img src={r.av} alt="" /> : r.init}</span>{r.name}{r.me ? ' (you)' : ''}</span><span><Flame size={14} /> {r.streak}d</span><b>{r.xp.toLocaleString()}</b></div>)}</div>}</>;
-}
-export function Achievements() {
-  const badges = useMyBadges(); const got = badges.filter(b => b[3]).length; // earned from your real activity (Patch 19)
-  return <><Head title="Achievements & Badges" sub="Collect badges as you build better learning habits." /><div className="stats-grid compact"><Stat label="Earned" value={String(got)} note="Badges collected" icon={Medal} tone="orange" /><Stat label="Locked" value={String(badges.length - got)} note="Still to unlock" icon={Lock} /><Stat label="Progress" value={Math.round(got / badges.length * 100) + '%'} note="Of all badges" icon={Trophy} tone="green" /></div>
-    <div className="friend-grid">{badges.map(([n, d, ic, on]) => { const I = ICONS[ic]; return <div className="panel friend-card" key={n} style={on ? undefined : { opacity: .6 }}><div className={`stat-icon ${on ? 'orange' : ''}`} style={{ margin: '0 auto 10px' }}>{on ? <I size={18} /> : <Lock size={18} />}</div><h3>{n}</h3><p>{d}</p><span className="friend-status">{on ? 'Earned' : 'Locked'}</span></div>; })}</div></>;
 }
 export function Analytics() {
   // Real numbers from Study Progress (Patch 15) once there is activity; until then the sample values are shown and labelled as such.
