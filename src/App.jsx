@@ -26,6 +26,8 @@ import Feed from './feed.jsx';
 import { StudyRooms, RoomDetail } from './rooms.jsx';
 import { Achievements } from './gamification.jsx';
 import { Planner as ProductivityPlanner, StudyCalendar, Notifications as ProductivityNotifications, SettingsPage as ProductivitySettings, DashboardExtras } from './productivity.jsx';
+import { AdminDashboardV7, AdminUsersV7, AdminModerationV7, AdminLogsV7, AdminAnalyticsV7, AdminAccessDenied } from './adminPhase7.jsx';
+import { isDemoAdmin } from './adminPhase7Store.js';
 import './productivity.css';
 import { LeaderboardsV2, Missions, StreakPage } from './gamificationPhase5.jsx';
 import './gamificationPhase5.css';
@@ -85,6 +87,7 @@ const adminNav = [
   ['User Management','/admin/users',Users],
   ['Content Moderation','/admin/moderation',ShieldCheck],
   ['Activity Logs','/admin/logs',ClipboardList],
+  ['Platform Analytics','/admin/analytics',ChartNoAxesCombined],
 ];
 const titleMap = {
   '/dashboard':'Dashboard','/materials':'My Materials','/materials/upload':'Upload Materials',
@@ -95,7 +98,7 @@ const titleMap = {
   '/missions':'Challenges & Missions','/streaks':'Study Streaks',
   '/study-planner':'Study Planner','/study-calendar':'Study Calendar','/settings':'Settings','/notifications':'Notifications',
   '/admin/dashboard':'Admin Dashboard','/admin/users':'User Management','/admin/moderation':'Content Moderation',
-  '/admin/logs':'Activity Logs'
+  '/admin/logs':'Activity Logs','/admin/analytics':'Platform Analytics'
 };
 function Logo({small=false}) { return <div className="brand"><img className={`brand-logo${small?' small':''}`} src="/logo.png" alt={small?'KNOXIA':''} width={small?28:36} height={small?28:36}/>{!small && <span>KNOXIA</span>}</div>; }
 function Avatar({initials='KP',size='md',online=false,src=''}) { return <div className={`avatar ${size}`}>{src?<img src={src} alt=""/>:initials}{online&&<i/>}</div>; }
@@ -406,7 +409,7 @@ function RouteEffects() {
 export default function App() { return <><RouteEffects/><AppRoutes/></>; }
 
 function AppRoutes() {
- const loc=useLocation(); const path=loc.pathname; const {isAuthenticated}=useAuth();
+ const loc=useLocation(); const path=loc.pathname; const {isAuthenticated}=useAuth(); const useProfileForAdmin=useProfile();
  // Route protection (demo): see src/session.js for which paths are public, guest-only or private.
  if(normalizePath(path)!==path) return <Navigate to={normalizePath(path)+loc.search+loc.hash} replace/>;
  const access=accessFor(path);
@@ -425,7 +428,7 @@ function AppRoutes() {
    <Route path="/feed" element={<Feed/>}/><Route path="/friends" element={<Friends/>}/><Route path="/profile" element={<Profile/>}/><Route path="/profile/:username" element={<Profile/>}/><Route path="/study-rooms" element={<StudyRooms/>}/><Route path="/study-rooms/:id" element={<RoomDetail/>}/><Route path="/study-rooms/:id/quiz/:activityId" element={<GroupQuizPlay/>}/><Route path="/challenges" element={<Challenges/>}/><Route path="/challenges/:id/play" element={<ChallengePlay/>}/>
    <Route path="/progress" element={<StudyProgress/>}/><Route path="/leaderboards" element={<LeaderboardsV2/>}/><Route path="/achievements" element={<Achievements/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/study-planner" element={<ProductivityPlanner/>}/><Route path="/study-calendar" element={<StudyCalendar/>}/><Route path="/missions" element={<Missions/>}/><Route path="/streaks" element={<StreakPage/>}/>
    <Route path="/settings" element={<ProductivitySettings/>}/><Route path="/notifications" element={<ProductivityNotifications/>}/>
-   <Route path="/admin/dashboard" element={<AdminDashboard/>}/><Route path="/admin/users" element={<AdminUsers/>}/><Route path="/admin/moderation" element={<Moderation/>}/><Route path="/admin/logs" element={<Logs/>}/>
+   <Route path="/admin/dashboard" element={isDemoAdmin(useProfileForAdmin) ? <AdminDashboardV7/> : <AdminAccessDenied/>}/><Route path="/admin/users" element={isDemoAdmin(useProfileForAdmin) ? <AdminUsersV7/> : <AdminAccessDenied/>}/><Route path="/admin/moderation" element={isDemoAdmin(useProfileForAdmin) ? <AdminModerationV7/> : <AdminAccessDenied/>}/><Route path="/admin/logs" element={isDemoAdmin(useProfileForAdmin) ? <AdminLogsV7/> : <AdminAccessDenied/>}/><Route path="/admin/analytics" element={isDemoAdmin(useProfileForAdmin) ? <AdminAnalyticsV7/> : <AdminAccessDenied/>}/>
    <Route path="*" element={<NotFound/>}/>
  </Routes></div></Shell>;
 }
