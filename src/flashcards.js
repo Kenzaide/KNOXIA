@@ -1,0 +1,112 @@
+/**
+ * Flashcards (Patch 11): the rules for decks and cards, plus `useDeckLibrary`, the one place that
+ * changes the saved decks.
+ *
+ * A deck is { id, title, subject, tone, created, updated, cards: [{ id, front, back, known }] }.
+ * `known` is the result of the last study session for that card: true = "I knew it", false = "Still
+ * learning". A deck's mastery is the share of its cards that are known. Editing a card's text resets
+ * its `known` flag, because what you learned may no longer be what the card says.
+ *
+ * FRONTEND-ONLY DEMO: decks live in this browser (storage.js). A backend would own them later.
+ */
+import { useMemo } from 'react';
+import { useUserData } from './storage.js';
+import { DECKS } from './data.js';
+
+export const KEY = 'knoxia-decks';
+export const MAX_DECKS = 50;
+export const MAX_CARDS = 500;
+export const MAX_DECK_TITLE = 80;
+export const MAX_SUBJECT = 40;
+export const MAX_FRONT = 300;
+export const MAX_BACK = 600;
+export const TONES = ['blue', 'purple', 'green', 'orange'];
+
+export const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+
+/** One-line text: single spaces, length-limited. */
+export const cleanLine = (s, max) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, max);
+/** Card text keeps its line breaks but not stray spaces or runs of blank lines. */
+export const cleanSide = (s, max) => String(s == null ? '' : s).replace(/\r\n?/g, '\n').replace(/[^\S\n]+/g, ' ').replace(/ ?\n ?/g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, max);
+export const cleanDeckTitle = (s) => cleanLine(s, MAX_DECK_TITLE);
+
+/** Returns an error message, or '' when the card is fine. */
+export function validateCard(front, back) {
+  const f = cleanSide(front, 1e5), b = cleanSide(back, 1e5);
+  if (!f) return 'Write the question or term for the front of the card.';
+  if (!b) return 'Write the answer for the back of the card.';
+  if (f.length > MAX_FRONT) return `The front can be up to ${MAX_FRONT} characters.`;
+  if (b.length > MAX_BACK) return `The back can be up to ${MAX_BACK} characters.`;
+  return '';
+}
+
+export const makeCard = (front, back) => ({ id: uid(), front: cleanSide(front, MAX_FRONT), back: cleanSide(back, MAX_BACK), known: false });
+export const makeDeck = (title, subject, index = 0) => {
+  const now = new Date().toISOString();
+  return { id: uid(), title: cleanDeckTitle(title), subject: cleanLine(subject, MAX_SUBJECT), tone: TONES[index % TONES.length], created: now, updated: now, cards: [] };
+};
+
+/* ---------- progress ---------- */
+export const knownCount = (d) => d.cards.filter((c) => c.known).length;
+export const masteryPct = (d) => (d.cards.length ? Math.round((knownCount(d) / d.cards.length) * 100) : 0);
+
+/** Fisher-Yates. Returns a new array; `rnd` can be swapped out in tests. */
+export function shuffle(list, rnd = Math.random) {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+/** The card ids for one study session. Shuffling never changes the saved order of the deck. */
+export const sessionOrder = (cards, { shuffled = false, only } = {}) => {
+  const ids = cards.filter((c) => !only || only.has(c.id)).map((c) => c.id);
+  return shuffled ? shuffle(ids) : ids;
+};
+
+/* ---------- the built-in sample decks, shown until the student changes anything ---------- */
+const SUBJECTS = { 1: 'Artificial Intelligence', 2: 'Computer Science', 3: 'Cybersecurity', 4: 'Computer Systems' };
+const SEED_DATE = '2026-11-01T08:00:00.000Z';
+const SEED = DECKS.map((d, i) => ({
+  id: d.id, title: d.title, subject: SUBJECTS[d.id] || '', tone: TONES[i % TONES.length], created: SEED_DATE, updated: SEED_DATE,
+  cards: d.cards.map(([front, back], k) => ({ id: `${d.id}-${k + 1}`, front, back, known: false })),
+}));
+
+/** Old saved data may be missing fields: read every deck as a complete one. */
+const normalize = (d) => ({ ...d, cards: Array.isArray(d.cards) ? d.cards : [], subject: d.subject || '', tone: TONES.includes(d.tone) ? d.tone : 'blue' });
+
+/** The saved decks and every change to them. */
+export function useDeckLibrary() {
+  const [saved, setDecks] = useUserData(KEY, SEED);
+  return useMemo(() => {
+    const decks = saved.map(normalize);
+    const patch = (id, fn) => setDecks((a) => a.map((d) => (d.id === id ? { ...fn(normalize(d)), updated: new Date().toISOString() } : d)));
+    return {
+      decks,
+      /** Returns the new deck's id, or '' when the title is empty or the deck limit is reached. */
+      create({ title, subject }) {
+        if (!cleanDeckTitle(title) || saved.length >= MAX_DECKS) return '';
+        const deck = makeDeck(title, subject, saved.length); setDecks((a) => [deck, ...a]); return deck.id;
+      },
+      /** Renames / re-subjects a deck. Returns false when the new title is empty. */
+      details(id, { title, subject }) {
+        if (!cleanDeckTitle(title)) return false;
+        patch(id, (d) => ({ ...d, title: cleanDeckTitle(title), subject: cleanLine(subject, MAX_SUBJECT) })); return true;
+      },
+      remove: (id) => setDecks((a) => a.filter((d) => d.id !== id)),
+      /** Returns an error message, or '' when the card was added. */
+      addCard(id, front, back) {
+        const err = validateCard(front, back); if (err) return err;
+        const deck = saved.find((d) => d.id === id); if (deck && (deck.cards || []).length >= MAX_CARDS) return `A deck can hold up to ${MAX_CARDS} cards.`;
+        patch(id, (d) => ({ ...d, cards: [...d.cards, makeCard(front, back)] })); return '';
+      },
+      /** Returns an error message, or '' when the card was saved. A card whose text changed starts over as "still learning". */
+      editCard(id, cardId, front, back) {
+        const err = validateCard(front, back); if (err) return err;
+        patch(id, (d) => ({ ...d, cards: d.cards.map((c) => { if (c.id !== cardId) return c; const f = cleanSide(front, MAX_FRONT), b = cleanSide(back, MAX_BACK); return { ...c, front: f, back: b, known: f === c.front && b === c.back ? c.known : false }; }) })); return '';
+      },
+      removeCard: (id, cardId) => patch(id, (d) => ({ ...d, cards: d.cards.filter((c) => c.id !== cardId) })),
+      /** Saves study results: `marks` is { [cardId]: true | false }. */
+      mark: (id, marks) => patch(id, (d) => ({ ...d, cards: d.cards.map((c) => (c.id in marks ? { ...c, known: !!marks[c.id] } : c)) })),
+      resetProgress: (id) => patch(id, (d) => ({ ...d, cards: d.cards.map((c) => ({ ...c, known: false })) })),
+    };
+  }, [saved, setDecks]);
+}

@@ -7,7 +7,7 @@ import { useProfile } from './accounts.js';
 import { ProfileEditor } from './profile.jsx';
 import { ConfirmDialog, PromptDialog } from './ui.jsx';
 import { MAX_TITLE, MAX_FOLDER, cleanTitle, folderOf, folderCounts, resolveFolder, updatedAt, useReviewerLibrary } from './reviewerLib.js';
-import { DECKS, BANK, ROOMS, CHALLENGES, BOARD, BADGES, useNotes, useReviewers, useAttempts, useRooms, useChallenges, usePlan, useSettings, useReports, useLogs, pushLS, logEvent } from './data.js';
+import { BANK, ROOMS, CHALLENGES, BOARD, BADGES, useNotes, useReviewers, useAttempts, useRooms, useChallenges, usePlan, useSettings, useReports, useLogs, pushLS, logEvent } from './data.js';
 
 const Btn = ({ children, v = 'primary', icon: I, ...p }) => <button type="button" className={`btn ${v}`} {...p}>{I && <I size={16} />}<span>{children}</span></button>;
 const Head = ({ title, sub, action }) => <div className="section-title"><div><h2>{title}</h2>{sub && <p>{sub}</p>}</div>{action}</div>;
@@ -46,25 +46,14 @@ export function ReviewerEditor() {
       <Btn v="outline" icon={Trash2} onClick={() => setDlg('delete')}>Delete</Btn>
       <Btn icon={Check} onClick={save}>Save changes</Btn></div>} />
     <div className="builder-layout"><div className="panel builder-form"><label className="field-label" htmlFor="rv-edit-title">Title</label><input id="rv-edit-title" className="field" maxLength={MAX_TITLE} value={t} onChange={e => setT(e.target.value)} /><label className="field-label" htmlFor="rv-edit-body">Content</label><textarea id="rv-edit-body" className="field textarea" style={{ height: 380 }} value={b} onChange={e => setB(e.target.value)} />{dirty && <p className="rv-hint" role="status">You have unsaved changes.</p>}<p className="muted">{r.generated ? 'Built by the KNOXIA demo generator from your material using simple text rules, not a real AI model. Check it against your source and edit anything that needs fixing.' : 'Starter content only. Connect your AI service to fill this in automatically.'}</p></div>
-      <div className="panel"><h3>Study with this reviewer</h3><p className="muted">Turn your notes into practice.</p><div className="friend-buttons" style={{ flexDirection: 'column', alignItems: 'stretch', marginTop: 12 }}><Btn v="soft" icon={Layers} onClick={() => nav('/flashcards')}>Open flashcards</Btn><Btn v="soft" icon={BookOpen} onClick={() => nav('/quizzes/create')}>Create a quiz</Btn><Btn v="soft" icon={Sparkles} onClick={() => nav('/study-companion')}>Ask the companion</Btn><Btn v="outline" icon={ArrowUpRight} onClick={() => nav('/reviewers')}>All my reviewers</Btn></div></div></div>
+      <div className="panel"><h3>Study with this reviewer</h3><p className="muted">Turn your notes into practice.</p><div className="friend-buttons" style={{ flexDirection: 'column', alignItems: 'stretch', marginTop: 12 }}><Btn v="soft" icon={Layers} onClick={() => nav('/flashcards')}>Open flashcards</Btn><Btn v="soft" icon={BookOpen} onClick={() => nav('/quizzes/create?reviewer=' + encodeURIComponent(r.id))}>Create a quiz</Btn><Btn v="soft" icon={Sparkles} onClick={() => nav('/study-companion')}>Ask the companion</Btn><Btn v="outline" icon={ArrowUpRight} onClick={() => nav('/reviewers')}>All my reviewers</Btn></div></div></div>
     {dlg === 'move' && <PromptDialog title={`Move “${r.title}”`} body="Type a folder name, or pick one below. Leave it empty to take it out of any folder." label="Folder name" value={fo} placeholder="e.g. Midterms" maxLength={MAX_FOLDER} suggestions={folderCounts(lib.items).map(x => x.name)} allowEmpty confirmLabel="Move" onSubmit={move} onCancel={() => setDlg(null)} />}
     {dlg === 'delete' && <ConfirmDialog icon={Trash2} title={`Delete “${r.title}”?`} body="This permanently removes the reviewer and anything you edited in it. This can't be undone." confirmLabel="Delete" onCancel={() => setDlg(null)} onConfirm={del} />}</>;
 }
 
-/* ---------- Flashcards ---------- */
-export function FlashStudy() {
-  const { id } = useParams(); const nav = useNavigate(); const d = DECKS.find(x => x.id === id) || DECKS[0];
-  const [i, setI] = useState(0); const [flip, setFlip] = useState(false); const [known, setKnown] = useState(0); const n = d.cards.length;
-  const next = k => { if (k) setKnown(x => x + 1); setFlip(false); setI(x => x + 1); };
-  if (i >= n) return <><Head title="Flashcard Study Session" sub={d.title} /><div className="study-center"><div className="panel study-card"><small>SESSION COMPLETE</small><h2>You knew {known} of {n} cards</h2><p className="muted">Cards you missed will come back in your next session.</p><Btn icon={RotateCcw} onClick={() => { setI(0); setKnown(0); }}>Study again</Btn> <Btn v="outline" onClick={() => nav('/flashcards')}>Back to library</Btn></div></div></>;
-  return <><Head title="Flashcard Study Session" sub={d.title} /><div className="study-center"><div className="study-progress"><span>Card {i + 1} of {n}</span><span>{Math.round(i / n * 100)}% complete</span></div><div className="progress-track"><span style={{ width: i / n * 100 + '%' }} /></div>
-    <div className="panel study-card"><small>FLASHCARD · {d.title}</small><h2>{d.cards[i][0]}</h2>{flip && <p className="answer-reveal">{d.cards[i][1]}</p>}
-      {!flip ? <Btn onClick={() => setFlip(true)}>Reveal answer</Btn> : <div className="friend-buttons"><Btn v="outline" onClick={() => next(false)}>Still learning</Btn><Btn icon={Check} onClick={() => next(true)}>I knew it</Btn></div>}</div>
-    <div className="study-footer"><span>Be honest. It helps you review the right cards.</span><Btn v="outline" onClick={() => nav('/flashcards')}>Exit session</Btn></div></div></>;
-}
-
 /* ---------- Quizzes ---------- */
-function QuizRunner({ qs, label, onFinish }) {
+// The runner is shared: Quiz Challenges use it here and quizzes.jsx (Patch 12) uses it for saved quizzes.
+export function QuizRunner({ qs, label, onFinish }) {
   const nav = useNavigate(); const [i, setI] = useState(0); const [ans, setAns] = useState([]); const q = qs[i]; const last = i === qs.length - 1;
   const left = qs.filter((_, k) => ans[k] === undefined).length;
   return <div className="quiz-wrap"><div className="quiz-top"><span className="post-tags"><span>{label}</span></span><span className="muted">{qs.length - left} of {qs.length} answered</span></div><div className="progress-track"><span style={{ width: (qs.length - left) / qs.length * 100 + '%' }} /></div>
@@ -72,25 +61,6 @@ function QuizRunner({ qs, label, onFinish }) {
     <div className="panel quiz-card"><small>Question {i + 1} of {qs.length}</small><h2>{q[0]}</h2>{q[1].map((o, k) => <button key={k} className={`answer-option ${ans[i] === k ? 'picked' : ''}`} onClick={() => setAns(a => { const b = [...a]; b[i] = k; return b; })}><span>{'ABCD'[k]}</span>{o}</button>)}</div>
     <div className="quiz-nav"><Btn v="outline" disabled={i === 0} onClick={() => setI(i - 1)}>Previous</Btn><span className="muted">{left ? `${left} left to answer` : 'All answered'}</span>{last ? <Btn disabled={left > 0} onClick={() => onFinish(qs.map((_, k) => ans[k]))}>Submit quiz</Btn> : <Btn onClick={() => setI(i + 1)}>Next</Btn>}</div>
     <div style={{ textAlign: 'center', marginTop: 12 }}><button className="link-btn" onClick={() => nav('/dashboard')}>Exit quiz</button></div></div>;
-}
-export function RecentAttempts() {
-  const [att] = useAttempts();
-  return <div className="panel list-panel" style={{ marginTop: 17 }}><div className="list-head"><h3>Recent attempts</h3></div>{att.length === 0 && <p className="muted">Your quiz results will appear here.</p>}{att.slice(0, 5).map(a => <Row key={a.id} icon={Target} tone={a.score / a.n >= .8 ? 'green' : 'orange'} title={`${a.score} / ${a.n} correct`} sub={when(a.date)}><Link className="link-btn" to={'/quizzes/attempts/' + a.id}>Review <ArrowUpRight size={16} /></Link></Row>)}</div>;
-}
-export function QuizTake() {
-  const { id } = useParams(); const nav = useNavigate(); const n = Math.min(parseInt(id.split('-')[1]) || 5, BANK.length); const qs = BANK.slice(0, n);
-  const finish = ans => { const a = { id: String(Date.now()), n, ans, score: ans.filter((x, i) => x === qs[i][2]).length, date: new Date().toISOString() }; pushLS('knoxia-attempts', a); logEvent('Quiz submitted by Kenneth Punla'); nav('/quizzes/attempts/' + a.id); };
-  return <><Head title="Take Quiz" sub="Focus on understanding, one question at a time." /><QuizRunner qs={qs} label="PRACTICE QUIZ" onFinish={finish} /></>;
-}
-export function QuizResults() {
-  const { id } = useParams(); const nav = useNavigate(); const [att] = useAttempts(); const a = att.find(x => x.id === id);
-  if (!a) return <Empty icon={BookOpen} title="Attempt not found" text="Take a quiz to see your results here." action={<Btn onClick={() => nav('/quizzes/create')}>Create a quiz</Btn>} />;
-  const pct = Math.round(a.score / a.n * 100); const qs = BANK.slice(0, a.n);
-  return <><Head title="Quiz Results / Review" sub={`Taken ${when(a.date)}`} />
-    <div className="panel result-hero"><div className="score-ring" style={{ '--pct': pct }}><b>{pct}%</b></div><div style={{ flex: 1, minWidth: 220 }}><h3 style={{ fontSize: 20, margin: '0 0 4px' }}>{pct >= 80 ? 'Great work!' : pct >= 50 ? 'Good effort. Review the misses below.' : 'Keep practicing. Review the answers below.'}</h3><p className="muted">You got {a.score} of {a.n} questions right{a.n - a.score ? `, and ${a.n - a.score} to review` : ''}.</p><div className="head-actions" style={{ justifyContent: 'flex-start' }}><Btn icon={RotateCcw} onClick={() => nav('/quizzes/ml-' + a.n + '/take')}>Retake quiz</Btn><Btn v="outline" onClick={() => nav('/quizzes/create')}>New quiz</Btn></div></div></div>
-    <h3 style={{ margin: '24px 0 12px' }}>Answer review</h3>
-    <div style={{ display: 'grid', gap: 13 }}>{qs.map((q, i) => { const ok = a.ans[i] === q[2]; return <div className="panel" key={i}><div className="deck-bottom"><b>{i + 1}. {q[0]}</b><span className={`status-pill ${ok ? 'active' : 'wrong'}`}>{ok ? 'Correct' : 'Incorrect'}</span></div>
-      <ul className="opts">{q[1].map((o, k) => <li key={k} className={k === q[2] ? 'right' : k === a.ans[i] ? 'wrong' : ''}><span>{'ABCD'[k]}</span>{o}{(k === q[2] || k === a.ans[i]) && <em>{k === q[2] ? (k === a.ans[i] ? 'Your answer' : 'Correct answer') : 'Your answer'}</em>}</li>)}</ul><p className="muted">{q[3]}</p></div>; })}</div></>;
 }
 
 /* ---------- Study rooms ---------- */

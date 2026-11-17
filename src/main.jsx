@@ -6,6 +6,7 @@ import { MaterialsProvider } from './materials.jsx';
 import './index.css';
 import './profile.css'; // loaded after index.css so its rules win ties
 import './reviewer.css';
+import './fc.css'; // flashcards and quizzes
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode><BrowserRouter><MaterialsProvider><App /></MaterialsProvider></BrowserRouter></React.StrictMode>
