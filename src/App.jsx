@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Routes, Route, NavLink, Link, Navigate, useLocation, useNavigate, useNavigationType, useParams } from 'react-router-dom';
 import { useMaterials, toast, colorOf, fmtSize, fmtDate, SUBJECTS, MAX_MB, MAX_BATCH, validateFile, fileExt, parseTags } from './materials.jsx';
 import { saveFile, getFile, hashFile, newId } from './files.js';
+import { uploadMaterial, materialDownloadUrl } from './lib/learningApi.js';
 import { ReviewerEditor, SavedReviewers, Challenges, ChallengePlay, Leaderboards, Analytics, Planner, Notifications, SettingsPage, Moderation, Logs } from './pages.jsx';
 import { useNotes } from './data.js';
 import { authPage } from './auth.jsx';
@@ -266,10 +267,10 @@ function UploadPage() { const go=useGo();
   const ready=queue.filter(x=>x.state==='ready'||(x.state==='duplicate'&&x.include));
   const start=async()=>{ if(!ready.length||busy)return; setBusy(true); let ok=0,failed=0,last=null;
     for(const r of ready){ patch(r.key,{state:'uploading',progress:25});
-      try{ const id=newId(); await saveFile(id,r.file); patch(r.key,{progress:80});
-        last=add({id,name:(r.title.trim()||r.file.name).slice(0,120),fileName:r.file.name,type:fileExt(r.file.name).toUpperCase(),size:fmtSize(r.file.size),bytes:r.file.size,subject,tags:parseTags(tags),desc:desc.trim(),hash:r.hash});
+      try{ const uploaded=await uploadMaterial(r.file,{title:(r.title.trim()||r.file.name).slice(0,120),description:desc.trim()}); patch(r.key,{progress:80});
+        last=add({id:uploaded.id,name:uploaded.title,fileName:r.file.name,type:fileExt(r.file.name).toUpperCase(),size:fmtSize(r.file.size),bytes:r.file.size,subject,tags:parseTags(tags),desc:desc.trim(),hash:r.hash,storagePath:uploaded.storage_path,uploaded:uploaded.created_at});
         patch(r.key,{state:'done',progress:100}); ok++;
-      }catch(e){ failed++; patch(r.key,{state:'failed',error:e&&e.name==='QuotaExceededError'?'Your browser is out of storage space. Delete a material and try again.':'This file could not be saved. Try again.'}); } }
+      }catch(e){ failed++; patch(r.key,{state:'failed',error:e?.message||'Upload failed. Please try again.'}); } }
     if(alive.current) setBusy(false);
     if(ok) toast(ok===1?'Material uploaded':`${ok} materials uploaded`);
     if(ok&&!failed&&alive.current) go(ok===1&&queue.length===1?'/materials/'+last.id:'/materials');
