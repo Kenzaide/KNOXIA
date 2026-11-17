@@ -9,7 +9,7 @@
  *
  * FRONTEND-ONLY DEMO: decks live in this browser (storage.js). A backend would own them later.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useUserData } from './storage.js';
 import { DECKS } from './data.js';
 
@@ -75,7 +75,13 @@ const normalize = (d) => ({ ...d, cards: Array.isArray(d.cards) ? d.cards : [], 
 
 /** The saved decks and every change to them. */
 export function useDeckLibrary() {
-  const [saved, setDecks] = useUserData(KEY, SEED);
+  const [saved, setDecks] = useUserData(KEY, []);
+  // Remove the four built-in starter decks from existing accounts as well.
+  // Only exact untouched seed decks are removed; user-created or edited decks remain.
+  useEffect(() => {
+    if (!saved.some((d) => SEED.some((seed) => seed.id === d.id && seed.title === d.title && seed.created === d.created && JSON.stringify(seed.cards) === JSON.stringify(d.cards)))) return;
+    setDecks((decks) => decks.filter((d) => !SEED.some((seed) => seed.id === d.id && seed.title === d.title && seed.created === d.created && JSON.stringify(seed.cards) === JSON.stringify(d.cards))));
+  }, [saved, setDecks]);
   return useMemo(() => {
     const decks = saved.map(normalize);
     const patch = (id, fn) => setDecks((a) => a.map((d) => (d.id === id ? { ...fn(normalize(d)), updated: new Date().toISOString() } : d)));
