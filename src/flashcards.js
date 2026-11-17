@@ -153,16 +153,24 @@ export function useDeckLibrary() {
   };
   return useMemo(() => ({
     decks: saved, loading, error,
-    create({ title, subject }) {
-      if (loading || error || !cleanDeckTitle(title) || snapshot.current.length >= MAX_DECKS) return '';
+    async create({ title, subject }) {
+      if (loading) throw new Error('Flashcards are still loading. Please try again.');
+      if (error) throw new Error(error);
+      if (!owner || !supabase) throw new Error('Please sign in again.');
+      if (!cleanDeckTitle(title)) throw new Error('Give your deck a name.');
+      if (snapshot.current.length >= MAX_DECKS) throw new Error(`You can keep up to ${MAX_DECKS} decks.`);
       const deck = makeDeck(title, subject, snapshot.current.length);
-      snapshot.current = [deck, ...snapshot.current]; setDecks(snapshot.current);
-      write(async () => {
-        const { error } = await supabase.from('flashcard_decks').insert({
-          id: deck.id, owner_id: owner, title: deck.title, subject: deck.subject,
-        });
-        if (error) throw error;
+      // Save before navigating. The editor mounts its own hook and reads from Supabase;
+      // an optimistic insert followed by immediate navigation races that initial read.
+      const { error: insertError } = await supabase.from('flashcard_decks').insert({
+        id: deck.id, owner_id: owner, title: deck.title, subject: deck.subject,
       });
+      if (insertError) {
+        setError('Could not save flashcards: ' + insertError.message);
+        throw insertError;
+      }
+      snapshot.current = [deck, ...snapshot.current];
+      setDecks(snapshot.current);
       return deck.id;
     },
     details(id, { title, subject }) {

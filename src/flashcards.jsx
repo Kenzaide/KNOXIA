@@ -25,16 +25,25 @@ const subjectOptions = (current) => [...new Set([...SUBJECTS, current].filter(Bo
 /* ---------- Library ---------- */
 export function FlashcardLibrary() {
   const nav = useNavigate(); const lib = useDeckLibrary(); const { decks } = lib;
-  const [creating, setCreating] = useState(false); const [title, setTitle] = useState(''); const [subject, setSubject] = useState(SUBJECTS[0]); const [err, setErr] = useState('');
+  const [creating, setCreating] = useState(false); const [saving, setSaving] = useState(false); const [title, setTitle] = useState(''); const [subject, setSubject] = useState(SUBJECTS[0]); const [err, setErr] = useState('');
   const [del, setDel] = useState(null);
   const cards = decks.reduce((t, d) => t + d.cards.length, 0); const known = decks.reduce((t, d) => t + knownCount(d), 0);
 
-  const create = (e) => {
+  const create = async (e) => {
     e.preventDefault();
+    if (saving) return;
     if (!cleanDeckTitle(title)) { setErr('Give your deck a name.'); return; }
-    const id = lib.create({ title, subject });
-    if (!id) { setErr(`You can keep up to ${MAX_DECKS} decks. Delete one to make room.`); return; }
-    toast('Deck created'); nav('/flashcards/' + id);
+    setSaving(true);
+    setErr('');
+    try {
+      const id = await lib.create({ title, subject });
+      toast('Deck created');
+      nav('/flashcards/' + id);
+    } catch (error) {
+      setErr(error?.message || 'Could not create deck. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
   const confirmDelete = () => { const d = del; setDel(null); lib.remove(d.id); logEvent(`Flashcard deck deleted: ${d.title.slice(0, 80)}`); toast('Deck deleted'); };
 
