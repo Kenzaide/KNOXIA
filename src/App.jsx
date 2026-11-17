@@ -111,7 +111,7 @@ function SideLink({to,match,not,Icon,name,close,badge=0}) {
   return <Link viewTransition to={to} onClick={close} aria-current={on?'page':undefined} className={`nav-link${on?' active':''}`}><Icon size={18}/><span>{name}</span>{badge>0&&<em aria-label={`${badge} pending`}>{badge>99?'99+':badge}</em>}</Link>;
 }
 function Sidebar({admin=false,close}) {
-  const [confirming,setConfirming]=useState(false); const nav=useNavigate(); const {logout}=useAuth(); const me=useProfile(); const requests=useIncomingCount();
+  const [confirming,setConfirming]=useState(false); const nav=useNavigate(); const {logout,role}=useAuth(); const me=useProfile(); const requests=useIncomingCount();
   // Navigate and clear the session in the same event so the login page shows the "logged out" notice, not a redirect.
   const signOut=()=>{close&&close(); nav('/login',{replace:true,state:{notice:'logged-out'}}); logout()};
   return <aside className="sidebar">
@@ -123,7 +123,7 @@ function Sidebar({admin=false,close}) {
     </nav>
     <div className="sidebar-bottom">
       
-      {!admin && isDemoAdmin(me) && <SideLink to="/admin/dashboard" Icon={ShieldCheck} name="Admin Dashboard" close={close}/>}
+      {!admin && role === 'admin' && <SideLink to="/admin/dashboard" Icon={ShieldCheck} name="Admin Dashboard" close={close}/>}
       {admin && <SideLink to="/dashboard" Icon={LayoutDashboard} name="Student View" close={close}/>}
       <SideLink to="/settings" Icon={Settings} name="Settings" close={close}/>
       <button type="button" className="nav-link logout" onClick={()=>setConfirming(true)}><LogOut size={18}/><span>Log out</span></button>
@@ -411,11 +411,12 @@ function RouteEffects() {
 export default function App() { return <><RouteEffects/><AppRoutes/></>; }
 
 function AppRoutes() {
- const loc=useLocation(); const path=loc.pathname; const {isAuthenticated}=useAuth(); const useProfileForAdmin=useProfile();
+ const loc=useLocation(); const path=loc.pathname; const {isAuthenticated,role,ready}=useAuth(); const useProfileForAdmin=useProfile();
  // Route protection (demo): see src/session.js for which paths are public, guest-only or private.
  if(normalizePath(path)!==path) return <Navigate to={normalizePath(path)+loc.search+loc.hash} replace/>;
  const access=accessFor(path);
- if(access==='guest'&&isAuthenticated) return <Navigate to={safeRedirect(loc.state&&loc.state.from, isDemoAdmin(useProfileForAdmin) ? '/admin/dashboard' : '/dashboard')} replace/>;
+ if(!ready) return <div className="auth-screen" role="status">Loading KNOXIA session…</div>;
+ if(access==='guest'&&isAuthenticated) return <Navigate to={safeRedirect(loc.state&&loc.state.from, role === 'admin' ? '/admin/dashboard' : '/dashboard')} replace/>;
  if(access==='private'&&!isAuthenticated) return <Navigate to="/login" replace state={{from:{pathname:path,search:loc.search,hash:loc.hash}}}/>;
  const ap=authPage(path); if(ap) return ap;
  if(path==='/') return <Landing/>;
@@ -430,7 +431,7 @@ function AppRoutes() {
    <Route path="/feed" element={<Feed/>}/><Route path="/friends" element={<Friends/>}/><Route path="/profile" element={<Profile/>}/><Route path="/profile/:username" element={<Profile/>}/><Route path="/study-rooms" element={<StudyRooms/>}/><Route path="/study-rooms/:id" element={<RoomDetail/>}/><Route path="/study-rooms/:id/quiz/:activityId" element={<GroupQuizPlay/>}/><Route path="/challenges" element={<Challenges/>}/><Route path="/challenges/:id/play" element={<ChallengePlay/>}/>
    <Route path="/progress" element={<StudyProgress/>}/><Route path="/leaderboards" element={<LeaderboardsV2/>}/><Route path="/achievements" element={<Achievements/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/study-planner" element={<ProductivityPlanner/>}/><Route path="/study-calendar" element={<StudyCalendar/>}/><Route path="/missions" element={<Missions/>}/><Route path="/streaks" element={<StreakPage/>}/>
    <Route path="/settings" element={<ProductivitySettings/>}/><Route path="/notifications" element={<ProductivityNotifications/>}/>
-   <Route path="/admin/dashboard" element={isDemoAdmin(useProfileForAdmin) ? <AdminDashboardV7/> : <AdminAccessDenied/>}/><Route path="/admin/users" element={isDemoAdmin(useProfileForAdmin) ? <AdminUsersV7/> : <AdminAccessDenied/>}/><Route path="/admin/moderation" element={isDemoAdmin(useProfileForAdmin) ? <AdminModerationV7/> : <AdminAccessDenied/>}/><Route path="/admin/logs" element={isDemoAdmin(useProfileForAdmin) ? <AdminLogsV7/> : <AdminAccessDenied/>}/><Route path="/admin/analytics" element={isDemoAdmin(useProfileForAdmin) ? <AdminAnalyticsV7/> : <AdminAccessDenied/>}/>
+   <Route path="/admin/dashboard" element={role === 'admin' ? <AdminDashboardV7/> : <AdminAccessDenied/>}/><Route path="/admin/users" element={role === 'admin' ? <AdminUsersV7/> : <AdminAccessDenied/>}/><Route path="/admin/moderation" element={role === 'admin' ? <AdminModerationV7/> : <AdminAccessDenied/>}/><Route path="/admin/logs" element={role === 'admin' ? <AdminLogsV7/> : <AdminAccessDenied/>}/><Route path="/admin/analytics" element={role === 'admin' ? <AdminAnalyticsV7/> : <AdminAccessDenied/>}/>
    <Route path="*" element={<NotFound/>}/>
  </Routes></div></Shell>;
 }

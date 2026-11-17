@@ -124,8 +124,11 @@ export const getSession = () => current;
 
 export function useAuth() {
   const session = useSyncExternalStore(subscribe, () => current, () => null);
-  return { session, user: session ? session.user : null, isAuthenticated: !!session, login, logout };
+  return {
+    session,
+    user: session ? session.user : null,
+    isAuthenticated: !!session,
+    login,
+    logout
+  };
 }
-
-// Old builds saved a cosmetic 'knoxia-remember' flag at login. It never meant "signed in"; tidy it up.
-LEGACY_KEYS.forEach((k) => drop(area('localStorage'), k));

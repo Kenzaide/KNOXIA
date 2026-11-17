@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { LoginSupabase, RegisterSupabase, ForgotSupabase, ResetSupabase } from './authSupabase.jsx';
 import { ThemeToggle } from './theme.jsx';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { tab } from './storage.js';
@@ -147,8 +148,8 @@ export function Legal_({ path }) {
 
 export function authPage(path) {
   switch (path) {
-    case '/login': return <Login />; case '/register': return <Register />; case '/forgot-password': return <Forgot />;
-    case '/reset-password': return <ResetPassword />; case '/verify-email': return <VerifyEmail />; case '/welcome': return <Welcome />;
+    case '/login': return <LoginSupabase />; case '/register': return <RegisterSupabase />; case '/forgot-password': return <ForgotSupabase />;
+    case '/reset-password': return <ResetSupabase />; case '/verify-email': return <LoginSupabase />; case '/welcome': return <Welcome />;
     case '/terms': case '/privacy': return <Legal_ path={path} />;
     default: return null;
   }

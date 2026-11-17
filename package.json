@@ -10,6 +10,7 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
     "jszip": "^3.10.2",
     "lucide-react": "^0.468.0",
     "mammoth": "^1.13.0",
