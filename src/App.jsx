@@ -123,6 +123,8 @@ function Sidebar({admin=false,close}) {
     </nav>
     <div className="sidebar-bottom">
       
+      {!admin && isDemoAdmin(me) && <SideLink to="/admin/dashboard" Icon={ShieldCheck} name="Admin Dashboard" close={close}/>}
+      {admin && <SideLink to="/dashboard" Icon={LayoutDashboard} name="Student View" close={close}/>}
       <SideLink to="/settings" Icon={Settings} name="Settings" close={close}/>
       <button type="button" className="nav-link logout" onClick={()=>setConfirming(true)}><LogOut size={18}/><span>Log out</span></button>
       {confirming&&<ConfirmDialog title="Log out of KNOXIA?" body="You will need to sign in again to continue studying." confirmLabel="Log out" onConfirm={()=>{setConfirming(false);signOut()}} onCancel={()=>setConfirming(false)}/>}
@@ -413,7 +415,7 @@ function AppRoutes() {
  // Route protection (demo): see src/session.js for which paths are public, guest-only or private.
  if(normalizePath(path)!==path) return <Navigate to={normalizePath(path)+loc.search+loc.hash} replace/>;
  const access=accessFor(path);
- if(access==='guest'&&isAuthenticated) return <Navigate to={safeRedirect(loc.state&&loc.state.from)} replace/>;
+ if(access==='guest'&&isAuthenticated) return <Navigate to={safeRedirect(loc.state&&loc.state.from, isDemoAdmin(useProfileForAdmin) ? '/admin/dashboard' : '/dashboard')} replace/>;
  if(access==='private'&&!isAuthenticated) return <Navigate to="/login" replace state={{from:{pathname:path,search:loc.search,hash:loc.hash}}}/>;
  const ap=authPage(path); if(ap) return ap;
  if(path==='/') return <Landing/>;
