@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ThemePicker } from './theme.jsx';
-import { Sparkles, Layers, CheckCircle2, Trophy, Crown, Flame, Clock3, Target, Bell, ShieldCheck, Activity, Plus, Trash2, Send, Play, Pause, RotateCcw, Check, Download, Users, Zap, BookOpen, Medal, ArrowUpRight, Lock, CalendarDays, Swords } from 'lucide-react';
+import { Bookmark, FolderInput, Sparkles, Layers, CheckCircle2, Trophy, Crown, Flame, Clock3, Target, Bell, ShieldCheck, Activity, Plus, Trash2, Send, Play, Pause, RotateCcw, Check, Download, Users, Zap, BookOpen, Medal, ArrowUpRight, Lock, CalendarDays, Swords } from 'lucide-react';
 import { toast } from './materials.jsx';
 import { useProfile } from './accounts.js';
 import { ProfileEditor } from './profile.jsx';
+import { ConfirmDialog, PromptDialog } from './ui.jsx';
+import { MAX_TITLE, MAX_FOLDER, cleanTitle, folderOf, folderCounts, resolveFolder, updatedAt, useReviewerLibrary } from './reviewerLib.js';
 import { DECKS, BANK, ROOMS, CHALLENGES, BOARD, BADGES, useNotes, useReviewers, useAttempts, useRooms, useChallenges, usePlan, useSettings, useReports, useLogs, pushLS, logEvent } from './data.js';
 
 const Btn = ({ children, v = 'primary', icon: I, ...p }) => <button type="button" className={`btn ${v}`} {...p}>{I && <I size={16} />}<span>{children}</span></button>;
@@ -17,20 +19,36 @@ const when = d => new Date(d).toLocaleString('en-US', { month: 'short', day: '2-
 const ICONS = { Flame, Trophy, Target, Zap, Layers, Users, BookOpen, Medal };
 
 /* ---------- Reviewers ---------- */
+// Latest saved reviewers, shown under the builder. Everything else (search, folders, bulk actions) lives on My Reviewers.
 export function SavedReviewers() {
   const [list] = useReviewers();
   if (!list.length) return null;
-  return <div className="panel list-panel" style={{ marginTop: 17 }}><div className="list-head"><h3>Saved reviewers</h3></div>{list.map(r => <Row key={r.id} icon={Sparkles} title={r.title} sub={`${r.style} · ${r.file}`}><Link className="link-btn" to={'/reviewers/' + r.id}>Open <ArrowUpRight size={16} /></Link></Row>)}</div>;
+  const recent = [...list].sort((a, b) => updatedAt(b) - updatedAt(a)).slice(0, 5);
+  return <div className="panel list-panel" style={{ marginTop: 17 }}><div className="list-head"><h3>Saved reviewers</h3><Link className="link-btn" to="/reviewers" viewTransition>Manage all ({list.length}) <ArrowUpRight size={16} /></Link></div>
+    {recent.map(r => <Row key={r.id} icon={r.favorite ? Bookmark : Sparkles} title={r.title} sub={`${r.style} · ${r.file}${folderOf(r) ? ` · ${folderOf(r)}` : ''}`}><Link className="link-btn" to={'/reviewers/' + r.id}>Open <ArrowUpRight size={16} /></Link></Row>)}</div>;
 }
+const BookmarkOn = p => <Bookmark {...p} fill="currentColor" />; // filled when a reviewer is bookmarked
 export function ReviewerEditor() {
-  const { id } = useParams(); const nav = useNavigate(); const [list, setList] = useReviewers();
-  const r = list.find(x => x.id === id); const [t, setT] = useState(r ? r.title : ''); const [b, setB] = useState(r ? r.body : '');
-  if (!r) return <Empty icon={Sparkles} title="Reviewer not found" text="It may have been deleted." action={<Btn onClick={() => nav('/reviewers/create')}>Create a reviewer</Btn>} />;
-  const save = () => { setList(a => a.map(x => x.id === id ? { ...x, title: t.trim() || x.title, body: b, updated: new Date().toISOString() } : x)); toast('Reviewer saved'); };
-  const del = () => { if (confirm(`Delete "${r.title}"?`)) { setList(a => a.filter(x => x.id !== id)); toast('Reviewer deleted'); nav('/reviewers/create'); } };
-  return <><Head title="Reviewer Details / Editor" sub={`${r.style} · from ${r.file}`} action={<div className="head-actions"><Btn v="outline" icon={Trash2} onClick={del}>Delete</Btn><Btn icon={Check} onClick={save}>Save changes</Btn></div>} />
-    <div className="builder-layout"><div className="panel builder-form"><label className="field-label">Title</label><input className="field" value={t} onChange={e => setT(e.target.value)} /><label className="field-label">Content</label><textarea className="field textarea" style={{ height: 380 }} value={b} onChange={e => setB(e.target.value)} /><p className="muted">{r.generated ? 'Built by the KNOXIA demo generator from your material using simple text rules, not a real AI model. Check it against your source and edit anything that needs fixing.' : 'Starter content only. Connect your AI service to fill this in automatically.'}</p></div>
-      <div className="panel"><h3>Study with this reviewer</h3><p className="muted">Turn your notes into practice.</p><div className="friend-buttons" style={{ flexDirection: 'column', alignItems: 'stretch', marginTop: 12 }}><Btn v="soft" icon={Layers} onClick={() => nav('/flashcards')}>Open flashcards</Btn><Btn v="soft" icon={BookOpen} onClick={() => nav('/quizzes/create')}>Create a quiz</Btn><Btn v="soft" icon={Sparkles} onClick={() => nav('/study-companion')}>Ask the companion</Btn></div></div></div></>;
+  const { id } = useParams(); const nav = useNavigate(); const lib = useReviewerLibrary();
+  const r = lib.items.find(x => x.id === id); const [t, setT] = useState(r ? r.title : ''); const [b, setB] = useState(r ? r.body : '');
+  const [dlg, setDlg] = useState(null); // 'move' | 'delete'
+  if (!r) return <Empty icon={Sparkles} title="Reviewer not found" text="It may have been deleted." action={<div className="head-actions" style={{ justifyContent: 'center' }}><Btn v="outline" onClick={() => nav('/reviewers')}>All reviewers</Btn><Btn onClick={() => nav('/reviewers/create')}>Create a reviewer</Btn></div>} />;
+  const fo = folderOf(r); const dirty = cleanTitle(t) !== r.title || b !== r.body;
+  const save = () => {
+    lib.edit(r.id, { title: t, body: b }); setT(cleanTitle(t) || r.title); toast('Reviewer saved'); // an empty title keeps the old one
+  };
+  const bookmark = () => { lib.setBookmark(r.id, !r.favorite); toast(r.favorite ? 'Bookmark removed' : 'Reviewer bookmarked'); };
+  const move = v => { const name = resolveFolder(v, lib.items); lib.move(r.id, name); setDlg(null); toast(name ? `Moved to “${name}”` : 'Moved out of folders'); };
+  const del = () => { lib.remove(r.id); logEvent(`Reviewer deleted: ${r.title.slice(0, 80)}`); toast('Reviewer deleted'); nav('/reviewers'); };
+  return <><Head title="Reviewer Details / Editor" sub={`${r.style} · from ${r.file}${fo ? ` · in ${fo}` : ''}`} action={<div className="head-actions">
+      <Btn v="outline" icon={r.favorite ? BookmarkOn : Bookmark} aria-pressed={!!r.favorite} onClick={bookmark}>{r.favorite ? 'Bookmarked' : 'Bookmark'}</Btn>
+      <Btn v="outline" icon={FolderInput} onClick={() => setDlg('move')}>{fo ? 'Move' : 'Add to folder'}</Btn>
+      <Btn v="outline" icon={Trash2} onClick={() => setDlg('delete')}>Delete</Btn>
+      <Btn icon={Check} onClick={save}>Save changes</Btn></div>} />
+    <div className="builder-layout"><div className="panel builder-form"><label className="field-label" htmlFor="rv-edit-title">Title</label><input id="rv-edit-title" className="field" maxLength={MAX_TITLE} value={t} onChange={e => setT(e.target.value)} /><label className="field-label" htmlFor="rv-edit-body">Content</label><textarea id="rv-edit-body" className="field textarea" style={{ height: 380 }} value={b} onChange={e => setB(e.target.value)} />{dirty && <p className="rv-hint" role="status">You have unsaved changes.</p>}<p className="muted">{r.generated ? 'Built by the KNOXIA demo generator from your material using simple text rules, not a real AI model. Check it against your source and edit anything that needs fixing.' : 'Starter content only. Connect your AI service to fill this in automatically.'}</p></div>
+      <div className="panel"><h3>Study with this reviewer</h3><p className="muted">Turn your notes into practice.</p><div className="friend-buttons" style={{ flexDirection: 'column', alignItems: 'stretch', marginTop: 12 }}><Btn v="soft" icon={Layers} onClick={() => nav('/flashcards')}>Open flashcards</Btn><Btn v="soft" icon={BookOpen} onClick={() => nav('/quizzes/create')}>Create a quiz</Btn><Btn v="soft" icon={Sparkles} onClick={() => nav('/study-companion')}>Ask the companion</Btn><Btn v="outline" icon={ArrowUpRight} onClick={() => nav('/reviewers')}>All my reviewers</Btn></div></div></div>
+    {dlg === 'move' && <PromptDialog title={`Move “${r.title}”`} body="Type a folder name, or pick one below. Leave it empty to take it out of any folder." label="Folder name" value={fo} placeholder="e.g. Midterms" maxLength={MAX_FOLDER} suggestions={folderCounts(lib.items).map(x => x.name)} allowEmpty confirmLabel="Move" onSubmit={move} onCancel={() => setDlg(null)} />}
+    {dlg === 'delete' && <ConfirmDialog icon={Trash2} title={`Delete “${r.title}”?`} body="This permanently removes the reviewer and anything you edited in it. This can't be undone." confirmLabel="Delete" onCancel={() => setDlg(null)} onConfirm={del} />}</>;
 }
 
 /* ---------- Flashcards ---------- */

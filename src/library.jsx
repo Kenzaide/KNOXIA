@@ -30,7 +30,7 @@ export function sortItems(list, sort) {
   return [...list].sort(by);
 }
 
-function Mark({ text, q }) { // highlights search words inside a title
+export function Mark({ text, q }) { // highlights search words inside a title
   const ws = words(q); if (!ws.length) return text;
   const re = new RegExp('(' + ws.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'ig');
   return text.split(re).map((p, i) => (i % 2 ? <mark key={i}>{p}</mark> : p));

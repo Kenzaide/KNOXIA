@@ -40,3 +40,18 @@
 .rv-qa li span{display:block;color:var(--text-2);margin-top:2px}
 .preview-panel .rv-actions{margin-top:14px}
 @media(max-width:900px){.rv-paste{height:150px}}
+
+/* ===== Reviewer management (Patch 10) ===== */
+.rv-rename{display:flex;align-items:center;gap:4px;margin:12px 0 2px}
+.rv-rename .field{height:36px;min-width:0;flex:1}
+.rv-rename .plain-icon{flex:none}
+.rv-folder{display:inline-flex;align-items:center;gap:5px}
+.rv-unfiled{font-size:12px;color:var(--muted-3)}
+.material-card>p.rv-src{margin:-9px 0 15px;overflow-wrap:anywhere}
+.rv-fl{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere;text-align:left}
+.rv-folder-tools{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px}
+.rv-folder-tools .link-btn{font-size:var(--t-sm)}
+.lib-title:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;border-radius:4px}
+.dialog-icon.info{background:var(--tint);color:var(--blue)}
+.dialog form .field{margin:4px 0 0}
+.material-actions .lib-icons{gap:6px}

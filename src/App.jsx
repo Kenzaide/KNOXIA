@@ -14,6 +14,7 @@ import { UserAvatar, ProfileHeader, ProfileDetails } from './profile.jsx';
 import { Button, usePending, PageSkeleton, SectionTitle, ConfirmDialog } from './ui.jsx';
 import MaterialLibrary from './library.jsx';
 import CreateReviewer from './reviewer.jsx';
+import ReviewerLibrary from './reviewers.jsx';
 
 // In-app navigation helper. Always goes through the router (no full page reloads).
 function useGo() {
@@ -37,7 +38,8 @@ const navGroups = [
     ['My Materials','/materials',FolderOpen],
   ]},
   { label: 'AI learning tools', items: [
-    ['AI Reviewer','/reviewers/create',Sparkles,['/reviewers']],
+    ['AI Reviewer','/reviewers/create',Sparkles],
+    ['My Reviewers','/reviewers',Bookmark,['/reviewers'],['/reviewers/create']],
     ['Study Companion','/study-companion',BrainCircuit],
     ['Flashcards','/flashcards',Layers],
     ['Quizzes','/quizzes/create',BookOpen,['/quizzes']],
@@ -68,7 +70,7 @@ const friends = [
 ];
 const titleMap = {
   '/dashboard':'Dashboard','/materials':'My Materials','/materials/upload':'Upload Materials',
-  '/reviewers/create':'Create AI Reviewer','/study-companion':'Knowl · Study Companion',
+  '/reviewers':'My Reviewers','/reviewers/create':'Create AI Reviewer','/study-companion':'Knowl · Study Companion',
   '/flashcards':'Flashcard Library','/quizzes/create':'Create AI Quiz','/feed':'Learning Feed',
   '/friends':'Friends','/study-rooms':'Study Rooms','/challenges':'Quiz Challenges',
   '/leaderboards':'Leaderboards','/achievements':'Achievements & Badges','/analytics':'Learning Analytics',
@@ -81,8 +83,9 @@ function Avatar({initials='KP',size='md',online=false,src=''}) { return <div cla
 function Toaster() { const [t,setT]=useState(null); useEffect(()=>{let id; const h=e=>{setT({m:e.detail,k:Date.now()});clearTimeout(id);id=setTimeout(()=>setT(null),2600)}; window.addEventListener('knoxia-toast',h); return()=>{window.removeEventListener('knoxia-toast',h);clearTimeout(id)}},[]); return t?<div className="toast" role="status" key={t.k}><CheckCircle2 size={18}/>{t.m}</div>:null; }
 function StatCard({label,value,change,icon:Icon,tone='blue'}) { return <div className="stat-card"><div className={`stat-icon ${tone}`}><Icon size={18}/></div><div className="stat-copy"><span>{label}</span><strong>{value}</strong><small className="positive">{change}</small></div></div>; }
 // A sidebar link stays active for its whole section (e.g. Materials stays lit on /materials/upload and /materials/:id).
-function SideLink({to,match,Icon,name,close}) {
-  const {pathname}=useLocation(); const on=(match||[to]).some(m=>pathname===m||pathname.startsWith(m+'/'));
+function SideLink({to,match,not,Icon,name,close}) {
+  // `not` lists paths that belong to a sibling link, so two links never light up together (e.g. /reviewers/create).
+  const {pathname}=useLocation(); const at=m=>pathname===m||pathname.startsWith(m+'/'); const on=(match||[to]).some(at)&&!(not||[]).some(at);
   return <Link viewTransition to={to} onClick={close} aria-current={on?'page':undefined} className={`nav-link${on?' active':''}`}><Icon size={18}/><span>{name}</span></Link>;
 }
 function Sidebar({admin=false,close}) {
@@ -93,7 +96,7 @@ function Sidebar({admin=false,close}) {
     <div className="sidebar-top"><Logo/><button className="mobile-close" onClick={close}><X size={18}/></button></div>
     
     <nav className="side-nav">
-      {!admin ? navGroups.map(group=><div className="nav-group" key={group.label}><label>{group.label}</label>{group.items.map(([name,path,Icon,match])=><SideLink key={path} to={path} match={match} Icon={Icon} name={name} close={close}/>)}</div>) :
+      {!admin ? navGroups.map(group=><div className="nav-group" key={group.label}><label>{group.label}</label>{group.items.map(([name,path,Icon,match,not])=><SideLink key={path} to={path} match={match} not={not} Icon={Icon} name={name} close={close}/>)}</div>) :
       <div className="nav-group"><label>Administration</label>{adminNav.map(([name,path,Icon])=><SideLink key={path} to={path} Icon={Icon} name={name} close={close}/>)}</div>}
     </nav>
     <div className="sidebar-bottom">
@@ -399,7 +402,7 @@ function AppRoutes() {
  const title=pageTitle(path);
  return <Shell admin={admin} title={title}><div className="page-fade" key={path}><Routes>
    <Route path="/dashboard" element={<Dashboard/>}/><Route path="/materials" element={<MaterialLibrary/>}/><Route path="/materials/upload" element={<UploadPage/>}/><Route path="/materials/:id" element={<MaterialDetail/>}/>
-   <Route path="/reviewers/create" element={<CreateReviewer/>}/><Route path="/reviewers/:id" element={<ReviewerEditor/>}/><Route path="/study-companion" element={<Companion/>}/><Route path="/flashcards" element={<Flashcards/>}/><Route path="/flashcards/:id/study" element={<FlashStudy/>}/><Route path="/quizzes/create" element={<QuizCreate/>}/><Route path="/quizzes/:id/take" element={<QuizTake/>}/><Route path="/quizzes/attempts/:id" element={<QuizResults/>}/>
+   <Route path="/reviewers" element={<ReviewerLibrary/>}/><Route path="/reviewers/create" element={<CreateReviewer/>}/><Route path="/reviewers/:id" element={<ReviewerEditor/>}/><Route path="/study-companion" element={<Companion/>}/><Route path="/flashcards" element={<Flashcards/>}/><Route path="/flashcards/:id/study" element={<FlashStudy/>}/><Route path="/quizzes/create" element={<QuizCreate/>}/><Route path="/quizzes/:id/take" element={<QuizTake/>}/><Route path="/quizzes/attempts/:id" element={<QuizResults/>}/>
    <Route path="/feed" element={<Feed/>}/><Route path="/friends" element={<Friends/>}/><Route path="/profile" element={<Profile/>}/><Route path="/profile/:username" element={<Profile/>}/><Route path="/study-rooms" element={<StudyRooms/>}/><Route path="/study-rooms/:id" element={<RoomDetail/>}/><Route path="/challenges" element={<Challenges/>}/><Route path="/challenges/:id/play" element={<ChallengePlay/>}/>
    <Route path="/leaderboards" element={<Leaderboards/>}/><Route path="/achievements" element={<Achievements/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/study-planner" element={<Planner/>}/>
    <Route path="/settings" element={<SettingsPage/>}/><Route path="/notifications" element={<Notifications/>}/>

@@ -27,7 +27,8 @@ export const BANK = [
 ];
 
 export const makeReviewer = ({ title, file, style, notes, body, generated }) => ({
-  id: String(Date.now()), title, file, style, updated: new Date().toISOString(),
+  // `favorite` is the bookmark and `folder` the organizer (Patch 10). Reviewers saved before it have neither: read them as false / ''.
+  id: String(Date.now()), title, file, style, created: new Date().toISOString(), updated: new Date().toISOString(), favorite: false, folder: '',
   // `body` comes from the reviewer generator (reviewerGen.js); without it the old starter template is used.
   body: body || `SOURCE\n${file}\n\nFORMAT\n${style}\n\nKEY CONCEPTS\n- Add the main ideas from the material here.\n\nDEFINITIONS\n- Term: meaning\n\nEXAMPLES\n- Worked example${notes ? `\n\nNOTES\n${notes}` : ''}`,
   ...(generated ? { generated } : {}),
