@@ -1,0 +1,17 @@
+/* Supabase authentication layout — shared by login, registration and reset pages. */
+.knoxia-auth-screen{min-height:100dvh;display:flex!important;flex-direction:column;align-items:stretch!important;justify-content:flex-start!important;padding:0!important;background:var(--bg)}
+.knoxia-auth-header{width:100%;min-height:88px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px clamp(22px,5vw,76px);flex-shrink:0}
+.knoxia-auth-brand{display:inline-flex;align-items:center;gap:12px;font-size:22px;font-weight:800;line-height:1}
+.knoxia-auth-brand img{display:block;width:42px;height:42px;object-fit:contain;flex-shrink:0}
+.knoxia-auth-header .theme-toggle{width:42px;height:42px;display:grid;place-items:center;border:1px solid var(--border);border-radius:12px;background:var(--card);flex-shrink:0}
+.knoxia-auth-main{width:100%;flex:1;display:flex;align-items:center;justify-content:center;padding:28px 24px 44px}
+.knoxia-auth-card{width:min(100%,450px);margin:0!important;flex:none;box-shadow:var(--shadow)}
+.knoxia-auth-footer{text-align:center;color:var(--muted);font-size:12px;padding:0 20px 22px}
+.knoxia-auth-screen.auth-screen-register .knoxia-auth-main{align-items:flex-start;padding-top:20px}
+.knoxia-auth-screen .auth-card-register{width:min(100%,920px);max-width:920px}
+.knoxia-auth-screen .auth-card-register .register-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px;row-gap:15px;align-items:start}
+.knoxia-auth-screen .auth-card-register .register-grid>.afield{min-width:0}
+.knoxia-auth-screen .auth-card-register .register-grid>.pw-rules{grid-column:1/-1}
+.knoxia-auth-screen .auth-card-register .register-grid>.notice,.knoxia-auth-screen .auth-card-register .register-grid>.btn{grid-column:1/-1}
+.knoxia-auth-screen .auth-card-register .register-grid>.btn{width:100%}
+@media(max-width:620px){.knoxia-auth-header{min-height:76px;padding:16px 20px}.knoxia-auth-brand{font-size:19px}.knoxia-auth-brand img{width:36px;height:36px}.knoxia-auth-main{padding:20px 16px 30px}.knoxia-auth-screen .auth-card-register .register-grid{grid-template-columns:1fr}.knoxia-auth-screen .auth-card-register .register-grid>*{grid-column:1/-1}}
