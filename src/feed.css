@@ -1,0 +1,22 @@
+/* Learning Feed (Patch 17). Loaded after friends.css; uses the shared design tokens so dark mode follows automatically. */
+.feed-composer{padding:var(--s-4)}
+.feed-compose-row{display:flex;gap:var(--s-3);align-items:flex-start}
+.feed-compose-row textarea{flex:1;resize:vertical;min-height:72px}
+.feed-compose-foot{display:flex;gap:var(--s-3);align-items:center;margin-top:var(--s-3)}
+.feed-compose-foot .field{flex:1;min-width:0}
+.feed-count{color:var(--muted);font-size:12px;font-weight:700;min-width:28px;text-align:right}
+.feed-count.warn{color:var(--danger,#C0264F)}
+.feed-text{white-space:pre-wrap;overflow-wrap:anywhere;margin:var(--s-3) 0}
+.feed-name:hover{text-decoration:underline}
+.post-head{position:relative}.post-head>.plain-icon{margin-left:auto}
+.post-actions button{display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:var(--muted);font-weight:600;padding:0}
+.post-actions button:hover,.post-actions .feed-like.on{color:var(--blue)}
+.post-actions button:focus-visible,.feed-name:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;border-radius:4px}
+.feed-comments{border-top:1px solid var(--divider);margin-top:var(--s-3);padding-top:var(--s-3);display:grid;gap:var(--s-3)}
+.feed-comment{display:flex;gap:var(--s-2);align-items:flex-start}
+.feed-comment>div{flex:1;min-width:0}
+.feed-comment p{margin:0}.feed-comment .feed-text{margin:2px 0 0}
+.feed-comment small{color:var(--muted);margin-left:6px}
+.feed-comment-form{display:flex;gap:var(--s-2)}
+.feed-comment-form .field{flex:1;min-width:0}
+@media(max-width:560px){.feed-compose-foot{flex-wrap:wrap}.feed-compose-foot .field{flex-basis:100%}.feed-count{margin-left:auto}}
