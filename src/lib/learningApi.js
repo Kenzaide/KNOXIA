@@ -23,7 +23,7 @@ function unwrap(result) {
 const uniqueId = () => crypto.randomUUID();
 
 // Materials: metadata is stored in public.materials, bytes in the private "materials" bucket.
-// Bucket policies must be configured before calling uploadMaterial.
+// Uses the existing private learning-materials bucket; verify its DELETE/UPDATE policies before production use.
 export async function listMaterials() {
   const uid = await userId();
   return unwrap(await client().from('materials').select('id,title,description,storage_path,mime_type,visibility,created_at')
@@ -35,19 +35,19 @@ export async function uploadMaterial(file, { title, description = '', visibility
   if (file.size > 25 * 1024 * 1024) throw new Error('Files must be 25 MB or smaller.');
   const id = uniqueId();
   const path = `${uid}/${id}/${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-  unwrap(await client().storage.from('materials').upload(path, file, { upsert: false, contentType: file.type || 'application/octet-stream' }));
+  unwrap(await client().storage.from('learning-materials').upload(path, file, { upsert: false, contentType: file.type || 'application/octet-stream' }));
   try {
     return unwrap(await client().from('materials').insert({
       id, owner_id: uid, title: String(title || file.name).slice(0, 200),
       description, storage_path: path, mime_type: file.type || null, visibility,
     }).select().single());
   } catch (error) {
-    await client().storage.from('materials').remove([path]);
+    await client().storage.from('learning-materials').remove([path]);
     throw error;
   }
 }
 export async function materialDownloadUrl(path) {
-  const { data, error } = await client().storage.from('materials').createSignedUrl(path, 60);
+  const { data, error } = await client().storage.from('learning-materials').createSignedUrl(path, 60);
   if (error) throw error;
   return data.signedUrl;
 }
@@ -56,7 +56,7 @@ export async function deleteMaterial(id) {
   const row = unwrap(await client().from('materials').select('storage_path').eq('id', id).eq('owner_id', uid).single());
   unwrap(await client().from('materials').delete().eq('id', id).eq('owner_id', uid));
   // The database delete succeeds even if cleanup fails; report the storage cleanup error.
-  unwrap(await client().storage.from('materials').remove([row.storage_path]));
+  unwrap(await client().storage.from('learning-materials').remove([row.storage_path]));
 }
 
 // Reviewer text is stored in public.reviewers. Keep generation separate from persistence.
