@@ -198,9 +198,9 @@ function Dashboard() { const go=useGo();
   const {items}=useMaterials(); const loading=usePending(); const {firstName}=useProfile(); const pr=useStudyProgress();
   const [said,setSaid]=useState(null); const [clicks,setClicks]=useState(0); const [focusing,setFocusing]=useState(false);
   const hour=new Date().getHours(); const night=hour>=22||hour<5;
-  const goal={done:45,total:60}; const left=Math.max(0,goal.total-goal.done); const pct=Math.round(goal.done/goal.total*100);
+  const goal={done:0,total:60}; const left=Math.max(0,goal.total-goal.done); const pct=Math.round(goal.done/goal.total*100);
   // Real numbers from Study Progress (Patch 15) once there is activity; sample values until then.
-  const live=pr.hasActivity; const streak=live?pr.streak.current:7; const first=items[0];
+  const live=pr.hasActivity; const streak=live?pr.streak.current:0; const first=items[0];
   const resting=night?{pose:'sleepy',text:`It's late, ${firstName}. Review something short, then get some sleep.`}
     :left===0?{pose:'happy',text:"Goal reached! Great work today."}
     :items.length===0?{pose:'think',text:"Upload a file and I'll help you turn it into a reviewer."}
@@ -240,7 +240,7 @@ function Dashboard() { const go=useGo();
         {items.length===0&&<div className="empty-state"><FolderOpen size={32}/><b>No materials yet</b><p>Upload your first file to get started.</p></div>}
       </section>
       <section className="panel"><SectionTitle title="This week" action={<NavLink viewTransition to="/progress">Details</NavLink>}/>
-        {[[Flame,'orange',`${streak} ${streak===1?'day':'days'}`,live?`Study streak. Best is ${pr.streak.best}.`:'Study streak. Best is 12.'],[Target,'green',pr.quizzes.avg===null?'86.5%':pr.quizzes.avg+'%',pr.quizzes.avg===null?'Quiz average, up 4.2%.':`Quiz average over ${pr.quizzes.taken} ${pr.quizzes.taken===1?'attempt':'attempts'}.`],[Clock3,'blue',live?fmtTime(pr.week.reduce((t,d)=>t+d.secs,0))||'0m':'8h 35m',live?'Studied in the last 7 days.':'Studied, up 18% on last week.']].map(([I,tone,v,l])=><div className="kn-stat" key={l}><div className={`activity-dot ${tone}`}><I size={18}/></div><div><b>{v}</b><small>{l}</small></div></div>)}
+        {[[Flame,'orange',`${streak} ${streak===1?'day':'days'}`,live?`Study streak. Best is ${pr.streak.best}.`:'Start studying to build your streak.'],[Target,'green',pr.quizzes.avg===null?'—':pr.quizzes.avg+'%',pr.quizzes.avg===null?'No quiz attempts yet.':`Quiz average over ${pr.quizzes.taken} ${pr.quizzes.taken===1?'attempt':'attempts'}.`],[Clock3,'blue',live?fmtTime(pr.week.reduce((t,d)=>t+d.secs,0))||'0m':'0m',live?'Studied in the last 7 days.':'No study sessions yet.']].map(([I,tone,v,l])=><div className="kn-stat" key={l}><div className={`activity-dot ${tone}`}><I size={18}/></div><div><b>{v}</b><small>{l}</small></div></div>)}
       </section>
     </div>
   </>;
