@@ -31,7 +31,7 @@ export function useFriendships() {
 /** Everyone who can be found and added: registered accounts (verified or demo) plus the sample people. */
 export function usePeople() {
   const accounts = useAccounts();
-  return useMemo(() => [...accounts.filter((a) => a.verified || a.demo).map((a) => buildProfile(a, a.email)), ...SAMPLE_PEOPLE], [accounts]);
+  return useMemo(() => [...accounts.filter((a) => a.verified || a.demo).map((a) => buildProfile(a, a.email))], [accounts]);
 }
 
 /** Everything the Friends screens need for the signed-in person. */
