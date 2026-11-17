@@ -8,9 +8,11 @@
  *
  * Swapping in a backend later: keep the exported function names and make them call your API.
  */
-import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { local } from './storage.js';
-import { useProfile, useAccounts, buildProfile, ensureAccount, emailKey } from './accounts.js';
+import { useProfile, emailKey } from './accounts.js';
+import { useAuth } from './session.js';
+import { supabase } from './lib/supabase.js';
 import { KEYS, NOTES } from './data.js';
 import {
   SAMPLE_PEOPLE, relation, friendsOf, incomingOf, outgoingOf,
@@ -30,23 +32,43 @@ export function useFriendships() {
 
 /** Everyone who can be found and added: registered accounts (verified or demo) plus the sample people. */
 export function usePeople() {
-  const accounts = useAccounts();
-  return useMemo(() => [...accounts.filter((a) => a.verified || a.demo).map((a) => buildProfile(a, a.email))], [accounts]);
+  const { user } = useAuth();
+  const [people, setPeople] = useState([]);
+  useEffect(() => {
+    let active = true;
+    setPeople([]);
+    if (!supabase || !user?.id) return () => { active = false; };
+    supabase.from('profiles').select('id,username,full_name,created_at')
+      .neq('id', user.id).order('created_at', { ascending: false }).then(({ data, error }) => {
+        if (!active) return;
+        if (error) { console.error('Could not load KNOXIA users:', error.message); return; }
+        setPeople((data || []).filter(p => p.username).map(p => ({
+          id: p.id, username: p.username,
+          displayName: p.full_name || p.username, fullName: p.full_name || p.username,
+          initials: (p.full_name || p.username).slice(0, 2).toUpperCase(),
+          avatar: '', academic: '', createdAt: new Date(p.created_at || 0).getTime(),
+          sample: false,
+        })));
+      });
+    return () => { active = false; };
+  }, [user?.id]);
+  return people;
 }
 
 /** Everything the Friends screens need for the signed-in person. */
 export function useFriends() {
   const me = useProfile(); const records = useFriendships(); const people = usePeople();
   // Sessions from before accounts existed have no account to attach friends to yet: create it once.
-  useEffect(() => { if (!me.id && me.email) ensureAccount(me.email); }, [me.id, me.email]);
+  const { user } = useAuth();
   return useMemo(() => {
     const byId = new Map(people.map((p) => [p.id, p]));
+    const currentId = user?.id || me.id;
     const join = (list) => list.map((x) => ({ ...x, person: byId.get(x.otherId) })).filter((x) => x.person); // skips people who no longer exist
     return {
-      me, meId: me.id, ready: !!me.id, records, people,
-      friends: join(friendsOf(records, me.id)), incoming: join(incomingOf(records, me.id)), outgoing: join(outgoingOf(records, me.id)),
+      me, meId: currentId, ready: !!currentId, records, people,
+      friends: join(friendsOf(records, currentId)), incoming: join(incomingOf(records, currentId)), outgoing: join(outgoingOf(records, currentId)),
     };
-  }, [me, records, people]);
+  }, [me, records, people, user?.id]);
 }
 
 /** How the signed-in person stands with one other person, plus the request record between them, if any. */
