@@ -21,6 +21,9 @@ import { QuizResults, QuizHistory, QuizMissed } from './quizResults.jsx';
 import StudyProgress from './progress.jsx';
 import { useStudyProgress } from './progressStore.js';
 import { fmtTime } from './progressCalc.js';
+import { Friends, FriendAction, SuggestedPeople } from './friends.jsx';
+import { useIncomingCount } from './friendsStore.js';
+import { samplePersonByUsername } from './friendsCalc.js';
 
 // In-app navigation helper. Always goes through the router (no full page reloads).
 function useGo() {
@@ -70,11 +73,6 @@ const adminNav = [
   ['Content Moderation','/admin/moderation',ShieldCheck],
   ['Activity Logs','/admin/logs',ClipboardList],
 ];
-const friends = [
-  {name:'Alex Rivera',handle:'@alexrivera',initials:'AR',status:'Studying now',xp:'2,840 XP'},
-  {name:'Mika Santos',handle:'@mikas',initials:'MS',status:'Online',xp:'2,510 XP'},
-  {name:'Jordan Lee',handle:'@jordanlee',initials:'JL',status:'Last active 2h ago',xp:'1,960 XP'},
-];
 const titleMap = {
   '/dashboard':'Dashboard','/materials':'My Materials','/materials/upload':'Upload Materials',
   '/reviewers':'My Reviewers','/reviewers/create':'Create AI Reviewer','/study-companion':'Knowl · Study Companion',
@@ -90,20 +88,20 @@ function Avatar({initials='KP',size='md',online=false,src=''}) { return <div cla
 function Toaster() { const [t,setT]=useState(null); useEffect(()=>{let id; const h=e=>{setT({m:e.detail,k:Date.now()});clearTimeout(id);id=setTimeout(()=>setT(null),2600)}; window.addEventListener('knoxia-toast',h); return()=>{window.removeEventListener('knoxia-toast',h);clearTimeout(id)}},[]); return t?<div className="toast" role="status" key={t.k}><CheckCircle2 size={18}/>{t.m}</div>:null; }
 function StatCard({label,value,change,icon:Icon,tone='blue'}) { return <div className="stat-card"><div className={`stat-icon ${tone}`}><Icon size={18}/></div><div className="stat-copy"><span>{label}</span><strong>{value}</strong><small className="positive">{change}</small></div></div>; }
 // A sidebar link stays active for its whole section (e.g. Materials stays lit on /materials/upload and /materials/:id).
-function SideLink({to,match,not,Icon,name,close}) {
+function SideLink({to,match,not,Icon,name,close,badge=0}) {
   // `not` lists paths that belong to a sibling link, so two links never light up together (e.g. /reviewers/create).
   const {pathname}=useLocation(); const at=m=>pathname===m||pathname.startsWith(m+'/'); const on=(match||[to]).some(at)&&!(not||[]).some(at);
-  return <Link viewTransition to={to} onClick={close} aria-current={on?'page':undefined} className={`nav-link${on?' active':''}`}><Icon size={18}/><span>{name}</span></Link>;
+  return <Link viewTransition to={to} onClick={close} aria-current={on?'page':undefined} className={`nav-link${on?' active':''}`}><Icon size={18}/><span>{name}</span>{badge>0&&<em aria-label={`${badge} pending`}>{badge>99?'99+':badge}</em>}</Link>;
 }
 function Sidebar({admin=false,close}) {
-  const [confirming,setConfirming]=useState(false); const nav=useNavigate(); const {logout}=useAuth(); const me=useProfile();
+  const [confirming,setConfirming]=useState(false); const nav=useNavigate(); const {logout}=useAuth(); const me=useProfile(); const requests=useIncomingCount();
   // Navigate and clear the session in the same event so the login page shows the "logged out" notice, not a redirect.
   const signOut=()=>{close&&close(); nav('/login',{replace:true,state:{notice:'logged-out'}}); logout()};
   return <aside className="sidebar">
     <div className="sidebar-top"><Logo/><button className="mobile-close" onClick={close}><X size={18}/></button></div>
     
     <nav className="side-nav">
-      {!admin ? navGroups.map(group=><div className="nav-group" key={group.label}><label>{group.label}</label>{group.items.map(([name,path,Icon,match,not])=><SideLink key={path} to={path} match={match} not={not} Icon={Icon} name={name} close={close}/>)}</div>) :
+      {!admin ? navGroups.map(group=><div className="nav-group" key={group.label}><label>{group.label}</label>{group.items.map(([name,path,Icon,match,not])=><SideLink key={path} to={path} match={match} not={not} Icon={Icon} name={name} close={close} badge={path==='/friends'?requests:0}/>)}</div>) :
       <div className="nav-group"><label>Administration</label>{adminNav.map(([name,path,Icon])=><SideLink key={path} to={path} Icon={Icon} name={name} close={close}/>)}</div>}
     </nav>
     <div className="sidebar-bottom">
@@ -284,8 +282,7 @@ function Companion() { const go=useGo();
  const send=()=>{if(!text.trim()||thinking)return;setMessages(m=>[...m,{role:'user',text}]);setText('');setThinking(true);setPose('think');
   timer.current=setTimeout(()=>{setMessages(m=>[...m,{role:'assistant',text:'That’s a great question! This is a preview of Knowl. Connect an AI API and your uploaded study materials to receive grounded explanations and source references.'}]);setThinking(false);setPose('happy');},900);};
  return <><SectionTitle title="Knowl, your Study Companion" subtitle="Your personal learning assistant, ready when you are."/><div className="chat-layout"><div className="chat-main panel"><div className="chat-header"><KnowlAvatar pose={pose} size={40}/><div><b>Knowl · KNOXIA Companion</b><small><i/> {thinking?'Thinking…':'Ready to help'}</small></div><button className="plain-icon" aria-label="More options"><MoreHorizontal/></button></div><div className="chat-messages" aria-live="polite">{messages.map((m,i)=><div className={`message ${m.role}`} key={i}>{m.role==='assistant'&&<KnowlAvatar pose="default" size={30} className="mini"/>}<div className="bubble">{m.text}</div></div>)}{thinking&&<div className="message assistant"><KnowlAvatar pose="think" size={30} className="mini"/><div className="bubble typing" aria-label="Knowl is thinking"><i/><i/><i/></div></div>}</div><div className="suggestions"><button onClick={()=>setText('Explain supervised learning in simple terms')}>Explain a concept</button><button onClick={()=>setText('Give me an example of a finite automaton')}>Give me an example</button><button onClick={()=>setText('Create a quick practice question')}>Test my knowledge</button></div><div className="chat-input"><button className="plain-icon" aria-label="Attach file"><Paperclip size={18}/></button><input placeholder="Ask Knowl anything about your lessons..." value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()}/><button className="send-btn" onClick={send} aria-label="Send"><Send size={18}/></button></div></div><div className="panel chat-context"><div className="companion-knowl"><Knowl pose={pose} label="Knowl the owl. Click to make Knowl hop."/></div><h3>Study context</h3><p>Choose the materials Knowl should use.</p><div className="context-file"><FileText size={18}/><span>Introduction to Machine Learning</span><CheckCircle2 size={16}/></div><div className="context-file"><FileText size={18}/><span>Automata Theory — Module 03</span><CheckCircle2 size={16}/></div><Button variant="soft" icon={Plus} onClick={()=>go('/materials')}>Manage materials</Button><div className="grounding-note"><ShieldCheck size={16}/><span>Answers can be grounded in selected materials when AI integration is enabled.</span></div></div></div></>; }
-function Feed() { const posts=[['MS','Mika Santos','2 hours ago','Finally understood the difference between DFA and NFA after making my own visual notes. Sharing this in case anyone needs it!',['Automata Theory','Study tips'],'18'],['AR','Alex Rivera','Yesterday','Small progress today: finished my Machine Learning reviewer and scored 9/10 on my practice quiz. Keep going, everyone!',['Machine Learning','Progress'],'24'],['JL','Jordan Lee','2 days ago','Looking for study buddies for our Computer Architecture exam next week. Anyone interested?',['Study group'],'12']]; return <><SectionTitle title="Learning Feed" subtitle="See what your learning community is up to." action={<Button icon={Plus} onClick={()=>alert('Demo: post composer coming soon.')}>Create post</Button>}/><div className="social-layout"><div className="feed-column">{posts.map((p,i)=><div className="panel post-card" key={i}><div className="post-head"><Avatar initials={p[0]}/><div><b>{p[1]}</b><small>{p[2]}</small></div><button className="plain-icon"><MoreHorizontal/></button></div><p>{p[3]}</p><div className="post-tags">{p[4].map(t=><span key={t}>{t}</span>)}</div><div className="post-actions"><button><Star size={16}/> {p[5]} Likes</button><button><MessageSquare size={16}/> Comment</button><button><Bookmark size={16}/> Save</button></div></div>)}</div><div className="panel community-card"><h3>People to connect with</h3>{friends.map(f=><div className="friend-row" key={f.handle}><Avatar initials={f.initials}/><div><b>{f.name}</b><small>{f.handle}</small></div><button className="small-outline">Add</button></div>)}<a href="/friends">Find more friends <ArrowUpRight size={16}/></a></div></div></>; }
-function Friends() { const go=useGo(); const [tab,setTab]=useState('All friends'); return <><SectionTitle title="Friends" subtitle="Build your learning circle and grow together." action={<Button icon={Plus} onClick={()=>alert('Demo: search users to send a friend request.')}>Find friends</Button>}/><div className="tabs">{['All friends','Requests','Sent'].map(t=><button className={tab===t?'active':''} onClick={()=>setTab(t)} key={t}>{t}</button>)}</div><div className="friend-grid">{friends.map(f=><div className="panel friend-card" key={f.handle}><Avatar initials={f.initials} size="lg" online/><h3>{f.name}</h3><p>{f.handle}</p><span className="friend-status">{f.status}</span><div className="friend-xp"><Zap size={16}/> {f.xp}</div><div className="friend-buttons"><Button variant="soft" onClick={()=>go('/profile/'+f.handle.slice(1))}>View profile</Button><Button variant="outline" onClick={()=>alert('Demo: message feature coming soon.')}>Message</Button></div></div>)}</div></>; }
+function Feed() { const posts=[['MS','Mika Santos','2 hours ago','Finally understood the difference between DFA and NFA after making my own visual notes. Sharing this in case anyone needs it!',['Automata Theory','Study tips'],'18'],['AR','Alex Rivera','Yesterday','Small progress today: finished my Machine Learning reviewer and scored 9/10 on my practice quiz. Keep going, everyone!',['Machine Learning','Progress'],'24'],['JL','Jordan Lee','2 days ago','Looking for study buddies for our Computer Architecture exam next week. Anyone interested?',['Study group'],'12']]; return <><SectionTitle title="Learning Feed" subtitle="See what your learning community is up to." action={<Button icon={Plus} onClick={()=>alert('Demo: post composer coming soon.')}>Create post</Button>}/><div className="social-layout"><div className="feed-column">{posts.map((p,i)=><div className="panel post-card" key={i}><div className="post-head"><Avatar initials={p[0]}/><div><b>{p[1]}</b><small>{p[2]}</small></div><button className="plain-icon"><MoreHorizontal/></button></div><p>{p[3]}</p><div className="post-tags">{p[4].map(t=><span key={t}>{t}</span>)}</div><div className="post-actions"><button><Star size={16}/> {p[5]} Likes</button><button><MessageSquare size={16}/> Comment</button><button><Bookmark size={16}/> Save</button></div></div>)}</div><SuggestedPeople/></div></>; }
 function GenericPage({title}) { const data={
  'Study Rooms':['Study together, stay focused.','Create a virtual space for focused study sessions.','Create a room','Machine Learning Review','Automata Theory Study Group','Finals Preparation Room'],
  'Quiz Challenges':['A little friendly competition goes a long way.','Challenge friends and test your knowledge.','Create challenge','Machine Learning Face-off','Automata Speed Round','Cybersecurity Challenge'],
@@ -341,7 +338,9 @@ function Profile() {
   // Someone else who registered in this browser shows their real profile; seeded demo users keep the placeholder profile.
   const other=mine?null:profileByUsername(username);
   const p=mine?me:other||{...buildProfile(null,''),displayName:username,username,initials:username.slice(0,2).toUpperCase(),academic:'3rd Year • BSCS',bio:'Learning every day, one concept at a time.',createdAt:0};
-  return <><ProfileHeader p={p} mine={mine} action={<Button variant="outline">Add friend</Button>}/><div className="stats-grid compact"><StatCard label="Total XP" value="3,240" change="Level 8" icon={Zap}/><StatCard label="Achievements" value="12" change="Collected badges" icon={Medal} tone="orange"/><StatCard label="Study streak" value="7 days" change="Current streak" icon={Flame} tone="green"/></div>{(mine||other)&&<ProfileDetails p={p} mine={mine}/>}</>;
+  // Friend button: real accounts and the sample people only. A made-up username in the address bar has no one to add.
+  const person=other||samplePersonByUsername(username);
+  return <><ProfileHeader p={p} mine={mine} action={person?<FriendAction person={person}/>:null}/><div className="stats-grid compact"><StatCard label="Total XP" value="3,240" change="Level 8" icon={Zap}/><StatCard label="Achievements" value="12" change="Collected badges" icon={Medal} tone="orange"/><StatCard label="Study streak" value="7 days" change="Current streak" icon={Flame} tone="green"/></div>{(mine||other)&&<ProfileDetails p={p} mine={mine}/>}</>;
 }
 function AdminUsers() {
   // People who registered in this browser come first (see src/accounts.js), followed by the sample users.

@@ -54,7 +54,6 @@ export const BADGES = [
 ];
 export const NOTES = [
   { id: 'n1', t: 'Your quiz result is ready', s: 'Open your latest attempt to review answers.', to: '/analytics', read: false },
-  { id: 'n2', t: 'Mika sent you a friend request', s: 'Accept it to study together.', to: '/friends', read: false },
   { id: 'n3', t: 'You earned a new achievement', s: '7-Day Streak', to: '/achievements', read: false },
   { id: 'n4', t: 'Alex challenged you', s: 'Machine Learning Face-off', to: '/challenges', read: true },
 ];

@@ -1,0 +1,36 @@
+/* Friends (Patch 16). Loaded after progress.css; uses the shared design tokens so dark mode follows automatically. */
+.fr-tabs button{display:inline-flex;align-items:center;gap:6px}
+.fr-tabs button:focus-visible,.fr-panel .link-btn:focus-visible,.fr-main a:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;border-radius:4px}
+.fr-count{min-width:18px;padding:1px 6px;border-radius:20px;background:var(--tint);color:var(--blue);font-size:11px;font-weight:800;text-align:center;line-height:1.5}
+.fr-count.alert{background:var(--blue-solid);color:#fff}
+
+.fr-panel h3{font-size:14px;margin:0 0 var(--s-3)}
+.fr-panel>.muted{margin:0}
+.fr-panel .toolbar{margin-bottom:var(--s-3)}
+.fr-sub{font-size:12px;font-weight:700;color:var(--muted);margin:var(--s-3) 0 0}
+.fr-list{list-style:none;margin:0;padding:0}
+.fr-row{display:flex;align-items:center;gap:var(--s-3);padding:var(--s-3) 0;border-top:1px solid var(--divider)}
+.fr-row:first-child{border-top:0}
+.fr-main{flex:1;min-width:0;display:grid;gap:2px}
+.fr-main a{font-weight:700;font-size:var(--t-sm);color:var(--text)}
+.fr-main a:hover{color:var(--blue);text-decoration:underline}
+.fr-main small{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.fr-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.fr-actions .btn{padding:8px 12px;font-size:12px}
+.fr-state{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
+.fr-state.ok{color:var(--green-text)}
+.fr-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:20px;background:var(--orange-bg);color:var(--orange);font-size:11px;font-weight:700;vertical-align:1px}
+.small-outline:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+
+.friend-card h3 .fr-tag{display:inline-block}
+.friend-card .fr-meta{display:block;font-size:12px;color:var(--muted-2);margin:var(--s-2) 0 0}
+.friend-card .fr-since{display:block;font-size:12px;color:var(--muted);margin:var(--s-1) 0 var(--s-4)}
+.friend-card .friend-buttons{flex-wrap:wrap}
+.friend-card .friend-buttons .btn{display:inline-flex;align-items:center;justify-content:center}
+.friend-row .fr-actions{flex-wrap:nowrap}
+.community-card>.muted-sm{margin:0 0 var(--s-2)}
+
+@media(max-width:560px){
+  .fr-row{flex-wrap:wrap}
+  .fr-row .fr-actions{flex-basis:100%;justify-content:flex-start;padding-left:46px}
+}

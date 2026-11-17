@@ -146,6 +146,9 @@ function createDemoAccount(email) {
   return account;
 }
 
+/** The account for this email, created as a demo account if a session from before accounts existed has none yet. Call from an effect, not while rendering. */
+export function ensureAccount(email) { return findByEmail(email) || createDemoAccount(email); }
+
 /** Checks a login. Resolves {ok, account} or {reason: 'invalid' | 'unverified', account?}. */
 export async function authenticate(email, pw) {
   const acc = findByEmail(email);
