@@ -9,7 +9,9 @@
  *
  * FRONTEND-ONLY DEMO: decks live in this browser (storage.js). A backend would own them later.
  */
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAuth } from './session.js';
+import { supabase } from './lib/supabase.js';
 import { useUserData } from './storage.js';
 import { DECKS } from './data.js';
 
@@ -22,7 +24,7 @@ export const MAX_FRONT = 300;
 export const MAX_BACK = 600;
 export const TONES = ['blue', 'purple', 'green', 'orange'];
 
-export const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+export const uid = () => crypto.randomUUID();
 
 /** One-line text: single spaces, length-limited. */
 export const cleanLine = (s, max) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, max);
@@ -75,44 +77,146 @@ const normalize = (d) => ({ ...d, cards: Array.isArray(d.cards) ? d.cards : [], 
 
 /** The saved decks and every change to them. */
 export function useDeckLibrary() {
-  const [saved, setDecks] = useUserData(KEY, []);
-  // Remove the four built-in starter decks from existing accounts as well.
-  // Only exact untouched seed decks are removed; user-created or edited decks remain.
+  const { user } = useAuth();
+  const [saved, setDecks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const snapshot = useRef([]);
+  const queue = useRef(Promise.resolve());
+  const generation = useRef(0);
+  const owner = user?.id;
+
   useEffect(() => {
-    if (!saved.some((d) => SEED.some((seed) => seed.id === d.id && seed.title === d.title && seed.created === d.created && JSON.stringify(seed.cards) === JSON.stringify(d.cards)))) return;
-    setDecks((decks) => decks.filter((d) => !SEED.some((seed) => seed.id === d.id && seed.title === d.title && seed.created === d.created && JSON.stringify(seed.cards) === JSON.stringify(d.cards))));
-  }, [saved, setDecks]);
-  return useMemo(() => {
-    const decks = saved.map(normalize);
-    const patch = (id, fn) => setDecks((a) => a.map((d) => (d.id === id ? { ...fn(normalize(d)), updated: new Date().toISOString() } : d)));
-    return {
-      decks,
-      /** Returns the new deck's id, or '' when the title is empty or the deck limit is reached. */
-      create({ title, subject }) {
-        if (!cleanDeckTitle(title) || saved.length >= MAX_DECKS) return '';
-        const deck = makeDeck(title, subject, saved.length); setDecks((a) => [deck, ...a]); return deck.id;
-      },
-      /** Renames / re-subjects a deck. Returns false when the new title is empty. */
-      details(id, { title, subject }) {
-        if (!cleanDeckTitle(title)) return false;
-        patch(id, (d) => ({ ...d, title: cleanDeckTitle(title), subject: cleanLine(subject, MAX_SUBJECT) })); return true;
-      },
-      remove: (id) => setDecks((a) => a.filter((d) => d.id !== id)),
-      /** Returns an error message, or '' when the card was added. */
-      addCard(id, front, back) {
-        const err = validateCard(front, back); if (err) return err;
-        const deck = saved.find((d) => d.id === id); if (deck && (deck.cards || []).length >= MAX_CARDS) return `A deck can hold up to ${MAX_CARDS} cards.`;
-        patch(id, (d) => ({ ...d, cards: [...d.cards, makeCard(front, back)] })); return '';
-      },
-      /** Returns an error message, or '' when the card was saved. A card whose text changed starts over as "still learning". */
-      editCard(id, cardId, front, back) {
-        const err = validateCard(front, back); if (err) return err;
-        patch(id, (d) => ({ ...d, cards: d.cards.map((c) => { if (c.id !== cardId) return c; const f = cleanSide(front, MAX_FRONT), b = cleanSide(back, MAX_BACK); return { ...c, front: f, back: b, known: f === c.front && b === c.back ? c.known : false }; }) })); return '';
-      },
-      removeCard: (id, cardId) => patch(id, (d) => ({ ...d, cards: d.cards.filter((c) => c.id !== cardId) })),
-      /** Saves study results: `marks` is { [cardId]: true | false }. */
-      mark: (id, marks) => patch(id, (d) => ({ ...d, cards: d.cards.map((c) => (c.id in marks ? { ...c, known: !!marks[c.id] } : c)) })),
-      resetProgress: (id) => patch(id, (d) => ({ ...d, cards: d.cards.map((c) => ({ ...c, known: false })) })),
-    };
-  }, [saved, setDecks]);
+    const gen = ++generation.current;
+    snapshot.current = [];
+    setDecks([]);
+    setError('');
+    setLoading(true);
+    if (!owner || !supabase) {
+      setLoading(false);
+      setError('Sign in with Supabase to manage flashcards.');
+      return;
+    }
+    (async () => {
+      const { data: deckRows, error: deckError } = await supabase.from('flashcard_decks')
+        .select('id,title,subject,created_at').eq('owner_id', owner).order('created_at', { ascending: false });
+      if (deckError) throw deckError;
+      const ids = (deckRows || []).map(d => d.id);
+      let cardRows = [];
+      if (ids.length) {
+        const { data, error: cardError } = await supabase.from('flashcards')
+          .select('id,deck_id,front,back,created_at').in('deck_id', ids).order('created_at');
+        if (cardError) throw cardError;
+        cardRows = data || [];
+      }
+      if (generation.current !== gen) return;
+      const decks = (deckRows || []).map((d, i) => ({
+        id: d.id, title: d.title, subject: d.subject || '',
+        tone: TONES[i % TONES.length], created: d.created_at, updated: d.created_at,
+        cards: cardRows.filter(c => c.deck_id === d.id).map(c => ({
+          id: c.id, front: c.front, back: c.back, known: false,
+        })),
+      }));
+      snapshot.current = decks;
+      setDecks(decks);
+      setLoading(false);
+    })().catch(err => {
+      if (generation.current === gen) {
+        setError('Could not load flashcards: ' + err.message);
+        setLoading(false);
+      }
+    });
+    return () => { generation.current++; };
+  }, [owner]);
+
+  // Serialize writes so rapid card edits cannot overwrite newer changes.
+  // The UI updates immediately; failures are reported and the next refresh reloads server truth.
+  const write = (task) => {
+    const gen = generation.current;
+    queue.current = queue.current.catch(() => {}).then(async () => {
+      if (generation.current !== gen || !owner) return;
+      try {
+        await task();
+      } catch (err) {
+        if (generation.current === gen) setError('Could not save flashcards: ' + err.message);
+        throw err;
+      }
+    });
+  };
+  const patch = (id, fn) => {
+    const d = snapshot.current.find(d => d.id === id);
+    if (!d) return;
+    const next = { ...fn(normalize(d)), updated: new Date().toISOString() };
+    snapshot.current = snapshot.current.map(x => x.id === id ? next : x);
+    setDecks(snapshot.current);
+    return next;
+  };
+  return useMemo(() => ({
+    decks: saved, loading, error,
+    create({ title, subject }) {
+      if (loading || error || !cleanDeckTitle(title) || snapshot.current.length >= MAX_DECKS) return '';
+      const deck = makeDeck(title, subject, snapshot.current.length);
+      snapshot.current = [deck, ...snapshot.current]; setDecks(snapshot.current);
+      write(async () => {
+        const { error } = await supabase.from('flashcard_decks').insert({
+          id: deck.id, owner_id: owner, title: deck.title, subject: deck.subject,
+        });
+        if (error) throw error;
+      });
+      return deck.id;
+    },
+    details(id, { title, subject }) {
+      if (!cleanDeckTitle(title)) return false;
+      const next = patch(id, d => ({ ...d, title: cleanDeckTitle(title), subject: cleanLine(subject, MAX_SUBJECT) }));
+      if (next) write(async () => {
+        const { error } = await supabase.from('flashcard_decks')
+          .update({ title: next.title, subject: next.subject }).eq('id', id).eq('owner_id', owner);
+        if (error) throw error;
+      });
+      return !!next;
+    },
+    remove(id) {
+      snapshot.current = snapshot.current.filter(d => d.id !== id); setDecks(snapshot.current);
+      write(async () => {
+        const { error } = await supabase.from('flashcard_decks').delete().eq('id', id).eq('owner_id', owner);
+        if (error) throw error;
+      });
+    },
+    addCard(id, front, back) {
+      const err = validateCard(front, back); if (err) return err;
+      const deck = snapshot.current.find(d => d.id === id);
+      if (!deck) return 'Deck not found.';
+      if (deck.cards.length >= MAX_CARDS) return `A deck can hold up to ${MAX_CARDS} cards.`;
+      const card = makeCard(front, back);
+      patch(id, d => ({ ...d, cards: [...d.cards, card] }));
+      write(async () => {
+        const { error } = await supabase.from('flashcards').insert({
+          id: card.id, deck_id: id, front: card.front, back: card.back,
+        });
+        if (error) throw error;
+      });
+      return '';
+    },
+    editCard(id, cardId, front, back) {
+      const err = validateCard(front, back); if (err) return err;
+      const f = cleanSide(front, MAX_FRONT), b = cleanSide(back, MAX_BACK);
+      patch(id, d => ({ ...d, cards: d.cards.map(c => c.id === cardId
+        ? { ...c, front: f, back: b, known: f === c.front && b === c.back ? c.known : false } : c) }));
+      write(async () => {
+        const { error } = await supabase.from('flashcards').update({ front: f, back: b }).eq('id', cardId).eq('deck_id', id);
+        if (error) throw error;
+      });
+      return '';
+    },
+    removeCard(id, cardId) {
+      patch(id, d => ({ ...d, cards: d.cards.filter(c => c.id !== cardId) }));
+      write(async () => {
+        const { error } = await supabase.from('flashcards').delete().eq('id', cardId).eq('deck_id', id);
+        if (error) throw error;
+      });
+    },
+    // Mastery is currently session-local: the existing database has no known/progress column.
+    mark(id, marks) { patch(id, d => ({ ...d, cards: d.cards.map(c => c.id in marks ? { ...c, known: !!marks[c.id] } : c) })); },
+    resetProgress(id) { patch(id, d => ({ ...d, cards: d.cards.map(c => ({ ...c, known: false })) })); },
+  }), [saved, loading, error, owner]);
 }
