@@ -105,7 +105,7 @@ export function useDeckLibrary() {
       let cardRows = [];
       if (ids.length) {
         const { data, error: cardError } = await supabase.from('flashcards')
-          .select('id,deck_id,front,back,created_at').in('deck_id', ids).order('created_at');
+          .select('id,deck_id,front,back').in('deck_id', ids).order('id');
         if (cardError) throw cardError;
         cardRows = data || [];
       }
