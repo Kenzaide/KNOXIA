@@ -75,7 +75,7 @@ export const userData = {
   get(key, fallback = null, check) {
     const k = userKey(key); const own = local.get(k, MISSING, check);
     if (own !== MISSING) return own;
-    return k !== key ? local.get(key, fallback, check) : fallback;
+    return fallback;
   },
   set: (key, value) => local.set(userKey(key), value),
   update(key, fn, fallback = null, check) { const next = fn(userData.get(key, fallback, check)); userData.set(key, next); return next; },

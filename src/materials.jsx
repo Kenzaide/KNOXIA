@@ -54,7 +54,7 @@ export const toast = (msg) => window.dispatchEvent(new CustomEvent('knoxia-toast
 export const MaterialsProvider = ({ children }) => children;
 
 export function useMaterials() {
-  const [items, setItems] = useUserData(KEY, seed);
+  const [items, setItems] = useUserData(KEY, []);
   const add = useCallback((m) => {
     const item = { ...m, id: m.id || String(Date.now()), uploaded: new Date().toISOString() };
     setItems((a) => [item, ...a]);
