@@ -406,3 +406,13 @@ html.theme-fade *,html.theme-fade *::before,html.theme-fade *::after{transition:
 .text-actions{display:flex;justify-content:flex-end;margin-bottom:10px}
 .text-block{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--soft);border:1px solid var(--border);border-radius:16px;padding:14px;max-height:60vh;overflow:auto;line-height:1.65;font-size:14px}
 @media(max-width:900px){.viewer-grid{grid-template-columns:1fr}}
+
+/* Spacious, responsive Supabase registration layout */
+.auth-screen-register{padding-block:85px 40px;justify-content:flex-start}
+.auth-card-register{width:min(100%,900px);padding:clamp(24px,4vw,44px)}
+.auth-card-register .register-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 20px}
+.auth-card-register .register-grid>.afield{margin:0}
+.auth-card-register .register-grid>.afield .field{width:100%;margin:0}
+.auth-card-register .register-grid>.pw-rules,.auth-card-register .register-grid>.pw-match,.auth-card-register .register-grid>.notice,.auth-card-register .register-grid>.btn{grid-column:1/-1}
+.auth-card-register .register-grid>.btn{min-height:46px}
+@media(max-width:620px){.auth-screen-register{padding:90px 16px 28px}.auth-card-register{padding:24px}.auth-card-register .register-grid{grid-template-columns:1fr;gap:12px}.auth-card-register .pw-rules ul{grid-template-columns:1fr}}
