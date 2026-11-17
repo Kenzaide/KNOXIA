@@ -22,8 +22,10 @@ export const ROOMS_KEY = 'knoxia-study-rooms';
 export const MESSAGES_KEY = 'knoxia-room-messages';
 export const ACTIVITIES_KEY = 'knoxia-room-activities'; // group study activities (Patch 22), see activitiesStore.js
 const isList = Array.isArray;
-export const savedRooms = () => local.get(ROOMS_KEY, [], isList);        // the demo rooms until the first change is saved
-const savedMessages = () => local.get(MESSAGES_KEY, [], isList);
+const EMPTY_ROOMS = [];
+const EMPTY_MESSAGES = [];
+export const savedRooms = () => local.get(ROOMS_KEY, EMPTY_ROOMS, isList);        // the demo rooms until the first change is saved
+const savedMessages = () => local.get(MESSAGES_KEY, EMPTY_MESSAGES, isList);
 
 function useShared(key, read, server) {
   const subscribe = useCallback((fn) => local.subscribe(key, fn), [key]);
@@ -33,7 +35,7 @@ function useShared(key, read, server) {
 /** Everything the room screens need for the signed-in person. Re-renders on any change, also from another tab. */
 export function useRoomsData() {
   const me = useProfile(); const f = useFriends();
-  const rawRooms = useShared(ROOMS_KEY, savedRooms, []); const rawMessages = useShared(MESSAGES_KEY, savedMessages, []);
+  const rawRooms = useShared(ROOMS_KEY, savedRooms, EMPTY_ROOMS); const rawMessages = useShared(MESSAGES_KEY, savedMessages, EMPTY_MESSAGES);
   return useMemo(() => ({
     me, meId: me.id, ready: f.ready,
     rooms: cleanRooms(rawRooms), messages: cleanMessages(rawMessages),
