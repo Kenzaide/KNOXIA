@@ -5,6 +5,8 @@ import { Button, SectionTitle, ConfirmDialog, PromptDialog } from './ui.jsx';
 import { toast, fmtDate } from './materials.jsx';
 import { Mark } from './library.jsx';
 import { logEvent } from './data.js';
+import { useProgressLog, track } from './progressStore.js'; // study progress (Patch 15)
+import { REVIEWER_LABELS, reviewerStatus } from './progressCalc.js';
 import { RSORTS, MAX_TITLE, MAX_FOLDER, matches, sortReviewers, folderCounts, folderOf, resolveFolder, cleanTitle, wordCount, updatedAt, useReviewerLibrary } from './reviewerLib.js';
 
 /**
@@ -17,7 +19,7 @@ const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const sameFolder = (a, b) => a.toLowerCase() === b.toLowerCase();
 
 export default function ReviewerLibrary() {
-  const nav = useNavigate(); const lib = useReviewerLibrary(); const { items } = lib; const [sp, setSp] = useSearchParams();
+  const nav = useNavigate(); const lib = useReviewerLibrary(); const { items } = lib; const [sp, setSp] = useSearchParams(); const progress = useProgressLog().reviewers;
   const [limit, setLimit] = useState(PAGE); const [railOpen, setRailOpen] = useState(false);
   const [selecting, setSelecting] = useState(false); const [sel, setSel] = useState(() => new Set());
   const [rename, setRename] = useState(null); // { id, value } while a title is being edited on its card
@@ -78,7 +80,7 @@ export default function ReviewerLibrary() {
   };
   const doRemoveFolder = () => { const name = dlg.name; const n = lib.removeFolder(name); setDlg(null); if (f.folder && sameFolder(f.folder, name)) set({ folder: '' }); toast(`Folder removed. ${plural(n, 'reviewer')} kept as Unfiled`); };
   const doDelete = () => {
-    const targets = dlg.targets; setDlg(null); lib.remove(targets.map((r) => r.id));
+    const targets = dlg.targets; setDlg(null); lib.remove(targets.map((r) => r.id)); track.forgetReviewers(targets.map((r) => r.id));
     logEvent(targets.length === 1 ? `Reviewer deleted: ${targets[0].title.slice(0, 80)}` : `${targets.length} reviewers deleted`);
     toast(targets.length === 1 ? 'Reviewer deleted' : `${targets.length} reviewers deleted`);
     setSel((s) => { const n = new Set(s); targets.forEach((r) => n.delete(r.id)); return n; });
@@ -99,7 +101,7 @@ export default function ReviewerLibrary() {
             <button type="button" className="plain-icon" aria-label="Cancel rename" onClick={() => setRename(null)}><X size={18} /></button></form>
         : <h3><Link viewTransition className="lib-title" to={'/reviewers/' + r.id}><Mark text={r.title} q={f.q} /></Link></h3>}
       <p>{fo ? <button type="button" className="lib-subject rv-folder" onClick={() => set({ folder: f.folder && sameFolder(f.folder, fo) ? '' : fo, unfiled: false })}><Folder size={13} /> {fo}</button> : <span className="rv-unfiled">Unfiled</span>}</p>
-      <p className="rv-src">{r.style} &middot; from {r.file}</p>
+      <p className="rv-src">{r.style} &middot; from {r.file} <span className={`status-pill rv-status ${reviewerStatus(progress[r.id]) === 'done' ? 'active' : reviewerStatus(progress[r.id]) === 'progress' ? 'pending' : ''}`}>{REVIEWER_LABELS[reviewerStatus(progress[r.id])]}</span></p>
       <div className="material-meta"><span>{plural(wordCount(r), 'word')}</span><span>Updated {fmtDate(updatedAt(r))}</span></div>
       <div className="material-actions"><button type="button" onClick={() => nav('/reviewers/' + r.id, { viewTransition: true })}>Open reviewer <ArrowUpRight size={16} /></button>
         <div className="lib-icons"><button type="button" className="plain-icon" aria-label={`Rename ${r.title}`} onClick={() => setRename({ id: r.id, value: r.title })}><Pencil size={17} /></button>

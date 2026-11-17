@@ -4,6 +4,7 @@ import { ArrowUpRight, Check, CheckCircle2, Clock3, Layers, Pencil, Play, Plus, 
 import { Button, SectionTitle, ConfirmDialog } from './ui.jsx';
 import { toast, SUBJECTS } from './materials.jsx';
 import { logEvent } from './data.js';
+import { track } from './progressStore.js'; // study progress (Patch 15)
 import {
   MAX_DECKS, MAX_CARDS, MAX_DECK_TITLE, MAX_FRONT, MAX_BACK,
   cleanDeckTitle, knownCount, masteryPct, sessionOrder, useDeckLibrary,
@@ -132,6 +133,9 @@ export function FlashStudy() {
   const [order, setOrder] = useState(() => (deck ? sessionOrder(deck.cards) : []));
   const [i, setI] = useState(0); const [flip, setFlip] = useState(false); const [marks, setMarks] = useState({});
   const cardRef = useRef(null);
+  // Study progress (Patch 15): every session that rated at least one card is logged once. A new run (restart, shuffle,
+  // "study missed"), finishing the deck and leaving the page all flush the cards rated so far; `logged` stops double counting.
+  const t0 = useRef(Date.now()); const logged = useRef(0); const latest = useRef({});
 
   // The session shows the cards that still exist; a card deleted elsewhere is skipped.
   const byId = useMemo(() => new Map((deck ? deck.cards : []).map((c) => [c.id, c])), [deck]);
@@ -139,9 +143,17 @@ export function FlashStudy() {
   const done = n > 0 && i >= n; const card = cards[i];
   const knew = cards.filter((c) => marks[c.id] === true).length; const missed = cards.filter((c) => marks[c.id] === false);
 
-  const start = (nextOrder, nextShuffled = shuffled) => { setOrder(nextOrder); setShuffled(nextShuffled); setI(0); setFlip(false); setMarks({}); };
+  latest.current = { deck, cards, marks };
+  const flush = () => {
+    const { deck: d, cards: cs, marks: m } = latest.current; if (!d) return;
+    const rated = cs.filter((c) => c.id in m); if (rated.length <= logged.current) return;
+    logged.current = rated.length; track.flashcards({ deckId: d.id, title: d.title, total: rated.length, correct: rated.filter((c) => m[c.id] === true).length, secs: (Date.now() - t0.current) / 1000 });
+  };
+  const start = (nextOrder, nextShuffled = shuffled) => { flush(); logged.current = 0; t0.current = Date.now(); setOrder(nextOrder); setShuffled(nextShuffled); setI(0); setFlip(false); setMarks({}); };
   const mark = (ok) => { if (!card) return; setMarks((m) => ({ ...m, [card.id]: ok })); lib.mark(deck.id, { [card.id]: ok }); setFlip(false); setI((x) => x + 1); };
 
+  useEffect(() => { if (done) flush(); }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => flush(), []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (card && cardRef.current) cardRef.current.focus({ preventScroll: true }); }, [i, card && card.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { // 1 = still learning, 2 = I knew it (once the answer is showing)
     if (!card || !flip) return;

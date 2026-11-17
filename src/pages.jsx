@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ThemePicker } from './theme.jsx';
 import { Bookmark, FolderInput, Sparkles, Layers, CheckCircle2, Trophy, Crown, Flame, Clock3, Target, Bell, ShieldCheck, Activity, Plus, Trash2, Send, Play, Pause, RotateCcw, Check, Download, Users, Zap, BookOpen, Medal, ArrowUpRight, Lock, CalendarDays, Swords } from 'lucide-react';
@@ -7,8 +7,10 @@ import { useProfile } from './accounts.js';
 import { ProfileEditor } from './profile.jsx';
 import { QuizRunner } from './quizRunner.jsx'; // the shared quiz runner (Patch 13), used here by Quiz Challenges
 import { ConfirmDialog, PromptDialog } from './ui.jsx';
+import { track, useProgressLog, useStudyProgress } from './progressStore.js'; // study progress (Patch 15)
+import { fmtTime, topicMastery } from './progressCalc.js';
 import { MAX_TITLE, MAX_FOLDER, cleanTitle, folderOf, folderCounts, resolveFolder, updatedAt, useReviewerLibrary } from './reviewerLib.js';
-import { BANK, ROOMS, CHALLENGES, BOARD, BADGES, useNotes, useReviewers, useAttempts, useRooms, useChallenges, usePlan, useSettings, useReports, useLogs, pushLS, logEvent } from './data.js';
+import { BANK, ROOMS, CHALLENGES, BOARD, BADGES, useNotes, useReviewers, useRooms, useChallenges, usePlan, useSettings, useReports, useLogs, pushLS, logEvent } from './data.js';
 
 const Btn = ({ children, v = 'primary', icon: I, ...p }) => <button type="button" className={`btn ${v}`} {...p}>{I && <I size={16} />}<span>{children}</span></button>;
 const Head = ({ title, sub, action }) => <div className="section-title"><div><h2>{title}</h2>{sub && <p>{sub}</p>}</div>{action}</div>;
@@ -33,15 +35,20 @@ export function ReviewerEditor() {
   const { id } = useParams(); const nav = useNavigate(); const lib = useReviewerLibrary();
   const r = lib.items.find(x => x.id === id); const [t, setT] = useState(r ? r.title : ''); const [b, setB] = useState(r ? r.body : '');
   const [dlg, setDlg] = useState(null); // 'move' | 'delete'
+  // Study progress (Patch 15): opening a reviewer starts it ("In progress"); the student marks it completed when done.
+  const seen = useRef(''); const log = useProgressLog(); const done = !!(log.reviewers[id] && log.reviewers[id].done);
+  useEffect(() => { if (r && seen.current !== r.id) { seen.current = r.id; track.openReviewer(r.id); } }, [r && r.id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!r) return <Empty icon={Sparkles} title="Reviewer not found" text="It may have been deleted." action={<div className="head-actions" style={{ justifyContent: 'center' }}><Btn v="outline" onClick={() => nav('/reviewers')}>All reviewers</Btn><Btn onClick={() => nav('/reviewers/create')}>Create a reviewer</Btn></div>} />;
   const fo = folderOf(r); const dirty = cleanTitle(t) !== r.title || b !== r.body;
   const save = () => {
     lib.edit(r.id, { title: t, body: b }); setT(cleanTitle(t) || r.title); toast('Reviewer saved'); // an empty title keeps the old one
   };
+  const toggleDone = () => { track.setReviewerDone(r, !done); toast(done ? 'Marked as not completed' : 'Reviewer marked as completed'); };
   const bookmark = () => { lib.setBookmark(r.id, !r.favorite); toast(r.favorite ? 'Bookmark removed' : 'Reviewer bookmarked'); };
   const move = v => { const name = resolveFolder(v, lib.items); lib.move(r.id, name); setDlg(null); toast(name ? `Moved to “${name}”` : 'Moved out of folders'); };
-  const del = () => { lib.remove(r.id); logEvent(`Reviewer deleted: ${r.title.slice(0, 80)}`); toast('Reviewer deleted'); nav('/reviewers'); };
+  const del = () => { lib.remove(r.id); track.forgetReviewers(r.id); logEvent(`Reviewer deleted: ${r.title.slice(0, 80)}`); toast('Reviewer deleted'); nav('/reviewers'); };
   return <><Head title="Reviewer Details / Editor" sub={`${r.style} · from ${r.file}${fo ? ` · in ${fo}` : ''}`} action={<div className="head-actions">
+      <Btn v={done ? 'soft' : 'outline'} icon={CheckCircle2} aria-pressed={done} onClick={toggleDone}>{done ? 'Completed' : 'Mark as completed'}</Btn>
       <Btn v="outline" icon={r.favorite ? BookmarkOn : Bookmark} aria-pressed={!!r.favorite} onClick={bookmark}>{r.favorite ? 'Bookmarked' : 'Bookmark'}</Btn>
       <Btn v="outline" icon={FolderInput} onClick={() => setDlg('move')}>{fo ? 'Move' : 'Add to folder'}</Btn>
       <Btn v="outline" icon={Trash2} onClick={() => setDlg('delete')}>Delete</Btn>
@@ -104,12 +111,17 @@ export function Achievements() {
     <div className="friend-grid">{BADGES.map(([n, d, ic, on]) => { const I = ICONS[ic]; return <div className="panel friend-card" key={n} style={on ? undefined : { opacity: .6 }}><div className={`stat-icon ${on ? 'orange' : ''}`} style={{ margin: '0 auto 10px' }}>{on ? <I size={18} /> : <Lock size={18} />}</div><h3>{n}</h3><p>{d}</p><span className="friend-status">{on ? 'Earned' : 'Locked'}</span></div>; })}</div></>;
 }
 export function Analytics() {
-  const [att] = useAttempts(); const avg = att.length ? Math.round(att.reduce((s, a) => s + a.score / a.n * 100, 0) / att.length) : 86;
-  const topics = [['Machine Learning', 78], ['Automata Theory', 54], ['Cybersecurity', 85], ['Computer Architecture', 41]];
-  return <><Head title="Learning Analytics" sub="Use your learning data to make your next study session count." action={<Btn v="outline" icon={Download} onClick={() => dl('knoxia-report.csv', [['Topic', 'Mastery %'], ...topics, ['Quizzes taken', att.length], ['Quiz average %', avg]])}>Export report</Btn>} />
-    <div className="stats-grid"><Stat label="Study time" value="18h 42m" note="↑ 12% this week" icon={Clock3} /><Stat label="Quiz average" value={avg + '%'} note={att.length ? 'From your attempts' : 'Sample data'} icon={Target} tone="green" /><Stat label="Quizzes taken" value={String(att.length)} note="This device" icon={BookOpen} tone="purple" /><Stat label="Streak" value="7 days" note="Personal best: 12" icon={Flame} tone="orange" /></div>
-    <div className="dashboard-grid"><section className="panel"><h3>Study activity</h3><div className="bar-chart">{[['M', 42], ['T', 68], ['W', 52], ['T', 88], ['F', 64], ['S', 100], ['S', 28]].map(([d, v], i) => <div className="bar-column" key={i}><div className="bar-bg"><span style={{ height: v + '%' }} /></div><small>{d}</small></div>)}</div></section>
-      <section className="panel"><h3>Topic mastery</h3>{topics.map(([n, v]) => <div key={n}><div className="deck-bottom"><span>{n}</span><b>{v}%</b></div><div className="progress-track"><span style={{ width: v + '%' }} /></div></div>)}</section></div></>;
+  // Real numbers from Study Progress (Patch 15) once there is activity; until then the sample values are shown and labelled as such.
+  const pr = useStudyProgress(); const live = pr.hasActivity; const q = pr.quizzes;
+  const avg = q.avg === null ? 86 : q.avg;
+  const real = topicMastery(pr.deckList).map(t => [t.name, t.pct]);
+  const topics = real.length ? real : [['Machine Learning', 78], ['Automata Theory', 54], ['Cybersecurity', 85], ['Computer Architecture', 41]];
+  const peak = Math.max(1, ...pr.week.map(d => d.count));
+  const bars = live ? pr.week.map(d => [d.label, d.count ? Math.max(8, Math.round(d.count / peak * 100)) : 0]) : [['M', 42], ['T', 68], ['W', 52], ['T', 88], ['F', 64], ['S', 100], ['S', 28]];
+  return <><Head title="Learning Analytics" sub="Use your learning data to make your next study session count." action={<Btn v="outline" icon={Download} onClick={() => dl('knoxia-report.csv', [['Topic', 'Mastery %'], ...topics, ['Quizzes taken', q.taken], ['Quiz average %', avg], ['Study time', live ? fmtTime(pr.secs) || '0m' : 'n/a'], ['Current streak (days)', live ? pr.streak.current : 'n/a']])}>Export report</Btn>} />
+    <div className="stats-grid"><Stat label="Study time" value={live ? fmtTime(pr.secs) || '0m' : '18h 42m'} note={live ? 'Flashcards and quizzes' : 'Sample data'} icon={Clock3} /><Stat label="Quiz average" value={avg + '%'} note={q.taken ? 'From your attempts' : 'Sample data'} icon={Target} tone="green" /><Stat label="Quizzes taken" value={String(q.taken)} note="This device" icon={BookOpen} tone="purple" /><Stat label="Streak" value={live ? `${pr.streak.current} day${pr.streak.current === 1 ? '' : 's'}` : '7 days'} note={live ? `Personal best: ${pr.streak.best}` : 'Sample data'} icon={Flame} tone="orange" /></div>
+    <div className="dashboard-grid"><section className="panel"><h3>Study activity</h3><div className="bar-chart">{bars.map(([d, v], i) => <div className="bar-column" key={i}><div className="bar-bg"><span style={{ height: v + '%' }} /></div><small>{d}</small></div>)}</div>{live ? <p className="muted-sm" style={{ marginTop: 10 }}>Last 7 days. <Link className="link-btn" to="/progress">See Study Progress</Link></p> : <p className="muted-sm" style={{ marginTop: 10 }}>Sample data. Study a deck or take a quiz to see your own.</p>}</section>
+      <section className="panel"><h3>Topic mastery</h3>{topics.map(([n, v]) => <div key={n}><div className="deck-bottom"><span>{n}</span><b>{v}%</b></div><div className="progress-track"><span style={{ width: v + '%' }} /></div></div>)}{real.length > 0 && <p className="muted-sm" style={{ marginTop: 10 }}>Share of flashcards you marked as known, by subject.</p>}</section></div></>;
 }
 export function Planner() {
   const [items, setItems] = usePlan();

@@ -18,6 +18,9 @@ import ReviewerLibrary from './reviewers.jsx';
 import { FlashcardLibrary, DeckEditor, FlashStudy } from './flashcards.jsx';
 import { QuizCreate, QuizEditor, QuizTake } from './quizzes.jsx';
 import { QuizResults, QuizHistory, QuizMissed } from './quizResults.jsx';
+import StudyProgress from './progress.jsx';
+import { useStudyProgress } from './progressStore.js';
+import { fmtTime } from './progressCalc.js';
 
 // In-app navigation helper. Always goes through the router (no full page reloads).
 function useGo() {
@@ -32,7 +35,7 @@ import {
   Clock3, Flame, Target, CheckCircle2, CircleHelp, LogOut, Moon, Sun, Send,
   Paperclip, Play, Bookmark, Download, Filter, SlidersHorizontal, Zap, Star,
   LockKeyhole, Mail, Eye, EyeOff, Home, GraduationCap, Activity, Trash2,
-  Pencil, UsersRound, Crown, CalendarCheck, CircleUserRound, AlertCircle
+  Pencil, UsersRound, Crown, CalendarCheck, CircleUserRound, AlertCircle, TrendingUp
 } from 'lucide-react';
 
 const navGroups = [
@@ -54,6 +57,7 @@ const navGroups = [
     ['Challenges','/challenges',Swords],
   ]},
   { label: 'Your progress', items: [
+    ['Study Progress','/progress',TrendingUp],
     ['Leaderboards','/leaderboards',Trophy],
     ['Achievements','/achievements',Medal],
     ['Analytics','/analytics',ChartNoAxesCombined],
@@ -76,7 +80,7 @@ const titleMap = {
   '/reviewers':'My Reviewers','/reviewers/create':'Create AI Reviewer','/study-companion':'Knowl · Study Companion',
   '/flashcards':'Flashcard Library','/quizzes/create':'Create Quiz','/quizzes/attempts':'Quiz History','/feed':'Learning Feed',
   '/friends':'Friends','/study-rooms':'Study Rooms','/challenges':'Quiz Challenges',
-  '/leaderboards':'Leaderboards','/achievements':'Achievements & Badges','/analytics':'Learning Analytics',
+  '/progress':'Study Progress','/leaderboards':'Leaderboards','/achievements':'Achievements & Badges','/analytics':'Learning Analytics',
   '/study-planner':'Study Planner','/settings':'Settings','/notifications':'Notifications',
   '/admin/dashboard':'Admin Dashboard','/admin/users':'User Management','/admin/moderation':'Content Moderation',
   '/admin/logs':'Activity Logs'
@@ -173,11 +177,12 @@ const TIPS=[
 ];
 const greetingFor=h=>h<5?'Still up':h<12?'Good morning':h<18?'Good afternoon':'Good evening';
 function Dashboard() { const go=useGo();
-  const {items}=useMaterials(); const loading=usePending(); const {firstName}=useProfile();
+  const {items}=useMaterials(); const loading=usePending(); const {firstName}=useProfile(); const pr=useStudyProgress();
   const [said,setSaid]=useState(null); const [clicks,setClicks]=useState(0); const [focusing,setFocusing]=useState(false);
   const hour=new Date().getHours(); const night=hour>=22||hour<5;
   const goal={done:45,total:60}; const left=Math.max(0,goal.total-goal.done); const pct=Math.round(goal.done/goal.total*100);
-  const streak=7; const first=items[0];
+  // Real numbers from Study Progress (Patch 15) once there is activity; sample values until then.
+  const live=pr.hasActivity; const streak=live?pr.streak.current:7; const first=items[0];
   const resting=night?{pose:'sleepy',text:`It's late, ${firstName}. Review something short, then get some sleep.`}
     :left===0?{pose:'happy',text:"Goal reached! Great work today."}
     :items.length===0?{pose:'think',text:"Upload a file and I'll help you turn it into a reviewer."}
@@ -186,7 +191,7 @@ function Dashboard() { const go=useGo();
   const poke=()=>{
     const tip=TIPS[Math.floor(clicks/4)%TIPS.length];
     const reactions=[
-      {pose:'happy',text:`${streak}-day streak. Keep it going!`},
+      {pose:'happy',text:streak>0?`${streak}-day streak. Keep it going!`:'Study something today to start a streak.'},
       {pose:'think',text:tip},
       {pose:'study',text:first?`Want to review "${first.name}"?`:'Upload a file and we can study it together.'},
       {pose:'default',text:"Hoot! I'm here when you need me."},
@@ -216,8 +221,8 @@ function Dashboard() { const go=useGo();
         {items.slice(0,3).map(m=><div className="continue-item" key={m.id}><div className={`file-tile ${m.color||colorOf(m.type)}`}><FileText size={20}/></div><div className="continue-info"><b>{m.name}</b><small>{m.subject} · Uploaded {fmtDate(m.uploaded)}</small></div><button className="round-arrow" aria-label={`Open ${m.name}`} onClick={()=>go('/materials/'+m.id)}><ArrowUpRight size={18}/></button></div>)}
         {items.length===0&&<div className="empty-state"><FolderOpen size={32}/><b>No materials yet</b><p>Upload your first file to get started.</p></div>}
       </section>
-      <section className="panel"><SectionTitle title="This week" action={<NavLink viewTransition to="/analytics">Details</NavLink>}/>
-        {[[Flame,'orange',`${streak} days`,'Study streak. Best is 12.'],[Target,'green','86.5%','Quiz average, up 4.2%.'],[Clock3,'blue','8h 35m','Studied, up 18% on last week.']].map(([I,tone,v,l])=><div className="kn-stat" key={l}><div className={`activity-dot ${tone}`}><I size={18}/></div><div><b>{v}</b><small>{l}</small></div></div>)}
+      <section className="panel"><SectionTitle title="This week" action={<NavLink viewTransition to="/progress">Details</NavLink>}/>
+        {[[Flame,'orange',`${streak} ${streak===1?'day':'days'}`,live?`Study streak. Best is ${pr.streak.best}.`:'Study streak. Best is 12.'],[Target,'green',pr.quizzes.avg===null?'86.5%':pr.quizzes.avg+'%',pr.quizzes.avg===null?'Quiz average, up 4.2%.':`Quiz average over ${pr.quizzes.taken} ${pr.quizzes.taken===1?'attempt':'attempts'}.`],[Clock3,'blue',live?fmtTime(pr.week.reduce((t,d)=>t+d.secs,0))||'0m':'8h 35m',live?'Studied in the last 7 days.':'Studied, up 18% on last week.']].map(([I,tone,v,l])=><div className="kn-stat" key={l}><div className={`activity-dot ${tone}`}><I size={18}/></div><div><b>{v}</b><small>{l}</small></div></div>)}
       </section>
     </div>
   </>;
@@ -405,7 +410,7 @@ function AppRoutes() {
    <Route path="/dashboard" element={<Dashboard/>}/><Route path="/materials" element={<MaterialLibrary/>}/><Route path="/materials/upload" element={<UploadPage/>}/><Route path="/materials/:id" element={<MaterialDetail/>}/>
    <Route path="/reviewers" element={<ReviewerLibrary/>}/><Route path="/reviewers/create" element={<CreateReviewer/>}/><Route path="/reviewers/:id" element={<ReviewerEditor/>}/><Route path="/study-companion" element={<Companion/>}/><Route path="/flashcards" element={<FlashcardLibrary/>}/><Route path="/flashcards/:id" element={<DeckEditor/>}/><Route path="/flashcards/:id/study" element={<FlashStudy/>}/><Route path="/quizzes/create" element={<QuizCreate/>}/><Route path="/quizzes/:id/edit" element={<QuizEditor/>}/><Route path="/quizzes/:id/take" element={<QuizTake/>}/><Route path="/quizzes/attempts" element={<QuizHistory/>}/><Route path="/quizzes/attempts/:id" element={<QuizResults/>}/><Route path="/quizzes/attempts/:id/missed" element={<QuizMissed/>}/>
    <Route path="/feed" element={<Feed/>}/><Route path="/friends" element={<Friends/>}/><Route path="/profile" element={<Profile/>}/><Route path="/profile/:username" element={<Profile/>}/><Route path="/study-rooms" element={<StudyRooms/>}/><Route path="/study-rooms/:id" element={<RoomDetail/>}/><Route path="/challenges" element={<Challenges/>}/><Route path="/challenges/:id/play" element={<ChallengePlay/>}/>
-   <Route path="/leaderboards" element={<Leaderboards/>}/><Route path="/achievements" element={<Achievements/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/study-planner" element={<Planner/>}/>
+   <Route path="/progress" element={<StudyProgress/>}/><Route path="/leaderboards" element={<Leaderboards/>}/><Route path="/achievements" element={<Achievements/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/study-planner" element={<Planner/>}/>
    <Route path="/settings" element={<SettingsPage/>}/><Route path="/notifications" element={<Notifications/>}/>
    <Route path="/admin/dashboard" element={<AdminDashboard/>}/><Route path="/admin/users" element={<AdminUsers/>}/><Route path="/admin/moderation" element={<Moderation/>}/><Route path="/admin/logs" element={<Logs/>}/>
    <Route path="*" element={<NotFound/>}/>
