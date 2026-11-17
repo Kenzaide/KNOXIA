@@ -39,6 +39,8 @@ export function FlashcardLibrary() {
   const confirmDelete = () => { const d = del; setDel(null); lib.remove(d.id); logEvent(`Flashcard deck deleted: ${d.title.slice(0, 80)}`); toast('Deck deleted'); };
 
   return <>
+    {lib.error && <div className="notice error" role="alert">{lib.error}</div>}
+    {lib.loading && <p className="muted" role="status">Loading flashcards from Supabase…</p>}
     <SectionTitle title="Flashcard Library" subtitle="Practice active recall and make knowledge stick." action={<Button icon={Plus} onClick={() => { setCreating((c) => !c); setErr(''); }}>Create deck</Button>} />
     {creating && <form className="panel fc-create" onSubmit={create} noValidate aria-label="Create a deck">
       <label className="ufield"><span>Deck name</span><input autoFocus value={title} maxLength={MAX_DECK_TITLE} placeholder="e.g. Operating Systems midterm" onChange={(e) => { setTitle(e.target.value); setErr(''); }} /></label>
@@ -88,6 +90,8 @@ export function DeckEditor() {
   const [editing, setEditing] = useState(null); const [dlg, setDlg] = useState(null); // dlg: 'deck' | 'reset' | { card }
   const [detailErr, setDetailErr] = useState('');
   useEffect(() => { if (editing && deck && !deck.cards.some((c) => c.id === editing)) setEditing(null); }, [deck, editing]);
+  if (lib.loading) return <p className="muted" role="status">Loading deck from Supabase…</p>;
+  if (lib.error) return <div className="notice error" role="alert">{lib.error}</div>;
   if (!deck) return <Empty icon={Layers} title="Deck not found" text="It may have been deleted."><Button onClick={() => nav('/flashcards')}>Back to flashcards</Button></Empty>;
 
   const dirty = cleanDeckTitle(title) !== deck.title || subject !== deck.subject;
