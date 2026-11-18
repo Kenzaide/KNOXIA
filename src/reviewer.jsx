@@ -90,7 +90,7 @@ export default function CreateReviewer() {
   const materialKey = material ? material.id : '';
   useEffect(() => {
     let on = true; setStored(undefined);
-    if (materialKey) getFile(materialKey).then((b) => { if (on) setStored(!!b); });
+    if (materialKey) getFile(materialKey).then((b) => { if (on) setStored(!!b); }).catch(() => { if (on) setStored(false); });
     return () => { on = false; };
   }, [materialKey]);
 
@@ -101,9 +101,9 @@ export default function CreateReviewer() {
   const sourceReady = mode === 'text' ? text.trim().length > 0 : !!material && (stored === true || (stored === false && !!SAMPLE_TEXT[material.id]));
   const materialNote = !material ? 'You have no materials yet. Upload one, or paste text instead.'
     : stored === undefined ? 'Checking this material\u2026'
-    : stored ? 'KNOXIA will read the file stored in this browser.'
+    : stored ? 'KNOXIA will read the original file from secure storage.'
     : SAMPLE_TEXT[material.id] ? 'Sample material: the demo will use built-in sample text.'
-    : material.fileName ? 'The original file is no longer stored in this browser. Upload it again or paste text instead.'
+    : material.fileName ? 'The original file could not be retrieved. Upload it again or paste text instead.'
     : 'This sample material has no file to read. Upload a file or paste text instead.';
 
   const generate = async () => {
