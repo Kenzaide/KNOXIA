@@ -65,7 +65,7 @@ const navGroups = [
     ['My Reviewers','/reviewers',Bookmark,['/reviewers'],['/reviewers/create']],
     ['Study Companion','/study-companion',BrainCircuit],
     ['Flashcards','/flashcards',Layers],
-    ['Quizzes','/quizzes/create',BookOpen,['/quizzes']],
+    ['Quizzes','/quizzes/ai',BookOpen,['/quizzes']],
   ]},
   { label: 'Social learning', items: [
     ['Learning Feed','/feed',MessageSquare],
