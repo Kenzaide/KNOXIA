@@ -93,45 +93,58 @@ export default function AIStudyCompanion() {
   } catch (e) { setMessages(old); setDraft(question); setError(e.message || 'Could not send message.'); }
   finally { setBusy(false); }
  };
- return <div style={{ maxWidth: 1300, margin: '0 auto' }}>
-  <h2 style={{ marginBottom: 4 }}>Knowl, your AI Study Companion</h2>
-  <p style={{ color: '#64748b', marginBottom: 20 }}>Ask questions, explore concepts, and continue saved conversations with Gemini.</p>
-  {error && <div role="alert" style={{ ...panel, color: '#c42648', marginBottom: 14 }}>{error}</div>}
-  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(210px, 280px) minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
-   <aside style={panel}>
-    <button type="button" style={{ ...blue, width: '100%' }} disabled={busy} onClick={newChat}><Plus size={16} style={{ verticalAlign: 'middle' }} /> New conversation</button>
-    <h3 style={{ marginTop: 22, fontSize: 15 }}>Conversation history</h3>
-    {loading && <p>Loading conversations…</p>}
-    {!loading && !chats.length && <p style={{ color: '#64748b' }}>Your conversations will appear here after you send a message.</p>}
-    {chats.map((c) => <div key={c.id} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
-     <button type="button" disabled={busy} onClick={() => open(c)} style={{ ...btn, flex: 1, minWidth: 0, textAlign: 'left', background: c.id === id ? '#e9f0ff' : 'transparent', color: c.id === id ? '#1d4ed8' : 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.title}><MessageSquare size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />{c.title}</button>
-     <button type="button" style={btn} disabled={busy} onClick={() => remove(c)} aria-label={'Delete ' + c.title}><Trash2 size={15}/></button>
-    </div>)}
-   </aside>
-   <main style={panel}>
-    <div style={{ display: 'flex', gap: 12, alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: 14, marginBottom: 14 }}>
-     <KnowlAvatar pose={busy ? 'think' : 'happy'} size={42}/>
-     <div><b>Knowl · KNOXIA</b><div style={{ color: '#64748b', fontSize: 13 }}>{busy ? 'Thinking with Gemini…' : current?.title || 'New study session'}</div></div>
+ return <>
+  <h2 style={{marginBottom:4}}>Knowl, your Study Companion</h2>
+  <p className="muted" style={{marginBottom:20}}>Your personal learning assistant, ready when you are.</p>
+  {error && <div className="notice error" role="alert">{error}</div>}
+  <div className="chat-layout">
+   <div className="chat-main panel">
+    <div className="chat-header">
+     <KnowlAvatar pose={busy ? 'think' : 'happy'} size={40}/>
+     <div><b>Knowl · KNOXIA Companion</b><small><i/> {busy ? 'Thinking…' : 'Ready to help'}</small></div>
+     <button className="plain-icon" type="button" title="New conversation" aria-label="New conversation" onClick={newChat} disabled={busy}><Plus size={19}/></button>
     </div>
-    <label style={{ display: 'block', marginBottom: 12, fontSize: 14 }}><BookOpen size={16} style={{ verticalAlign: 'middle', marginRight: 7 }}/>Study material (optional)
-     <select value={materialId} disabled={busy || !!id} onChange={(e) => setMaterialId(e.target.value)} style={{ display: 'block', width: '100%', marginTop: 8, padding: 11, borderRadius: 10, border: '1px solid #dce5f4', background: 'var(--surface, #fff)', color: 'inherit', font: 'inherit' }}>
-      <option value="">No material — general study help</option>{materials.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-     </select>
-    </label>
-    <p style={{ color: '#64748b', fontSize: 12 }}>Material-based answers use your selected file as the source. Start a new conversation to change materials.</p>
-    <div style={{ minHeight: 340, maxHeight: 520, overflowY: 'auto', padding: '12px 4px' }} aria-live="polite">
-     {!messages.length && <div style={{ textAlign: 'center', color: '#64748b', padding: 45 }}><KnowlAvatar pose="happy" size={64}/><p>Hi! I'm Knowl. What would you like to understand today?</p></div>}
-     {messages.map((m) => <div key={m.id} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', margin: '12px 0' }}>
-      <div style={{ maxWidth: '85%', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', lineHeight: 1.7, background: m.role === 'user' ? '#2563eb' : '#edf3ff', color: m.role === 'user' ? '#fff' : '#172554', padding: '12px 16px', borderRadius: 15 }}>{m.content}</div>
+    <div className="chat-messages" aria-live="polite" style={{minHeight:340, maxHeight:520, overflowY:'auto'}}>
+     {!messages.length && <div className="message assistant"><KnowlAvatar pose="default" size={30} className="mini"/><div className="bubble">Hoot! I'm Knowl, your KNOXIA Study Companion. Ask me about your uploaded materials or a topic you'd like to understand!</div></div>}
+     {messages.map((m) => <div className={`message ${m.role}`} key={m.id}>
+      {m.role === 'assistant' && <KnowlAvatar pose="default" size={30} className="mini"/>}
+      <div className="bubble" style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{m.content}</div>
      </div>)}
-     {busy && <p style={{ color: '#64748b' }}><Loader2 size={16} style={{ verticalAlign: 'middle' }}/> Knowl is thinking…</p>}
+     {busy && <div className="message assistant"><KnowlAvatar pose="think" size={30} className="mini"/><div className="bubble typing" aria-label="Knowl is thinking"><i/><i/><i/></div></div>}
      <div ref={scroll}/>
     </div>
-    <form onSubmit={send} style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-     <input aria-label="Message Knowl" placeholder="Ask about a concept, request an example, or ask for practice…" maxLength={2000} value={draft} onChange={(e) => setDraft(e.target.value)} disabled={busy} style={{ flex: 1, minWidth: 0, border: '1px solid #dce5f4', borderRadius: 10, padding: '12px 14px', font: 'inherit', color: 'inherit', background: 'var(--surface, #fff)' }}/>
-     <button type="submit" style={blue} disabled={busy || !draft.trim()}><Send size={17} style={{ verticalAlign: 'middle', marginRight: 5 }}/> Send</button>
+    <div className="suggestions">
+     <button type="button" onClick={()=>setDraft('Explain this concept in simple terms')}>Explain a concept</button>
+     <button type="button" onClick={()=>setDraft('Give me a practical example')}>Give me an example</button>
+     <button type="button" onClick={()=>setDraft('Create a quick practice question')}>Test my knowledge</button>
+    </div>
+    <form className="chat-input" onSubmit={send}>
+     <input aria-label="Message Knowl" placeholder="Ask Knowl anything about your lessons..." maxLength={2000} value={draft} onChange={e=>setDraft(e.target.value)} disabled={busy}/>
+     <button type="submit" className="send-btn" aria-label="Send" disabled={busy || !draft.trim()}><Send size={18}/></button>
     </form>
-   </main>
+   </div>
+   <div className="panel chat-context">
+    <h3>Study context</h3><p>Choose the materials Knowl should use.</p>
+    <label className="ufield"><span>Selected material</span>
+     <select value={materialId} disabled={busy || !!id} onChange={e=>setMaterialId(e.target.value)}>
+      <option value="">No material — general study help</option>
+      {materials.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+     </select>
+    </label>
+    {materialId && <div className="context-file"><BookOpen size={18}/><span>{materials.find(m=>m.id===materialId)?.name || 'Selected material'}</span></div>}
+    <p className="muted" style={{fontSize:12}}>Start a new conversation to change the selected material.</p>
+    <div className="grounding-note"><BookOpen size={16}/><span>Knowl uses your selected study material to ground its answers.</span></div>
+    <h3 style={{marginTop:22}}>Conversation history</h3>
+    <button type="button" className="btn primary" onClick={newChat} disabled={busy}><Plus size={16}/> New conversation</button>
+    {loading && <p className="muted">Loading conversations…</p>}
+    {!loading && !chats.length && <p className="muted">Saved conversations will appear here.</p>}
+    <div style={{maxHeight:300,overflowY:'auto',marginTop:12}}>
+     {chats.map(c=><div key={c.id} style={{display:'flex',alignItems:'center',gap:4,marginBottom:5}}>
+      <button type="button" className="context-file" disabled={busy} onClick={()=>open(c)} style={{flex:1,minWidth:0,textAlign:'left',cursor:'pointer',background:c.id===id?'#e9f0ff':undefined}} title={c.title}><MessageSquare size={16}/><span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.title}</span></button>
+      <button type="button" className="plain-icon" disabled={busy} onClick={()=>remove(c)} title="Delete conversation" aria-label={'Delete '+c.title}><Trash2 size={16}/></button>
+     </div>)}
+    </div>
+   </div>
   </div>
- </div>;
+ </>;
 }
