@@ -16,7 +16,7 @@ import {
 
 const SAMPLE_HINT = 'Sample account. It accepts requests right away so you can try the Friends screens on your own.';
 const SampleTag = () => <span className="fr-tag" title={SAMPLE_HINT}>Sample</span>;
-const run = (out, okMsg) => { if (out.error) toast(out.error); else if (okMsg) toast(okMsg); return !out.error; };
+const run = async (pending, okMsg) => { try { const out = await pending; if (out.error) toast(out.error); else if (okMsg) toast(okMsg); return !out.error; } catch (e) { toast(e.message || 'Something went wrong.'); return false; } };
 
 /**
  * The right button for how you stand with `person`: Add friend, Request sent (cancel), Accept / Decline, or Friends (remove).
@@ -26,7 +26,7 @@ export function FriendAction({ person, compact = false }) {
   const { me, rel, record } = useRelation(person.id); const [confirm, setConfirm] = useState(false);
   if (rel === 'self') return null;
   const name = person.displayName;
-  const add = () => { const out = sendFriendRequest(me, person); run(out, out.kind === 'accepted' ? `You and ${name} are now friends` : `Friend request sent to ${name}`); };
+  const add = () => run(sendFriendRequest(me, person), `Friend request sent to ${name}`);
   const accept = () => record && run(acceptFriendRequest(me, person, record.id), `You and ${name} are now friends`);
   const decline = () => record && run(declineFriendRequest(me, record.id), 'Request declined');
   const cancel = () => record && run(cancelFriendRequest(me, person, record.id), 'Request cancelled');
@@ -83,6 +83,7 @@ export function Friends() {
   const results = useMemo(() => searchPeople(f.people, query, f.meId), [f.people, query, f.meId]);
   const suggestions = useMemo(() => suggestPeople(f.people, f.records, f.meId, 6), [f.people, f.records, f.meId]);
   if (!f.ready) return <PageSkeleton />;
+  if (f.error) return <div className="empty-state" role="alert"><b>Could not load friends</b><p>{f.error}</p></div>;
 
   const counts = { friends: f.friends.length, requests: f.incoming.length, sent: f.outgoing.length };
   const typed = normalizeQuery(query);
