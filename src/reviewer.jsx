@@ -4,37 +4,33 @@ import { AlertCircle, BookOpen, Check, FolderOpen, RotateCcw, Save, Sparkles, Ty
 import { Button, SectionTitle } from './ui.jsx';
 import { useMaterials, toast } from './materials.jsx';
 import { getFile } from './files.js';
+import { downloadOwnedMaterial } from './lib/learningApi.js';
 import { saveReviewer, logEvent } from './data.js';
 import { SavedReviewers } from './pages.jsx';
 import { generateReviewer, reviewerToText, STYLES, MIN_WORDS, MAX_CHARS } from './reviewerGen.js';
-import { SAMPLE_TEXT } from './samples.js';
 
-/**
- * Create AI Reviewer (Patch 9, demo).
- *
- * FRONTEND-ONLY DEMO: the "AI" is the rule-based generator in reviewerGen.js, and the progress steps
- * below are a simulated workflow. The file is really read in the browser, but nothing is sent anywhere.
- * To use a real model, replace the `generateReviewer(...)` call in `generate` and keep the result shape.
- */
+
+/** Reviewer foundation: reads real uploaded materials. Generation remains rule-based until a secure AI backend is configured. */
 const STEPS = ['Reading your material', 'Finding the key ideas', 'Pulling out terms and definitions', 'Building your reviewer'];
 const STEP_MS = 550;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const wordCount = (t) => (String(t).match(/\S+/g) || []).length;
 const STYLE_HINT = { 'Quick summary': 'Key ideas at a glance', 'Detailed reviewer': 'Comprehensive notes and examples', 'Exam cram': 'Important points before exams', 'Topic-by-topic': 'Organized by lesson topic' };
 
-/** Returns the text of a library material: from its stored file, or the built-in sample text. */
+/** Always read the actual uploaded file, even after a browser refresh. */
 async function readMaterial(m) {
-  const blob = await getFile(m.id);
-  if (blob) {
-    let d;
-    try { d = await (await import('./extract.js')).extractMaterial(blob, m.type); }
-    catch { throw new Error("We couldn't read this file. It may be damaged or password protected."); }
-    if (d.pdfDoc && d.pdfDoc.destroy) d.pdfDoc.destroy();
-    if (d.scanned || !d.text) throw new Error('No selectable text was found. This looks like a scanned or image-only file, so the demo cannot build a reviewer from it yet.');
-    return { text: d.text, note: d.truncated ? 'This is a very large file, so only the first part was read.' : '' };
+  if (!m) throw new Error('Select an uploaded material first.');
+  let blob = await getFile(m.id);
+  if (!blob) {
+    const remote = await downloadOwnedMaterial(m.id);
+    blob = remote.blob;
   }
-  if (SAMPLE_TEXT[m.id]) return { text: SAMPLE_TEXT[m.id], note: 'This sample material has no stored file, so built-in sample text was used.' };
-  throw new Error('This sample material has no file to read. Upload a file or paste text instead.');
+  let d;
+  try { d = await (await import('./extract.js')).extractMaterial(blob, m.type); }
+  catch { throw new Error("We couldn't read this file. It may be damaged or password protected."); }
+  if (d.pdfDoc?.destroy) d.pdfDoc.destroy();
+  if (d.scanned || !d.text?.trim()) throw new Error('No selectable text found. Scanned or image-only files need OCR before a reviewer can be created.');
+  return { text: d.text, note: d.truncated ? 'Only the first part of this large document was read.' : '' };
 }
 
 function Steps({ step }) {
@@ -61,7 +57,7 @@ function Result({ result }) {
   const { stats } = result;
   const facts = [`${stats.words.toLocaleString()} words read`, stats.points && `${stats.points} key points`, stats.definitions && `${stats.definitions} definitions`, stats.questions && `${stats.questions} questions`].filter(Boolean);
   return <div className="rv-result">
-    <div className="rv-head"><span className="rv-demo"><Sparkles size={13} /> Demo reviewer</span><span className="rv-facts">{facts.join(' \u00b7 ')}</span></div>
+    <div className="rv-head"><span className="rv-demo"><Sparkles size={13} /> Document-based reviewer</span><span className="rv-facts">{facts.join(' \u00b7 ')}</span></div>
     {result.note && <div className="notice"><AlertCircle size={16} />{result.note}</div>}
     {result.truncated && <div className="notice"><AlertCircle size={16} />Only the first {MAX_CHARS.toLocaleString()} characters were used.</div>}
     {result.focus.length > 0 && <p className="muted">Extra focus: {result.focus.join(', ')}</p>}
@@ -79,7 +75,7 @@ export default function CreateReviewer() {
   const [style, setStyle] = useState('Detailed reviewer');
   const [instructions, setInstructions] = useState('');
   const [title, setTitle] = useState('');
-  const [stored, setStored] = useState(undefined); // does the selected material have a real file in this browser?
+  const [stored, setStored] = useState(undefined); // is the selected material available in private storage?
   const [phase, setPhase] = useState('idle');       // idle | running | done | error
   const [step, setStep] = useState(0);
   const [result, setResult] = useState(null);
@@ -90,7 +86,7 @@ export default function CreateReviewer() {
   const materialKey = material ? material.id : '';
   useEffect(() => {
     let on = true; setStored(undefined);
-    if (materialKey) getFile(materialKey).then((b) => { if (on) setStored(!!b); });
+    if (materialKey) (async () => { try { const b = await getFile(materialKey); if (!b) await downloadOwnedMaterial(materialKey); if (on) setStored(true); } catch { if (on) setStored(false); } })();
     return () => { on = false; };
   }, [materialKey]);
 
@@ -98,16 +94,14 @@ export default function CreateReviewer() {
   const sig = JSON.stringify([mode, mode === 'material' ? materialKey : text, style, instructions.trim()]);
   const stale = phase === 'done' && result && result.sig !== sig;
   const shownTitle = title || (mode === 'material' && material ? `${material.name} reviewer` : 'My study reviewer');
-  const sourceReady = mode === 'text' ? text.trim().length > 0 : !!material && (stored === true || (stored === false && !!SAMPLE_TEXT[material.id]));
-  const materialNote = !material ? 'You have no materials yet. Upload one, or paste text instead.'
-    : stored === undefined ? 'Checking this material\u2026'
-    : stored ? 'KNOXIA will read the file stored in this browser.'
-    : SAMPLE_TEXT[material.id] ? 'Sample material: the demo will use built-in sample text.'
-    : material.fileName ? 'The original file is no longer stored in this browser. Upload it again or paste text instead.'
-    : 'This sample material has no file to read. Upload a file or paste text instead.';
+  const sourceReady = mode === 'text' ? text.trim().length > 0 : !!material && stored === true;
+  const materialNote = !material ? 'No uploaded materials yet. Upload a file or paste your own text.'
+    : stored === undefined ? 'Checking Supabase Storage…'
+    : stored ? 'KNOXIA will read your original file from secure storage.'
+    : 'Could not retrieve the original file. Check your connection and storage permissions.';
 
   const generate = async () => {
-    if (phase === 'running') return;
+    if (phase === 'running' || !sourceReady) return;
     const token = ++run.current; const alive = () => live.current && run.current === token;
     setPhase('running'); setStep(0); setError(''); setResult(null);
     try {
@@ -130,7 +124,7 @@ export default function CreateReviewer() {
     const name = title.trim() || shownTitle;
     const id = saveReviewer({
       title: name.slice(0, 120), file: result.file, style: result.style, body: reviewerToText(result, { file: result.file, style: result.style }),
-      generated: { demo: true, at: new Date().toISOString(), source: result.source, materialId: result.materialId, focus: result.focus, stats: result.stats },
+      generated: { demo: false, ruleBased: true, at: new Date().toISOString(), source: result.source, materialId: result.materialId, focus: result.focus, stats: result.stats },
     });
     logEvent(`Reviewer created: ${name.slice(0, 80)}`); toast('Reviewer saved'); nav('/reviewers/' + id, { viewTransition: true });
   };
@@ -154,7 +148,7 @@ export default function CreateReviewer() {
         </> : <>
           <textarea className="field textarea rv-paste" aria-label="Text to build a reviewer from" maxLength={MAX_CHARS} value={text} onChange={(e) => setText(e.target.value)} placeholder={'Paste or type your lecture notes here\u2026'} />
           <div className="rv-count"><span className={words > 0 && words < MIN_WORDS ? 'warn' : ''}>{words.toLocaleString()} words{words < MIN_WORDS ? ` \u00b7 at least ${MIN_WORDS} needed` : ''}</span>
-            <button type="button" className="link-btn" onClick={() => setText(SAMPLE_TEXT['1'])}>Try sample notes</button></div>
+            </div>
         </>}
 
         <span className="field-label">Reviewer format</span>
@@ -163,7 +157,7 @@ export default function CreateReviewer() {
         <label className="field-label" htmlFor="rv-extra">Additional instructions <span>Optional</span></label>
         <textarea id="rv-extra" className="field textarea" maxLength={300} placeholder="e.g. Focus on definitions and real-world examples..." value={instructions} onChange={(e) => setInstructions(e.target.value)} />
         <div className="rv-actions">
-          <Button icon={Sparkles} loading={phase === 'running'} onClick={generate} type="button">{phase === 'running' ? 'Generating\u2026' : 'Generate reviewer'}</Button>
+          <Button icon={Sparkles} loading={phase === 'running'} onClick={generate} disabled={!sourceReady || phase === 'running'} type="button">{phase === 'running' ? 'Generating\u2026' : 'Generate reviewer'}</Button>
           {phase === 'running' && <Button variant="outline" icon={X} onClick={cancel}>Cancel</Button>}
           {!sourceReady && phase !== 'running' && <small className="rv-hint">{mode === 'text' ? 'Add some text to continue.' : 'Choose a material that can be read.'}</small>}
         </div>
@@ -185,7 +179,7 @@ export default function CreateReviewer() {
           <p>Your generated reviewer will appear here, organized into clear sections with key terms, definitions, examples and review questions.</p>
           <div className="preview-lines"><i /><i /><i /><i /><i /></div>
           <div className="preview-badges"><span>Key concepts</span><span>Definitions</span><span>Examples</span></div>
-          <p className="rv-hint">Demo mode: this runs on your device with simple text rules. No AI service is connected yet.</p></>}
+          <p className="rv-hint">This currently uses on-device text rules, not an AI model. A secure AI service will be connected in the next phase.</p></>}
       </div>
     </div>
     <SavedReviewers /></>;
