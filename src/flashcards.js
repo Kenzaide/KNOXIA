@@ -134,7 +134,7 @@ export function useDeckLibrary() {
   const write = (task) => {
     const gen = generation.current;
     queue.current = queue.current.catch(() => {}).then(async () => {
-      if (generation.current !== gen || !owner) return;
+      if (!owner) return;
       try {
         await task();
       } catch (err) {
@@ -142,6 +142,7 @@ export function useDeckLibrary() {
         throw err;
       }
     });
+    return queue.current;
   };
   const patch = (id, fn) => {
     const d = snapshot.current.find(d => d.id === id);
@@ -257,7 +258,7 @@ export function useDeckLibrary() {
       const updates = Object.entries(marks).filter(([cardId]) => snapshot.current.find(d => d.id === id)?.cards.some(c => c.id === cardId));
       if (!updates.length) return;
       patch(id, d => ({ ...d, cards: d.cards.map(c => Object.prototype.hasOwnProperty.call(marks, c.id) ? { ...c, known: marks[c.id] === true } : c) }));
-      write(async () => {
+      return write(async () => {
         for (const [cardId, known] of updates) {
           const { error } = await supabase.from('flashcards').update({ known: known === true }).eq('id', cardId).eq('deck_id', id);
           if (error) throw error;
