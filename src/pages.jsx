@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ThemePicker } from './theme.jsx';
-import { Bookmark, FolderInput, Sparkles, Layers, CheckCircle2, Trophy, Crown, Flame, Clock3, Target, Bell, ShieldCheck, Activity, Plus, Trash2, Send, Play, Pause, RotateCcw, Check, Download, Users, Zap, BookOpen, Medal, ArrowUpRight, Lock, CalendarDays, Swords } from 'lucide-react';
+import { Bookmark, FolderInput, Sparkles, Layers, CheckCircle2, Trophy, Crown, Flame, Clock3, Target, Bell, ShieldCheck, Activity, Plus, Trash2, Send, Play, Pause, RotateCcw, Check, Download, Printer, Users, Zap, BookOpen, Medal, ArrowUpRight, Lock, CalendarDays, Swords } from 'lucide-react';
 import { toast } from './materials.jsx';
 import { useProfile } from './accounts.js';
 import { ProfileEditor } from './profile.jsx';
@@ -37,6 +37,9 @@ const BookmarkOn = p => <Bookmark {...p} fill="currentColor" />; // filled when 
 // The editor retains the exact original text; this view only changes presentation.
 function ReviewerReadingView({ content }) {
   const lines = String(content || '').replace(/\r\n?/g, '\n').split('\n');
+  // Older generated reviewers have metadata labels before the actual Markdown.
+  const start = lines.findIndex(line => /^GENERATED REVIEWER\s*$/i.test(line.trim()));
+  if (start >= 0) lines.splice(0, start + 1);
   const nodes = [];
   const inline = (value) => String(value).split(/(\*\*[^*]+\*\*|\*[^*\n]+\*|\x60[^\x60]+\x60)/g).map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>;
@@ -50,7 +53,7 @@ function ReviewerReadingView({ content }) {
     if (!line) { i++; continue; }
     const heading = /^(#{1,4})\s+(.+)$/.exec(line);
     if (heading) {
-      const Tag = 'h' + Math.min(heading[1].length + 1, 5);
+      const Tag = 'h' + Math.min(heading[1].length, 4);
       nodes.push(<Tag key={i}>{inline(heading[2])}</Tag>); i++; continue;
     }
     if (/^(---+|\*\*\*+)\s*$/.test(line)) { nodes.push(<hr key={i} />); i++; continue; }
@@ -78,6 +81,7 @@ export function ReviewerEditor() {
   const r = lib.items.find(x => x.id === id); const [t, setT] = useState(r ? r.title : ''); const [b, setB] = useState(r ? r.body : '');
   const [dlg, setDlg] = useState(null); // 'move' | 'delete'
   const [view, setView] = useState('read');
+  const printReviewer = () => { setView('read'); window.setTimeout(() => window.print(), 80); };
   // Study progress (Patch 15): opening a reviewer starts it ("In progress"); the student marks it completed when done.
   const seen = useRef(''); const log = useProgressLog(); const done = !!(log.reviewers[id] && log.reviewers[id].done);
   useEffect(() => { if (r && seen.current !== r.id) { seen.current = r.id; track.openReviewer(r.id); } }, [r && r.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -95,8 +99,9 @@ export function ReviewerEditor() {
       <Btn v="outline" icon={r.favorite ? BookmarkOn : Bookmark} aria-pressed={!!r.favorite} onClick={bookmark}>{r.favorite ? 'Bookmarked' : 'Bookmark'}</Btn>
       <Btn v="outline" icon={FolderInput} onClick={() => setDlg('move')}>{fo ? 'Move' : 'Add to folder'}</Btn>
       <Btn v="outline" icon={Trash2} onClick={() => setDlg('delete')}>Delete</Btn>
+      <Btn v="outline" icon={Printer} onClick={printReviewer}>Print / PDF</Btn>
       <Btn icon={Check} onClick={save}>Save changes</Btn></div>} />
-    <div className="builder-layout"><div className="panel builder-form"><label className="field-label" htmlFor="rv-edit-title">Title</label><input id="rv-edit-title" className="field" maxLength={MAX_TITLE} value={t} onChange={e => setT(e.target.value)} /><div className="rv-reading-tabs" role="group" aria-label="Reviewer view"><button type="button" className={view === 'read' ? 'active' : ''} aria-pressed={view === 'read'} onClick={() => setView('read')}>Read reviewer</button><button type="button" className={view === 'edit' ? 'active' : ''} aria-pressed={view === 'edit'} onClick={() => setView('edit')}>Edit content</button></div>{view === 'read' ? <ReviewerReadingView content={b} /> : <><label className="field-label" htmlFor="rv-edit-body">Content (Markdown)</label><textarea id="rv-edit-body" className="field textarea" style={{ height: 380 }} value={b} onChange={e => setB(e.target.value)} /></>}{dirty && <p className="rv-hint" role="status">You have unsaved changes.</p>}<p className="muted">{r.generated ? 'AI-generated study notes. Review important details against your original material before studying.' : 'Review and edit your notes whenever you need.'}</p></div>
+    <div className="builder-layout rv-editor-layout"><div className="panel builder-form rv-editor-paper"><label className="field-label" htmlFor="rv-edit-title">Title</label><input id="rv-edit-title" className="field" maxLength={MAX_TITLE} value={t} onChange={e => setT(e.target.value)} /><div className="rv-reading-tabs" role="group" aria-label="Reviewer view"><button type="button" className={view === 'read' ? 'active' : ''} aria-pressed={view === 'read'} onClick={() => setView('read')}>Read reviewer</button><button type="button" className={view === 'edit' ? 'active' : ''} aria-pressed={view === 'edit'} onClick={() => setView('edit')}>Edit content</button></div>{view === 'read' ? <div className="rv-print-document"><header className="rv-print-header"><span>KNOXIA · STUDY REVIEWER</span><h1>{t || r.title}</h1><p>{r.style} · {r.file}</p></header><ReviewerReadingView content={b} /></div> : <><label className="field-label" htmlFor="rv-edit-body">Content (Markdown)</label><textarea id="rv-edit-body" className="field textarea" style={{ height: 380 }} value={b} onChange={e => setB(e.target.value)} /></>}{dirty && <p className="rv-hint" role="status">You have unsaved changes.</p>}<p className="muted">{r.generated ? 'AI-generated study notes. Review important details against your original material before studying.' : 'Review and edit your notes whenever you need.'}</p></div>
       <div className="panel"><h3>Study with this reviewer</h3><p className="muted">Turn your notes into practice.</p><div className="friend-buttons" style={{ flexDirection: 'column', alignItems: 'stretch', marginTop: 12 }}><Btn v="soft" icon={Layers} onClick={() => nav('/flashcards')}>Open flashcards</Btn><Btn v="soft" icon={BookOpen} onClick={() => nav('/quizzes/create?reviewer=' + encodeURIComponent(r.id))}>Create a quiz</Btn><Btn v="soft" icon={Sparkles} onClick={() => nav('/study-companion')}>Ask the companion</Btn><Btn v="outline" icon={ArrowUpRight} onClick={() => nav('/reviewers')}>All my reviewers</Btn></div></div></div>
     {dlg === 'move' && <PromptDialog title={`Move “${r.title}”`} body="Type a folder name, or pick one below. Leave it empty to take it out of any folder." label="Folder name" value={fo} placeholder="e.g. Midterms" maxLength={MAX_FOLDER} suggestions={folderCounts(lib.items).map(x => x.name)} allowEmpty confirmLabel="Move" onSubmit={move} onCancel={() => setDlg(null)} />}
     {dlg === 'delete' && <ConfirmDialog icon={Trash2} title={`Delete “${r.title}”?`} body="This permanently removes the reviewer and anything you edited in it. This can't be undone." confirmLabel="Delete" onCancel={() => setDlg(null)} onConfirm={del} />}</>;
