@@ -32,10 +32,52 @@ export function SavedReviewers() {
     {recent.map(r => <Row key={r.id} icon={r.favorite ? Bookmark : Sparkles} title={r.title} sub={`${r.style} · ${r.file}${folderOf(r) ? ` · ${folderOf(r)}` : ''}`}><Link className="link-btn" to={'/reviewers/' + r.id}>Open <ArrowUpRight size={16} /></Link></Row>)}</div>;
 }
 const BookmarkOn = p => <Bookmark {...p} fill="currentColor" />; // filled when a reviewer is bookmarked
+
+// Render generated Markdown as React elements, never as executable HTML.
+// The editor retains the exact original text; this view only changes presentation.
+function ReviewerReadingView({ content }) {
+  const lines = String(content || '').replace(/\r\n?/g, '\n').split('\n');
+  const nodes = [];
+  const inline = (value) => String(value).split(/(\*\*[^*]+\*\*|\*[^*\n]+\*|\x60[^\x60]+\x60)/g).map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith('*') && part.endsWith('*')) return <em key={i}>{part.slice(1, -1)}</em>;
+    if (part.startsWith('\x60') && part.endsWith('\x60')) return <code key={i}>{part.slice(1, -1)}</code>;
+    return part;
+  });
+  let i = 0;
+  while (i < lines.length) {
+    const raw = lines[i], line = raw.trim();
+    if (!line) { i++; continue; }
+    const heading = /^(#{1,4})\s+(.+)$/.exec(line);
+    if (heading) {
+      const Tag = 'h' + Math.min(heading[1].length + 1, 5);
+      nodes.push(<Tag key={i}>{inline(heading[2])}</Tag>); i++; continue;
+    }
+    if (/^(---+|\*\*\*+)\s*$/.test(line)) { nodes.push(<hr key={i} />); i++; continue; }
+    const bullet = /^[-*+]\s+/.test(line), numbered = /^\d+[.)]\s+/.test(line);
+    if (bullet || numbered) {
+      const start = i, items = [], pattern = bullet ? /^[-*+]\s+(.+)$/ : /^\d+[.)]\s+(.+)$/;
+      while (i < lines.length && pattern.test(lines[i].trim())) {
+        items.push(<li key={i}>{inline(lines[i].trim().replace(pattern, '$1'))}</li>); i++;
+      }
+      nodes.push(bullet ? <ul key={start}>{items}</ul> : <ol key={start}>{items}</ol>); continue;
+    }
+    if (line.startsWith('> ')) { nodes.push(<blockquote key={i}>{inline(line.slice(2))}</blockquote>); i++; continue; }
+    const start = i, paragraph = [];
+    while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|[-*+]\s|\d+[.)]\s|>\s|---+\s*$)/.test(lines[i].trim())) {
+      paragraph.push(lines[i].trim()); i++;
+    }
+    if (i === start) { paragraph.push(line); i++; }
+    nodes.push(<p key={start}>{inline(paragraph.join(' '))}</p>);
+  }
+  return <article className="rv-reading-content">{nodes.length ? nodes : <p className="muted">Nothing to preview yet.</p>}</article>;
+}
+
 export function ReviewerEditor() {
   const { id } = useParams(); const nav = useNavigate(); const lib = useReviewerLibrary();
   const r = lib.items.find(x => x.id === id); const [t, setT] = useState(r ? r.title : ''); const [b, setB] = useState(r ? r.body : '');
   const [dlg, setDlg] = useState(null); // 'move' | 'delete'
+  const [view, setView] = useState('read');
   // Study progress (Patch 15): opening a reviewer starts it ("In progress"); the student marks it completed when done.
   const seen = useRef(''); const log = useProgressLog(); const done = !!(log.reviewers[id] && log.reviewers[id].done);
   useEffect(() => { if (r && seen.current !== r.id) { seen.current = r.id; track.openReviewer(r.id); } }, [r && r.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -54,7 +96,7 @@ export function ReviewerEditor() {
       <Btn v="outline" icon={FolderInput} onClick={() => setDlg('move')}>{fo ? 'Move' : 'Add to folder'}</Btn>
       <Btn v="outline" icon={Trash2} onClick={() => setDlg('delete')}>Delete</Btn>
       <Btn icon={Check} onClick={save}>Save changes</Btn></div>} />
-    <div className="builder-layout"><div className="panel builder-form"><label className="field-label" htmlFor="rv-edit-title">Title</label><input id="rv-edit-title" className="field" maxLength={MAX_TITLE} value={t} onChange={e => setT(e.target.value)} /><label className="field-label" htmlFor="rv-edit-body">Content</label><textarea id="rv-edit-body" className="field textarea" style={{ height: 380 }} value={b} onChange={e => setB(e.target.value)} />{dirty && <p className="rv-hint" role="status">You have unsaved changes.</p>}<p className="muted">{r.generated ? 'Built by the KNOXIA demo generator from your material using simple text rules, not a real AI model. Check it against your source and edit anything that needs fixing.' : 'Starter content only. Connect your AI service to fill this in automatically.'}</p></div>
+    <div className="builder-layout"><div className="panel builder-form"><label className="field-label" htmlFor="rv-edit-title">Title</label><input id="rv-edit-title" className="field" maxLength={MAX_TITLE} value={t} onChange={e => setT(e.target.value)} /><div className="rv-reading-tabs" role="group" aria-label="Reviewer view"><button type="button" className={view === 'read' ? 'active' : ''} aria-pressed={view === 'read'} onClick={() => setView('read')}>Read reviewer</button><button type="button" className={view === 'edit' ? 'active' : ''} aria-pressed={view === 'edit'} onClick={() => setView('edit')}>Edit content</button></div>{view === 'read' ? <ReviewerReadingView content={b} /> : <><label className="field-label" htmlFor="rv-edit-body">Content (Markdown)</label><textarea id="rv-edit-body" className="field textarea" style={{ height: 380 }} value={b} onChange={e => setB(e.target.value)} /></>}{dirty && <p className="rv-hint" role="status">You have unsaved changes.</p>}<p className="muted">{r.generated ? 'AI-generated study notes. Review important details against your original material before studying.' : 'Review and edit your notes whenever you need.'}</p></div>
       <div className="panel"><h3>Study with this reviewer</h3><p className="muted">Turn your notes into practice.</p><div className="friend-buttons" style={{ flexDirection: 'column', alignItems: 'stretch', marginTop: 12 }}><Btn v="soft" icon={Layers} onClick={() => nav('/flashcards')}>Open flashcards</Btn><Btn v="soft" icon={BookOpen} onClick={() => nav('/quizzes/create?reviewer=' + encodeURIComponent(r.id))}>Create a quiz</Btn><Btn v="soft" icon={Sparkles} onClick={() => nav('/study-companion')}>Ask the companion</Btn><Btn v="outline" icon={ArrowUpRight} onClick={() => nav('/reviewers')}>All my reviewers</Btn></div></div></div>
     {dlg === 'move' && <PromptDialog title={`Move “${r.title}”`} body="Type a folder name, or pick one below. Leave it empty to take it out of any folder." label="Folder name" value={fo} placeholder="e.g. Midterms" maxLength={MAX_FOLDER} suggestions={folderCounts(lib.items).map(x => x.name)} allowEmpty confirmLabel="Move" onSubmit={move} onCancel={() => setDlg(null)} />}
     {dlg === 'delete' && <ConfirmDialog icon={Trash2} title={`Delete “${r.title}”?`} body="This permanently removes the reviewer and anything you edited in it. This can't be undone." confirmLabel="Delete" onCancel={() => setDlg(null)} onConfirm={del} />}</>;
