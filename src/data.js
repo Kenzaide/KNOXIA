@@ -1,4 +1,5 @@
 import { useUserData, userData } from './storage.js';
+import { useNotifications } from './lib/notifications.js';
 
 // Shared, persisted, per-user state (see storage.js). Kept under the old name for existing imports.
 export const useLocal = useUserData;
@@ -70,7 +71,7 @@ export const KEYS = { notes: 'knoxia-notes', reviewers: 'knoxia-reviewers', atte
 export const PLAN = [{ id: 'a', title: 'Machine Learning review', date: '2026-11-16', done: false }, { id: 'b', title: 'Automata Theory practice', date: '2026-11-17', done: false }, { id: 'c', title: 'Computer Architecture notes', date: '2026-11-18', done: true }];
 export const SETTINGS_DEFAULT = { notif: true, reminders: true, pub: true, board: true };
 const NONE = [];
-export const useNotes = () => useUserData(KEYS.notes, NONE);
+export const useNotes = useNotifications;
 export const useReviewers = () => useUserData(KEYS.reviewers, NONE);
 export const useAttempts = () => useUserData(KEYS.attempts, NONE);
 export const useRooms = () => useUserData(KEYS.rooms, NONE);
