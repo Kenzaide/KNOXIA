@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
    conversation = data;
    if ((conversation.material_id || null) !== materialId) return reply({ error: 'Conversation material cannot change. Start a new conversation.' }, 400);
   }
-  const admin = createClient(url, service);
+  // Service-role access is reserved for writing AI-generated messages.\n  // Conversation ownership and creation use the caller's verified JWT and RLS.\n  const admin = createClient(url, service);
   let history: { role: string; content: string }[] = [];
   if (conversation) {
    const { data, error } = await userDb.from('companion_messages').select('role,content,created_at').eq('conversation_id', conversation.id).order('created_at', { ascending: false }).limit(16);
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
   const answer = output?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('\n').trim();
   if (!answer) return reply({ error: 'Gemini returned no answer' }, 502);
   if (!conversation) {
-   const { data, error } = await admin.from('companion_conversations').insert({ user_id: user.id, material_id: materialId, title: question.slice(0, 90) }).select('id,material_id').single();
+   const { data, error } = await userDb.from('companion_conversations').insert({ user_id: user.id, material_id: materialId, title: question.slice(0, 90) }).select('id,material_id').single();
    if (error || !data) { console.error('Create conversation', error); return reply({ error: 'Could not save conversation: ' + (error?.message || 'No row returned'), code: error?.code || 'UNKNOWN', hint: error?.hint || null }, 500); }
    conversation = data;
   }
@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
    { conversation_id: conversation.id, role: 'assistant', content: answer.slice(0, 10000) },
   ]);
   if (insertError) { console.error('Save companion messages', insertError); return reply({ error: 'Could not save chat messages: ' + insertError.message, code: insertError.code || 'UNKNOWN' }, 500); }
-  await admin.from('companion_conversations').update({ updated_at: new Date().toISOString() }).eq('id', conversation.id).eq('user_id', user.id);
+  await userDb.from('companion_conversations').update({ updated_at: new Date().toISOString() }).eq('id', conversation.id).eq('user_id', user.id);
   return reply({ conversationId: conversation.id, answer });
  } catch (e) { console.error('study-companion', e); return reply({ error: 'Study companion failed. Check function logs.' }, 500); }
 });
