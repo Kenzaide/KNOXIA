@@ -16,8 +16,7 @@ import { supabase } from './lib/supabase.js';
 import { KEYS, NOTES } from './data.js';
 import { getFriendRequests, requestFriendship, acceptFriendship, declineFriendship, cancelFriendshipRequest, removeAcceptedFriendship } from './lib/friendsApi.js';
 import {
-  SAMPLE_PEOPLE, relation, friendsOf, incomingOf, outgoingOf,
-  requestFriend, acceptRequest, declineRequest, cancelRequest, removeFriend,
+  relation, friendsOf, incomingOf, outgoingOf,
 } from './friendsCalc.js';
 
 export const FRIENDS_KEY = 'knoxia-friendships'; // Legacy key; no longer used for friend requests.
@@ -93,7 +92,6 @@ export function usePeople() {
 /** Everything the Friends screens need for the signed-in person. */
 export function useFriends() {
   const me = useProfile(); const records = useFriendships(); const people = usePeople();
-  // Sessions from before accounts existed have no account to attach friends to yet: create it once.
   const { user } = useAuth();
   return useMemo(() => {
     const byId = new Map(people.map((p) => [p.id, p]));
