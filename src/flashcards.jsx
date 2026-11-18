@@ -220,6 +220,18 @@ export function FlashStudy() {
   const [shuffled, setShuffled] = useState(false);
   const [order, setOrder] = useState(() => (deck ? sessionOrder(deck.cards) : []));
   const [i, setI] = useState(0); const [flip, setFlip] = useState(false); const [marks, setMarks] = useState({});
+  // The deck loads asynchronously from Supabase. Initialize study order only once
+  // its cards arrive; otherwise the initial empty order never updates.
+  const initializedDeck = useRef(null);
+  useEffect(() => {
+    if (!deck || !deck.cards.length || initializedDeck.current === deck.id) return;
+    initializedDeck.current = deck.id;
+    setOrder(sessionOrder(deck.cards));
+    setI(0);
+    setFlip(false);
+    setMarks({});
+  }, [deck]);
+
   const cardRef = useRef(null);
   // Study progress (Patch 15): every session that rated at least one card is logged once. A new run (restart, shuffle,
   // "study missed"), finishing the deck and leaving the page all flush the cards rated so far; `logged` stops double counting.
@@ -249,7 +261,10 @@ export function FlashStudy() {
     document.addEventListener('keydown', k); return () => document.removeEventListener('keydown', k);
   });
 
+  if (lib.loading) return <p className="muted" role="status">Loading flashcards from Supabase…</p>;
+  if (lib.error) return <div className="notice error" role="alert">{lib.error}</div>;
   if (!deck) return <Empty icon={Layers} title="Deck not found" text="It may have been deleted."><Button onClick={() => nav('/flashcards')}>Back to flashcards</Button></Empty>;
+  if (!n && deck.cards.length) return <p className="muted" role="status">Preparing your study session…</p>;
   if (!n) return <Empty icon={Layers} title="This deck has no cards yet" text="Add a few cards, then come back to study."><Button icon={Plus} onClick={() => nav('/flashcards/' + deck.id)}>Add cards</Button></Empty>;
 
   if (done) return <><SectionTitle title="Flashcard Study Session" subtitle={deck.title} />
