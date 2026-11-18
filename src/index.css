@@ -504,3 +504,16 @@ html.theme-fade *,html.theme-fade *::before,html.theme-fade *::after{transition:
 .fc-ai-preview ol{display:grid;gap:12px;padding-left:22px}
 .fc-ai-preview li{padding:10px 12px;line-height:1.6;background:var(--soft);border-radius:10px;overflow-wrap:anywhere}
 .fc-ai-preview li p{margin:6px 0 0;color:var(--text-2)}
+
+/* Flashcard study progress and results */
+.fc-live-stats{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin:12px 0 18px;font-size:13px;color:var(--text-2,#64748b)}
+.fc-live-stats span{padding:7px 12px;border-radius:20px;background:var(--soft,#f1f5f9)}
+.fc-results{text-align:center;padding:30px 24px}
+.fc-results h2{margin:0 0 10px;font-family:Poppins,sans-serif}
+.fc-results-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:24px 0}
+.fc-results-grid>div{display:flex;flex-direction:column;align-items:center;gap:7px;border-radius:14px;padding:18px 10px;background:var(--soft,#f1f5f9)}
+.fc-results-grid strong{font:700 26px Poppins,sans-serif;color:var(--text,#17243d)}
+.fc-results-grid span{font-size:12px;color:var(--text-2,#64748b)}
+.fc-results .friend-buttons{justify-content:center;flex-wrap:wrap;margin-top:20px}
+.fc-results-note{font-size:12px;margin-top:22px}
+@media(max-width:620px){.fc-results-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
