@@ -267,7 +267,7 @@ function UploadPage() { const go=useGo();
   const ready=queue.filter(x=>x.state==='ready'||(x.state==='duplicate'&&x.include));
   const start=async()=>{ if(!ready.length||busy)return; setBusy(true); let ok=0,failed=0,last=null;
     for(const r of ready){ patch(r.key,{state:'uploading',progress:25});
-      try{ const uploaded=await uploadMaterial(r.file,{title:(r.title.trim()||r.file.name).slice(0,120),description:desc.trim()}); patch(r.key,{progress:80});
+      try{ const uploaded=await uploadMaterial(r.file,{title:(r.title.trim()||r.file.name).slice(0,120),description:desc.trim(),subject,tags:parseTags(tags)}); patch(r.key,{progress:80});
         last=add({id:uploaded.id,name:uploaded.title,fileName:r.file.name,type:fileExt(r.file.name).toUpperCase(),size:fmtSize(r.file.size),bytes:r.file.size,subject,tags:parseTags(tags),desc:desc.trim(),hash:r.hash,storagePath:uploaded.storage_path,uploaded:uploaded.created_at});
         patch(r.key,{state:'done',progress:100}); ok++;
       }catch(e){ failed++; patch(r.key,{state:'failed',error:e?.message||'Upload failed. Please try again.'}); } }
