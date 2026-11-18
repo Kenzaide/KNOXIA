@@ -13,7 +13,7 @@ import { MAX_POST, MAX_COMMENT, MAX_TAGS, REACTIONS, reactionOf, reactionSummary
 import { useFeed, publishPost, removePost, reactToPost, commentOn, changeComment, removeComment } from './feedStore.js';
 
 const PAGE = 10;
-const run = (out, okMsg) => { if (out.error) toast(out.error); else if (okMsg) toast(okMsg); return !out.error; };
+const run = async (promise, okMsg) => { try { const out = await promise; if (out.error) { toast(out.error); return false; } if (okMsg) toast(okMsg); return true; } catch (e) { toast(e.message || 'Something went wrong.'); return false; } };
 const FORMER = { displayName: 'Former member', initials: '?', avatar: '', username: '' };
 
 /** Name that links to the person's profile when they have one. */
@@ -21,9 +21,13 @@ const Name = ({ person }) => (person.username ? <Link to={`/profile/${person.use
 
 function Composer({ feed }) {
   const [text, setText] = useState(''); const [tags, setTags] = useState(''); const left = MAX_POST - text.length;
-  const submit = (e) => {
+  const [posting, setPosting] = useState(false);
+  const submit = async (e) => {
     e.preventDefault();
-    if (run(publishPost(feed.me, text, tags), 'Posted to the feed')) { setText(''); setTags(''); }
+    if (posting) return;
+    setPosting(true);
+    if (await run(publishPost(feed.me, text, tags), 'Posted to the feed')) { setText(''); setTags(''); }
+    setPosting(false);
   };
   return <form className="panel feed-composer" onSubmit={submit}>
     <div className="feed-compose-row"><UserAvatar />
@@ -32,7 +36,7 @@ function Composer({ feed }) {
     <div className="feed-compose-foot">
       <input className="field" value={tags} onChange={(e) => setTags(e.target.value)} aria-label="Tags" placeholder={`Tags, separated by commas (up to ${MAX_TAGS})`} />
       <small className={left < 50 ? 'feed-count warn' : 'feed-count'}>{left}</small>
-      <Button type="submit" icon={Send}>Post</Button>
+      <Button type="submit" icon={Send} disabled={posting}>{posting ? "Posting…" : "Post"}</Button>
     </div>
   </form>;
 }
@@ -40,11 +44,12 @@ function Composer({ feed }) {
 /** One line of text with a Save/Cancel pair. Used to write a comment, write a reply and edit a comment. */
 function TextForm({ initial = '', placeholder, label, submitLabel, onSubmit, onCancel, autoFocus = false }) {
   const [text, setText] = useState(initial);
-  const submit = (e) => { e.preventDefault(); if (onSubmit(text)) { if (!onCancel) setText(''); } };
+  const [sending, setSending] = useState(false);
+  const submit = async (e) => { e.preventDefault(); if (sending) return; setSending(true); if (await onSubmit(text)) { if (!onCancel) setText(''); } setSending(false); };
   return <form className="feed-comment-form" onSubmit={submit}>
     <input className="field" autoFocus={autoFocus} maxLength={MAX_COMMENT} value={text} onChange={(e) => setText(e.target.value)} aria-label={label} placeholder={placeholder}
       onKeyDown={(e) => { if (e.key === 'Escape' && onCancel) onCancel(); }} />
-    <button type="submit" className="btn outline" disabled={!text.trim()}>{submitLabel}</button>
+    <button type="submit" className="btn outline" disabled={!text.trim() || sending}>{sending ? "Saving…" : submitLabel}</button>
     {onCancel && <button type="button" className="btn outline" onClick={onCancel}>Cancel</button>}
   </form>;
 }
@@ -52,8 +57,8 @@ function TextForm({ initial = '', placeholder, label, submitLabel, onSubmit, onC
 function Comment({ feed, post, c, isReply, onAskDelete }) {
   const [mode, setMode] = useState(''); // '' | 'edit' | 'reply'
   const a = feed.authorOf(c.authorId) || FORMER; const mine = c.authorId === feed.meId; const canDelete = mine || post.authorId === feed.meId;
-  const save = (text) => { const ok = run(changeComment(feed.me, post.id, c.id, text), 'Comment updated'); if (ok) setMode(''); return ok; };
-  const send = (text) => { const ok = run(commentOn(feed.me, post.id, text, c.id, feed.people)); if (ok) setMode(''); return ok; };
+  const save = async (text) => { const ok = await run(changeComment(feed.me, post.id, c.id, text), 'Comment updated'); if (ok) setMode(''); return ok; };
+  const send = async (text) => { const ok = await run(commentOn(feed.me, post.id, text, c.id, feed.people)); if (ok) setMode(''); return ok; };
   return <div className={isReply ? 'feed-comment reply' : 'feed-comment'}><UserAvatar size="sm" profile={a} />
     <div>
       <p><Name person={a} /> <small>{timeAgo(c.createdAt)}{c.editedAt ? ' · edited' : ''}</small></p>
@@ -119,7 +124,8 @@ function PostCard({ feed, post, onDelete }) {
 
 export default function Feed() {
   const pending = usePending(); const feed = useFeed(); const [shown, setShown] = useState(PAGE); const [deleting, setDeleting] = useState(null);
-  if (pending || !feed.ready) return <PageSkeleton cards />;
+  if (pending || (!feed.ready && !feed.error)) return <PageSkeleton cards />;
+  if (feed.error) return <div className="notice error" role="alert">Could not load the shared Learning Feed: {feed.error}. Run the shared learning feed SQL migration in Supabase, then refresh.</div>;
   const visible = feed.posts.slice(0, shown);
   return <>
     <SectionTitle title="Learning Feed" subtitle="See what your learning community is up to." />
