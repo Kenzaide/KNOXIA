@@ -138,7 +138,7 @@ export default function CreateReviewer() {
       if (mode === 'material') {
         if (!supabase) throw new Error('Supabase is not configured.');
         const { data, error: functionError } = await supabase.functions.invoke('generate-reviewer', {
-          body: { materialId: material.id, style, instructions: instructions.trim() },
+          body: { materialId: material.id, text: src.text, style, instructions: instructions.trim() },
         });
         if (functionError) {
           let detail = functionError.message;
