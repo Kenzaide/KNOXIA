@@ -8,6 +8,12 @@ import { KnowlAvatar } from './knowl.jsx';
 const panel = { background: 'var(--surface, #fff)', border: '1px solid #dce5f4', borderRadius: 18, padding: 18 };
 const btn = { border: '1px solid #dce5f4', borderRadius: 10, padding: '10px 14px', background: 'var(--surface, #fff)', color: 'inherit', cursor: 'pointer', font: 'inherit' };
 const blue = { ...btn, background: '#2563eb', color: 'white', borderColor: '#2563eb' };
+const historyDate = (value) => {
+ if (!value) return '';
+ const date = new Date(value);
+ if (Number.isNaN(date.getTime())) return '';
+ return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+};
 const getData = async (query) => { const { data, error } = await query; if (error) throw error; return data; };
 
 export default function AIStudyCompanion() {
@@ -134,14 +140,26 @@ export default function AIStudyCompanion() {
     {materialId && <div className="context-file"><BookOpen size={18}/><span>{materials.find(m=>m.id===materialId)?.name || 'Selected material'}</span></div>}
     <p className="muted" style={{fontSize:12}}>Start a new conversation to change the selected material.</p>
     <div className="grounding-note"><BookOpen size={16}/><span>Knowl uses your selected study material to ground its answers.</span></div>
-    <h3 style={{marginTop:22}}>Conversation history</h3>
-    <button type="button" className="btn primary" onClick={newChat} disabled={busy}><Plus size={16}/> New conversation</button>
-    {loading && <p className="muted">Loading conversations…</p>}
-    {!loading && !chats.length && <p className="muted">Saved conversations will appear here.</p>}
-    <div style={{maxHeight:300,overflowY:'auto',marginTop:12}}>
-     {chats.map(c=><div key={c.id} style={{display:'flex',alignItems:'center',gap:4,marginBottom:5}}>
-      <button type="button" className="context-file" disabled={busy} onClick={()=>open(c)} style={{flex:1,minWidth:0,textAlign:'left',cursor:'pointer',background:c.id===id?'#e9f0ff':undefined}} title={c.title}><MessageSquare size={16}/><span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.title}</span></button>
-      <button type="button" className="plain-icon" disabled={busy} onClick={()=>remove(c)} title="Delete conversation" aria-label={'Delete '+c.title}><Trash2 size={16}/></button>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,marginTop:24,marginBottom:12}}>
+     <h3 style={{margin:0}}>Conversation history</h3>
+     {!!chats.length && <span className="muted" style={{fontSize:12,whiteSpace:'nowrap'}}>{chats.length} saved</span>}
+    </div>
+    <button type="button" className="btn primary" onClick={newChat} disabled={busy} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:8,borderRadius:12,minHeight:44,marginBottom:14}}><Plus size={17}/> New conversation</button>
+    {loading && <p className="muted" style={{fontSize:13}}>Loading conversations…</p>}
+    {!loading && !chats.length && <div style={{border:'1px dashed #dce5f4',borderRadius:12,padding:'22px 14px',textAlign:'center',display:'grid',justifyItems:'center',gap:8}}>
+     <MessageSquare size={22} style={{opacity:.45}}/>
+     <span className="muted" style={{fontSize:13}}>Your conversations will appear here.</span>
+    </div>}
+    <div role="list" aria-label="Saved conversations" style={{display:'grid',gap:8,maxHeight:320,overflowY:'auto',paddingRight:3}}>
+     {chats.map(c=><div role="listitem" key={c.id} style={{display:'flex',alignItems:'center',gap:6,minWidth:0,border:'1px solid '+(c.id===id?'#8fb4ff':'#dce5f4'),borderRadius:12,background:c.id===id?'rgba(37,99,235,.09)':'var(--surface, #fff)',padding:'5px 6px 5px 10px',transition:'border-color .15s ease'}}>
+      <button type="button" disabled={busy} onClick={()=>open(c)} aria-current={c.id===id?'true':undefined} title={c.title} style={{display:'flex',alignItems:'center',gap:10,flex:1,minWidth:0,border:0,background:'transparent',color:'inherit',font:'inherit',textAlign:'left',cursor:busy?'not-allowed':'pointer',padding:'7px 2px'}}>
+       <MessageSquare size={17} style={{flexShrink:0,color:c.id===id?'#2563eb':'#7185a4'}}/>
+       <span style={{display:'flex',flexDirection:'column',gap:4,minWidth:0,flex:1}}>
+        <span style={{fontSize:13,fontWeight:c.id===id?700:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',lineHeight:1.4}}>{c.title || 'Untitled conversation'}</span>
+        <span className="muted" style={{fontSize:11,lineHeight:1.3}}>{historyDate(c.updated_at)}{c.id===id?' · Current chat':''}</span>
+       </span>
+      </button>
+      <button type="button" disabled={busy} onClick={()=>remove(c)} title={'Delete '+(c.title||'conversation')} aria-label={'Delete '+(c.title||'conversation')} style={{flexShrink:0,display:'grid',placeItems:'center',width:32,height:32,border:0,borderRadius:8,background:'transparent',color:'#7185a4',cursor:busy?'not-allowed':'pointer'}}><Trash2 size={16}/></button>
      </div>)}
     </div>
    </div>
