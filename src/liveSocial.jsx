@@ -3,7 +3,6 @@ import {Link,useNavigate,useParams} from 'react-router-dom';
 import {supabase} from './lib/supabase.js';
 import {useAuth} from './session.js';
 import {useFriends} from './friendsStore.js';
-import {BANK} from './data.js';
 import {QuizRunner} from './quizRunner.jsx';
 const Btn=({children,...props})=><button type="button" className="btn primary" {...props}>{children}</button>;
 function useRows(table,query){
@@ -64,19 +63,29 @@ export function LiveRoomDetail(){
  <div className="panel" style={{padding:20,alignSelf:'start'}}><h3>Members ({members.length})</h3><div style={{display:'grid',gap:8,margin:'12px 0'}}>{members.map(m=><div key={m.user_id} style={{display:'flex',alignItems:'center',gap:8}}><span className="avatar sm">{(names[m.user_id]||'S').slice(0,2).toUpperCase()}</span><span>{m.user_id===user.id?'You':names[m.user_id]||'Student'}{m.user_id===room.owner_id?' · Host':''}</span></div>)}</div><p>Messages update automatically.</p><FocusTimer/>
  {room.owner_id===user.id?<Btn onClick={del}>Delete room</Btn>:<Btn onClick={leave}>Leave room</Btn>}</div></div>}</>;
 }
-const questions=BANK.slice(0,5);
 export function LiveChallenges(){
- const {user}=useAuth();const friends=useFriends();const [opponent,setOpponent]=useState(''),[title,setTitle]=useState('Study quiz battle'),[error,setError]=useState('');
+ const {user}=useAuth();const friends=useFriends();const [opponent,setOpponent]=useState(''),[title,setTitle]=useState('Study quiz battle'),[error,setError]=useState(''),[materials,setMaterials]=useState([]),[materialId,setMaterialId]=useState(''),[generating,setGenerating]=useState(false);
  const query=useCallback(q=>q.or('creator_id.eq.'+user.id+',opponent_id.eq.'+user.id).order('created_at',{ascending:false}),[user?.id]);
  const {rows,error:loadError,refresh}=useRows('study_challenges_live',query);
  const people=friends.friends.map(x=>x.person).filter(p=>p.id&&p.id!==user?.id&&!String(p.id).startsWith('sample:'));
- async function create(e){e.preventDefault();const {error}=await supabase.from('study_challenges_live').insert({creator_id:user.id,opponent_id:opponent,title:title.trim(),question_set:questions});if(error)setError(error.message);else{setError('');refresh();}}
- return <><div className="section-title"><div><h2>Friend Challenges</h2><p>Invite a real KNOXIA friend and compare quiz results.</p></div></div>
+ useEffect(()=>{if(!supabase||!user?.id)return;let active=true;supabase.from('materials').select('*').eq('owner_id',user.id).then(({data,error})=>{if(!active)return;if(error)setError(error.message);else setMaterials(data||[])});return()=>{active=false}},[user?.id]);
+ async function create(e){e.preventDefault();if(!materialId||!opponent||generating)return;setGenerating(true);setError('');
+ try{
+  const {data:generated,error:aiError}=await supabase.functions.invoke('generate-challenge',{body:{materialId}});
+  if(aiError)throw new Error(generated?.error||aiError.message||'Could not generate questions');
+  if(generated?.error)throw new Error(generated.error);
+  if(!Array.isArray(generated?.questions)||generated.questions.length!==5)throw new Error('AI returned an invalid quiz.');
+  const {error:saveError}=await supabase.from('study_challenges_live').insert({creator_id:user.id,opponent_id:opponent,title:title.trim(),question_set:generated.questions});
+  if(saveError)throw saveError;refresh();
+ }catch(err){setError(err.message||'Challenge creation failed.')}finally{setGenerating(false)}}
+ return <><div className="section-title"><div><h2>Friend Challenges</h2><p>Challenge a friend using AI questions generated from your uploaded study material.</p></div></div>
  <form className="panel" style={{padding:20,display:'grid',gap:12,marginBottom:20}} onSubmit={create}><h3>Challenge a friend</h3>
  <input className="field" value={title} maxLength={100} minLength={3} onChange={e=>setTitle(e.target.value)} required/>
- <select className="field" value={opponent} onChange={e=>setOpponent(e.target.value)} required><option value="">Choose a friend</option>{people.map(p=><option value={p.id} key={p.id}>{p.displayName||p.username}</option>)}</select>
+ <label className="field-label" htmlFor="challenge-material">Study material</label><select id="challenge-material" className="field" value={materialId} onChange={e=>setMaterialId(e.target.value)} required><option value="">Choose an uploaded material</option>{materials.map(m=><option key={m.id} value={m.id}>{m.title||m.name||'Untitled material'}</option>)}</select>
+ {materials.length===0&&<p>No uploaded materials found. <Link to="/materials/upload">Upload a material</Link> first.</p>}
+ <label className="field-label" htmlFor="challenge-friend">Opponent</label><select id="challenge-friend" className="field" value={opponent} onChange={e=>setOpponent(e.target.value)} required><option value="">Choose a friend</option>{people.map(p=><option value={p.id} key={p.id}>{p.displayName||p.username}</option>)}</select>
  {people.length===0&&<p>No connected friends yet. <Link to="/friends">Find friends</Link> first.</p>}
- <button type="submit" className="btn primary" disabled={!opponent}>Send challenge</button></form>
+ <button type="submit" className="btn primary" disabled={!opponent||!materialId||generating}>{generating?'Generating questions…':'Generate & send challenge' }</button></form>
  {(error||loadError)&&<p className="notice error" role="alert">{error||loadError}</p>}
  <div className="panel list-panel">{rows.length===0?<p style={{padding:20}}>No challenges yet.</p>:rows.map(c=><div className="generic-row" key={c.id}><div><b>{c.title}</b><small>{c.creator_id===user.id?'You challenged a friend':'A friend challenged you'} · {time(c.created_at)}</small><p>{c.creator_score==null?'Creator pending':'Creator: '+c.creator_score+'/5'} · {c.opponent_score==null?'Opponent pending':'Opponent: '+c.opponent_score+'/5'}</p></div><Link className="btn primary" to={'/challenges/'+c.id+'/play'}>Play</Link></div>)}</div></>;
 }
