@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap');
 :root{font-family:'DM Sans',sans-serif;color:var(--text);background:var(--bg);font-synthesis:none;text-rendering:optimizeLegibility;font-optical-sizing:auto;font-weight:400;color-scheme:light;--blue:#2563EB;--blue-hover:#1D4ED8;--blue-solid:#2563EB;--blue-solid-hover:#1D4ED8;--bg:#EEF4FF;--card:#fff;--soft:#F5F8FF;--tint:#EAF1FF;--tint-2:#C9DCFF;--highlight:#DBE8FF;--text:#0F1B33;--text-2:#40516D;--muted:#4A5B78;--muted-2:#52637F;--muted-3:#8291A8;--border:#DCE5F5;--border-2:#B9CBEA;--divider:#EDF1F8;--green:#16A37F;--green-text:#16A37F;--green-bg:#E5F7F1;--green-bg-2:#C5EEE0;--purple:#8054CB;--purple-bg:#F1EAFF;--purple-bg-2:#DDD0FF;--orange:#D99421;--orange-bg:#FFF2DC;--orange-bg-2:#FFDFAE;--red:#C0264F;--red-bg:#FDECEF;--red-bg-2:#F9D3DB;--red-border:#F2B8C4;--shadow:0 8px 28px rgba(34,70,130,.06)}
 /* Exact original shades, kept as aliases so light mode is unchanged; the dark theme re-points each one. */
 :root{--focus-ring:#80a7f4;--toast-ink:#fff;--bd-80a7f4:#80a7f4;--bd-9ed9c7:#9ed9c7;--bd-bfd3f7:#bfd3f7;--bd-d4e2fb:#d4e2fb;--bd-dce6f7:#dce6f7;--bg-c8dcff:#c8dcff;--bg-dce8ff:#dce8ff;--bg-dce9ff:#dce9ff;--bg-ddd0ff:#ddd0ff;--bg-ddf5ee:#ddf5ee;--bg-e3f8f1:#e3f8f1;--bg-e4edff:#e4edff;--bg-e4f7f1:#e4f7f1;--bg-e5efff:#e5efff;--bg-e6eefb:#e6eefb;--bg-e6efff:#e6efff;--bg-e8f0ff:#e8f0ff;--bg-eaf0fa:#eaf0fa;--bg-edf2fa:#edf2fa;--bg-edf3ff:#edf3ff;--bg-eef3fc:#eef3fc;--bg-eff5ff:#eff5ff;--bg-eff8f5:#eff8f5;--bg-f0e8ff:#f0e8ff;--bg-f0f8f6:#f0f8f6;--bg-f1f5fc:#f1f5fc;--bg-f1f6ff:#f1f6ff;--bg-f2f6ff:#f2f6ff;--bg-f3f7ff:#f3f7ff;--bg-f6f9ff:#f6f9ff;--bg-fff1dc:#fff1dc;--bg-fff2df:#fff2df;--bg-fff3df:#fff3df;--bg-fff4df:#fff4df;--fg-0e7a60:#0e7a60;--fg-138b6d:#138b6d;--fg-159b79:#159b79;--fg-2458bd:#2458bd;--fg-287f6c:#287f6c;--fg-3168cf:#3168cf;--fg-328b76:#328b76;--fg-3970d8:#3970d8;--fg-3d4f6e:#3d4f6e;--fg-40516d:#40516d;--fg-42536e:#42536e;--fg-43536f:#43536f;--fg-475a78:#475a78;--fg-526a96:#526a96;--fg-5274b3:#5274b3;--fg-53647f:#53647f;--fg-566782:#566782;--fg-596b87:#596b87;--fg-5a6a85:#5a6a85;--fg-5d6e89:#5d6e89;--fg-60718d:#60718d;--fg-61718d:#61718d;--fg-62728c:#62728c;--fg-63738d:#63738d;--fg-687995:#687995;--fg-6e7e98:#6e7e98;--fg-6e819e:#6e819e;--fg-70809a:#70809a;--fg-71819b:#71819b;--fg-73829a:#73829a;--fg-8090a8:#8090a8;--fg-8392aa:#8392aa;--fg-8493aa:#8493aa;--fg-855cc8:#855cc8;--fg-8998ad:#8998ad;--fg-8998ae:#8998ae;--fg-8a98ae:#8a98ae;--fg-8a99af:#8a99af;--fg-8b9ab0:#8b9ab0;--fg-8c9ab0:#8c9ab0;--fg-8c9bb0:#8c9bb0;--fg-91a0b7:#91a0b7;--fg-91a0b8:#91a0b8;--fg-93a1b6:#93a1b6;--fg-99a6b9:#99a6b9;--fg-9aa8bc:#9aa8bc;--fg-bd8424:#bd8424;--fg-c18b29:#c18b29;--fg-c88b29:#c88b29;--fg-d79528:#d79528;--fg-d79b32:#d79b32;--fg-e7ad35:#e7ad35;}
@@ -460,4 +460,35 @@ html.theme-fade *,html.theme-fade *::before,html.theme-fade *::after{transition:
   .rv-print-document p,.rv-print-document li{orphans:3;widows:3}
   .rv-print-document ul,.rv-print-document ol,.rv-print-document blockquote{break-inside:avoid-page}
   html,body,#root{height:auto!important;overflow:visible!important;background:white!important}
+}
+
+/* Reviewer reading and A4 printing: consistent Poppins typography and rhythm. */
+.rv-print-document,.rv-print-document *{font-family:'Poppins',sans-serif}
+.rv-print-document{padding:40px 46px;line-height:1.65}
+.rv-print-header{margin-bottom:26px;padding-bottom:20px}
+.rv-print-header h1{font-size:25px;line-height:1.4;font-weight:700;letter-spacing:-.025em;margin:12px 0 8px}
+.rv-print-header p{font-size:12px;line-height:1.65}
+.rv-print-document .rv-reading-content{font-family:'Poppins',sans-serif;font-size:13.5px;line-height:1.8;letter-spacing:0;color:#26344b}
+.rv-print-document .rv-reading-content h1,.rv-print-document .rv-reading-content h2,.rv-print-document .rv-reading-content h3,.rv-print-document .rv-reading-content h4{font-family:'Poppins',sans-serif;font-weight:700;line-height:1.45;letter-spacing:-.015em;margin:24px 0 12px}
+.rv-print-document .rv-reading-content h1{font-size:21px}
+.rv-print-document .rv-reading-content h2{font-size:18px}
+.rv-print-document .rv-reading-content h3{font-size:15.5px}
+.rv-print-document .rv-reading-content h4{font-size:14px}
+.rv-print-document .rv-reading-content p{margin:0 0 15px;line-height:1.85}
+.rv-print-document .rv-reading-content ul,.rv-print-document .rv-reading-content ol{margin:8px 0 20px;padding-left:24px}
+.rv-print-document .rv-reading-content li{margin:0 0 10px;padding-left:4px;line-height:1.8}
+.rv-print-document .rv-reading-content li::marker{color:#3465ce}
+.rv-print-document .rv-reading-content strong{font-weight:700}
+.rv-print-document .rv-reading-content .rv-meta-row{margin:0 0 14px;display:grid;grid-template-columns:92px minmax(0,1fr);gap:14px;align-items:start}
+.rv-print-document .rv-reading-content .rv-meta-label{font-size:11px;font-weight:700;letter-spacing:.06em;color:#3465ce;text-transform:uppercase;padding-top:3px}
+.rv-print-document .rv-reading-content .rv-meta-value{min-width:0;overflow-wrap:anywhere}
+.rv-print-document .rv-reading-content .rv-plain-heading{margin:24px 0 12px;font-size:15.5px;font-weight:700;color:#152f60}
+@media(max-width:700px){.rv-print-document{padding:24px 20px}.rv-print-document .rv-reading-content .rv-meta-row{grid-template-columns:1fr;gap:2px}}
+@media print{
+ .rv-print-document,.rv-print-document *{font-family:'Poppins',sans-serif!important}
+ .rv-print-document .rv-reading-content{font-size:10pt!important;line-height:1.65!important}
+ .rv-print-document .rv-reading-content p{margin-bottom:9pt!important;line-height:1.65!important}
+ .rv-print-document .rv-reading-content li{margin-bottom:6pt!important;line-height:1.6!important}
+ .rv-print-document .rv-reading-content h1,.rv-print-document .rv-reading-content h2,.rv-print-document .rv-reading-content h3,.rv-print-document .rv-reading-content h4{margin:14pt 0 7pt!important}
+ .rv-print-document .rv-reading-content .rv-meta-row{margin-bottom:8pt!important}
 }

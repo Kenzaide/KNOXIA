@@ -51,6 +51,15 @@ function ReviewerReadingView({ content }) {
   while (i < lines.length) {
     const raw = lines[i], line = raw.trim();
     if (!line) { i++; continue; }
+    // Legacy reviewers store SOURCE / FORMAT / OVERVIEW as unformatted lines.
+    const meta = /^(SOURCE|FORMAT|OVERVIEW)\s*:?\s*(.*)$/i.exec(line);
+    if (meta) {
+      nodes.push(<div className="rv-meta-row" key={i}><span className="rv-meta-label">{meta[1]}</span><span className="rv-meta-value">{inline(meta[2])}</span></div>);
+      i++; continue;
+    }
+    if (/^(KEY CONCEPTS|DEFINITIONS|IMPORTANT TERMS|REVIEW QUESTIONS|SUMMARY|KEY TAKEAWAYS)$/i.test(line)) {
+      nodes.push(<h3 className="rv-plain-heading" key={i}>{line}</h3>); i++; continue;
+    }
     const heading = /^(#{1,4})\s+(.+)$/.exec(line);
     if (heading) {
       const Tag = 'h' + Math.min(heading[1].length, 4);
