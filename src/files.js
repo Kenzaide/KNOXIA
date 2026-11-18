@@ -1,7 +1,7 @@
 /**
  * Stores the original uploaded files in the browser (IndexedDB), so previews and downloads still
  * work after a refresh. Falls back to memory when IndexedDB is blocked.
- * FRONTEND-ONLY DEMO: replace with server-side file storage when the backend exists.
+ * Supabase Storage is the durable source for newly uploaded materials; IndexedDB is a local cache.
  */
 const DB_NAME = 'knoxia-files', STORE = 'blobs';
 const memory = new Map();
@@ -34,7 +34,26 @@ export async function saveFile(id, blob) {
 }
 export async function getFile(id) {
   if (memory.has(id)) return memory.get(id);
-  try { return (await run('readonly', (s) => s.get(id))) || null; } catch { return null; }
+  let cached = null;
+  try { cached = (await run('readonly', (s) => s.get(id))) || null; } catch { /* cache unavailable */ }
+  if (cached) return cached;
+
+  // Uploads are stored in Supabase Storage, not just this browser. Retrieve
+  // by material ID, with ownership checked by the API and Supabase RLS.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id))) return null;
+  try {
+    const { downloadOwnedMaterial } = await import('./lib/learningApi.js');
+    const { blob } = await downloadOwnedMaterial(id);
+    if (!blob || !blob.size) return null;
+    // Caching is best-effort; the remote file remains available after refresh.
+    try { await saveFile(id, blob); } catch { /* no local storage space */ }
+    return blob;
+  } catch (error) {
+    // Older local-only sample records can have UUIDs but no remote file.
+    // Do not pretend a missing sample file exists.
+    if (error?.code === 'PGRST116' || error?.status === 404) return null;
+    throw error;
+  }
 }
 export async function deleteFile(id) {
   memory.delete(id);
