@@ -46,6 +46,38 @@ export async function uploadMaterial(file, { title, description = '', visibility
     throw error;
   }
 }
+/**
+ * Fetch a private material's bytes. A signed URL is generated only for a
+ * material belonging to the signed-in user, rather than trusting an arbitrary
+ * storage path supplied by the browser.
+ */
+export async function downloadOwnedMaterial(id) {
+  const uid = await userId();
+  const row = unwrap(await client().from('materials')
+    .select('title,storage_path,mime_type')
+    .eq('id', id).eq('owner_id', uid).single());
+  if (!row.storage_path) throw new Error('This material has no uploaded file.');
+  const signedUrl = await materialDownloadUrl(row.storage_path);
+  const response = await fetch(signedUrl);
+  if (!response.ok) throw new Error('Could not download this file. Please retry.');
+  return { blob: await response.blob(), title: row.title, mimeType: row.mime_type };
+}
+
+/** Update only metadata columns known to exist in the live schema. */
+export async function updateMaterialDetails(id, { title, description } = {}) {
+  const uid = await userId();
+  const patch = {};
+  if (title !== undefined) {
+    const trimmed = String(title).trim().slice(0, 200);
+    if (!trimmed) throw new Error('Give this material a title.');
+    patch.title = trimmed;
+  }
+  if (description !== undefined) patch.description = String(description);
+  if (!Object.keys(patch).length) throw new Error('No changes to save.');
+  return unwrap(await client().from('materials').update(patch)
+    .eq('id', id).eq('owner_id', uid).select().single());
+}
+
 export async function materialDownloadUrl(path) {
   const { data, error } = await client().storage.from('learning-materials').createSignedUrl(path, 60);
   if (error) throw error;
