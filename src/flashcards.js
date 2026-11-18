@@ -7,7 +7,7 @@
  * learning". A deck's mastery is the share of its cards that are known. Editing a card's text resets
  * its `known` flag, because what you learned may no longer be what the card says.
  *
- * FRONTEND-ONLY DEMO: decks live in this browser (storage.js). A backend would own them later.
+ * Decks, cards, and mastery are stored in Supabase.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from './session.js';
@@ -105,7 +105,7 @@ export function useDeckLibrary() {
       let cardRows = [];
       if (ids.length) {
         const { data, error: cardError } = await supabase.from('flashcards')
-          .select('id,deck_id,front,back').in('deck_id', ids).order('id');
+          .select('id,deck_id,front,back,known').in('deck_id', ids).order('id');
         if (cardError) throw cardError;
         cardRows = data || [];
       }
@@ -114,7 +114,7 @@ export function useDeckLibrary() {
         id: d.id, title: d.title, subject: d.subject || '',
         tone: TONES[i % TONES.length], created: d.created_at, updated: d.created_at,
         cards: cardRows.filter(c => c.deck_id === d.id).map(c => ({
-          id: c.id, front: c.front, back: c.back, known: false,
+          id: c.id, front: c.front, back: c.back, known: c.known === true,
         })),
       }));
       snapshot.current = decks;
@@ -238,7 +238,7 @@ export function useDeckLibrary() {
       patch(id, d => ({ ...d, cards: d.cards.map(c => c.id === cardId
         ? { ...c, front: f, back: b, known: f === c.front && b === c.back ? c.known : false } : c) }));
       write(async () => {
-        const { error } = await supabase.from('flashcards').update({ front: f, back: b }).eq('id', cardId).eq('deck_id', id);
+        const { error } = await supabase.from('flashcards').update({ front: f, back: b, known: f === deck.cards.find(c => c.id === cardId)?.front && b === deck.cards.find(c => c.id === cardId)?.back ? deck.cards.find(c => c.id === cardId)?.known === true : false }).eq('id', cardId).eq('deck_id', id);
         if (error) throw error;
       });
       return '';
@@ -250,8 +250,24 @@ export function useDeckLibrary() {
         if (error) throw error;
       });
     },
-    // Mastery is currently session-local: the existing database has no known/progress column.
-    mark(id, marks) { patch(id, d => ({ ...d, cards: d.cards.map(c => c.id in marks ? { ...c, known: !!marks[c.id] } : c) })); },
-    resetProgress(id) { patch(id, d => ({ ...d, cards: d.cards.map(c => ({ ...c, known: false })) })); },
+    // Persist each answered card so library mastery survives reloads and new sessions.
+    mark(id, marks) {
+      const updates = Object.entries(marks).filter(([cardId]) => snapshot.current.find(d => d.id === id)?.cards.some(c => c.id === cardId));
+      if (!updates.length) return;
+      patch(id, d => ({ ...d, cards: d.cards.map(c => Object.prototype.hasOwnProperty.call(marks, c.id) ? { ...c, known: marks[c.id] === true } : c) }));
+      write(async () => {
+        for (const [cardId, known] of updates) {
+          const { error } = await supabase.from('flashcards').update({ known: known === true }).eq('id', cardId).eq('deck_id', id);
+          if (error) throw error;
+        }
+      });
+    },
+    resetProgress(id) {
+      patch(id, d => ({ ...d, cards: d.cards.map(c => ({ ...c, known: false })) }));
+      write(async () => {
+        const { error } = await supabase.from('flashcards').update({ known: false }).eq('deck_id', id);
+        if (error) throw error;
+      });
+    },
   }), [saved, loading, error, owner]);
 }
