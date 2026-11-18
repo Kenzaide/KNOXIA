@@ -284,7 +284,7 @@ export function FlashStudy() {
         {missed.length > 0 && <Btn icon={RotateCcw} onClick={() => start(sessionOrder(deck.cards, { shuffled, only: new Set(missed.map(c => c.id)) }))}>Study missed ({missed.length})</Btn>}
         <Btn v={missed.length ? 'outline' : 'primary'} icon={RotateCcw} onClick={() => start(sessionOrder(deck.cards, { shuffled }))}>Study all again</Btn>
         <Btn v="outline" onClick={() => nav('/flashcards')}>Back to library</Btn>
-      </div><p className="muted fc-results-note">Results are for this session only; permanent mastery tracking is not yet enabled.</p>
+      </div><p className="muted fc-results-note">Card mastery is saved to your Supabase account. The recall rate above is for this session.</p>
     </section></div></>;
   return <><SectionTitle title="Flashcard Study Session" subtitle={deck.title} action={<div className="head-actions">
       <Btn v={shuffled ? 'soft' : 'outline'} icon={Shuffle} aria-pressed={shuffled} onClick={() => start(sessionOrder(deck.cards, { shuffled: !shuffled }), !shuffled)}>{shuffled ? 'Shuffled' : 'Shuffle'}</Btn>
