@@ -26,10 +26,10 @@ const uniqueId = () => crypto.randomUUID();
 // Uses the existing private learning-materials bucket; verify its DELETE/UPDATE policies before production use.
 export async function listMaterials() {
   const uid = await userId();
-  return unwrap(await client().from('materials').select('id,title,description,storage_path,mime_type,visibility,created_at')
+  return unwrap(await client().from('materials').select('id,title,description,subject,tags,file_path,storage_path,mime_type,file_size,visibility,created_at')
     .eq('owner_id', uid).order('created_at', { ascending: false }));
 }
-export async function uploadMaterial(file, { title, description = '', visibility = 'private' } = {}) {
+export async function uploadMaterial(file, { title, description = '', subject = '', tags = [], visibility = 'private' } = {}) {
   const uid = await userId();
   if (!file || !file.size) throw new Error('Choose a file to upload.');
   if (file.size > 25 * 1024 * 1024) throw new Error('Files must be 25 MB or smaller.');
@@ -39,7 +39,7 @@ export async function uploadMaterial(file, { title, description = '', visibility
   try {
     return unwrap(await client().from('materials').insert({
       id, owner_id: uid, title: String(title || file.name).slice(0, 200),
-      description, storage_path: path, mime_type: file.type || null, visibility,
+      description, subject, tags, file_path: path, storage_path: path, file_size: file.size, mime_type: file.type || null, visibility,
     }).select().single());
   } catch (error) {
     await client().storage.from('learning-materials').remove([path]);
@@ -54,17 +54,18 @@ export async function uploadMaterial(file, { title, description = '', visibility
 export async function downloadOwnedMaterial(id) {
   const uid = await userId();
   const row = unwrap(await client().from('materials')
-    .select('title,storage_path,mime_type')
+    .select('title,storage_path,file_path,mime_type')
     .eq('id', id).eq('owner_id', uid).single());
-  if (!row.storage_path) throw new Error('This material has no uploaded file.');
-  const signedUrl = await materialDownloadUrl(row.storage_path);
+  const path = row.storage_path || row.file_path;
+  if (!path) throw new Error('This material has no uploaded file.');
+  const signedUrl = await materialDownloadUrl(path);
   const response = await fetch(signedUrl);
   if (!response.ok) throw new Error('Could not download this file. Please retry.');
   return { blob: await response.blob(), title: row.title, mimeType: row.mime_type };
 }
 
 /** Update only metadata columns known to exist in the live schema. */
-export async function updateMaterialDetails(id, { title, description } = {}) {
+export async function updateMaterialDetails(id, { title, description, subject, tags } = {}) {
   const uid = await userId();
   const patch = {};
   if (title !== undefined) {
@@ -73,6 +74,8 @@ export async function updateMaterialDetails(id, { title, description } = {}) {
     patch.title = trimmed;
   }
   if (description !== undefined) patch.description = String(description);
+  if (subject !== undefined) patch.subject = String(subject);
+  if (tags !== undefined) patch.tags = Array.isArray(tags) ? tags : [];
   if (!Object.keys(patch).length) throw new Error('No changes to save.');
   return unwrap(await client().from('materials').update(patch)
     .eq('id', id).eq('owner_id', uid).select().single());
@@ -85,10 +88,10 @@ export async function materialDownloadUrl(path) {
 }
 export async function deleteMaterial(id) {
   const uid = await userId();
-  const row = unwrap(await client().from('materials').select('storage_path').eq('id', id).eq('owner_id', uid).single());
+  const row = unwrap(await client().from('materials').select('storage_path,file_path').eq('id', id).eq('owner_id', uid).single());
   unwrap(await client().from('materials').delete().eq('id', id).eq('owner_id', uid));
   // The database delete succeeds even if cleanup fails; report the storage cleanup error.
-  unwrap(await client().storage.from('learning-materials').remove([row.storage_path]));
+  unwrap(await client().storage.from('learning-materials').remove([row.storage_path || row.file_path]));
 }
 
 // Reviewer text is stored in public.reviewers. Keep generation separate from persistence.
