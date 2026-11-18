@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Routes, Route, NavLink, Link, Navigate, useLocation, useNavigate, useNavigationType, useParams } from 'react-router-dom';
 import { useMaterials, toast, colorOf, fmtSize, fmtDate, SUBJECTS, MAX_MB, MAX_BATCH, validateFile, fileExt, parseTags } from './materials.jsx';
 import { saveFile, getFile, hashFile, newId } from './files.js';
-import { uploadMaterial, materialDownloadUrl } from './lib/learningApi.js';
+import { uploadMaterial, downloadOwnedMaterial } from './lib/learningApi.js';
 import { ReviewerEditor, SavedReviewers, Challenges, ChallengePlay, Leaderboards, Analytics, Planner, Notifications, SettingsPage, Moderation, Logs } from './pages.jsx';
 import { useNotes } from './data.js';
 import { authPage } from './auth.jsx';
@@ -321,20 +321,28 @@ const MaterialViewer = lazy(() => import('./viewer.jsx')); // pdf.js, mammoth an
 function MaterialDetail() { const go=useGo();
   const {id}=useParams(); const {items,update,remove}=useMaterials(); const m=items.find(x=>x.id===id); const kind=m&&m.type;
   const [editing,setEditing]=useState(false); const [form,setForm]=useState(null); const [err,setErr]=useState(''); const [del,setDel]=useState(false);
-  const [file,setFile]=useState(undefined); const saveInfo=useCallback(info=>{ if(id) update(id,{info}); },[id,update]);
-  useEffect(()=>{ let live=true; setFile(undefined); if(id) getFile(id).then(b=>{ if(live) setFile(b||null); }); return()=>{live=false}; },[id]);
+  const [file,setFile]=useState(undefined); const [fileError,setFileError]=useState(''); const [downloading,setDownloading]=useState(false); const saveInfo=useCallback(info=>{ if(id) update(id,{info}); },[id,update]);
+  useEffect(()=>{ let live=true; setFile(undefined); setFileError('');
+    if(id) (async()=>{ try {
+      const cached=await getFile(id);
+      if(cached){ if(live)setFile(cached); return; }
+      const remote=await downloadOwnedMaterial(id);
+      if(live)setFile(remote.blob);
+    }catch(e){if(live){setFile(null);setFileError(e?.message||'Could not retrieve the original file.');}} })();
+    return()=>{live=false};
+  },[id]);
   if(!m) return <div className="empty-state"><FolderOpen size={32}/><b>Material not found</b><p>It may have been deleted.</p><Button onClick={()=>go('/materials')}>Back to My Materials</Button></div>;
   const edit=()=>{setForm({name:m.name,subject:m.subject,tags:(m.tags||[]).join(', '),desc:m.desc||''});setErr('');setEditing(true)};
   const save=e=>{e.preventDefault(); const name=form.name.trim();
     if(!name){setErr('Give this material a title.');return}
     update(m.id,{name:name.slice(0,120),subject:form.subject,tags:parseTags(form.tags),desc:form.desc.trim()}); setEditing(false); toast('Details saved'); };
-  const download=()=>{ const u=URL.createObjectURL(file); const a=document.createElement('a'); a.href=u; a.download=m.fileName||m.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); };
+  const download=async()=>{ if(!file||downloading)return; setDownloading(true); try{ const u=URL.createObjectURL(file); const a=document.createElement('a'); a.href=u; a.download=m.fileName||m.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); } finally {setDownloading(false);} };
   const inf=m.info||{};
   const rows=[['File name',m.fileName||m.name],['Type',m.type],['Size',m.size],['Uploaded',fmtDate(m.uploaded)],['Subject',m.subject],
     ...(inf.title?[['Document title',inf.title]]:[]),...(inf.author?[['Author',inf.author]]:[]),
     ...(inf.pages?[['Pages',inf.pages]]:[]),...(inf.slides?[['Slides',inf.slides]]:[]),...(inf.words!=null?[['Words',inf.words.toLocaleString()]]:[]),...(inf.minutes?[['Reading time',inf.minutes+' min']]:[]),
-    ['Stored',file?'In this browser':'Sample material (no file)']];
-  return <><SectionTitle title="Material Details" subtitle="Review and manage your uploaded learning material." action={<div className="head-actions">{!editing&&<Button variant="outline" icon={Pencil} onClick={edit}>Edit details</Button>}{file&&<Button variant="outline" icon={Download} onClick={download}>Download</Button>}<Button variant="outline" icon={Trash2} onClick={()=>setDel(true)}>Delete</Button></div>}/>
+    ['Stored',file?'Supabase Storage':file===undefined?'Checking storage…':fileError?'Unable to retrieve file':'No file available']];
+  return <><SectionTitle title="Material Details" subtitle="Review and manage your uploaded learning material." action={<div className="head-actions">{!editing&&<Button variant="outline" icon={Pencil} onClick={edit}>Edit details</Button>}{file&&<Button variant="outline" icon={Download} onClick={download} disabled={downloading}>{downloading?'Downloading…':'Download original'}</Button>}<Button variant="outline" icon={Trash2} onClick={()=>setDel(true)}>Delete</Button></div>}/>
     <div className="panel detail-panel"><div className={`file-tile ${m.color||colorOf(m.type)}`}><FileText size={26}/></div><div>
       <h2>{m.name}</h2><p>{m.type} · {m.size} · Uploaded {fmtDate(m.uploaded)}</p>{m.desc&&<p>{m.desc}</p>}
       <div className="post-tags"><span>{m.subject}</span>{(m.tags||[]).map(t=><span key={t}>{t}</span>)}</div></div></div>
@@ -345,7 +353,7 @@ function MaterialDetail() { const go=useGo();
       <label className="ufield"><span>Description</span><textarea rows="2" maxLength={300} value={form.desc} onChange={e=>setForm({...form,desc:e.target.value})}/></label>
       {err&&<div className="notice error" role="alert"><AlertCircle size={16}/>{err}</div>}
       <div className="form-actions"><Button variant="outline" onClick={()=>setEditing(false)}>Cancel</Button><Button type="submit">Save changes</Button></div></form>}
-    <div className="detail-grid viewer-grid"><div className="panel"><h3>Viewer</h3>{file?<Suspense fallback={<div className="viewer-loading" role="status"><i className="spin" aria-hidden="true"/> Loading viewer…</div>}><MaterialViewer file={file} kind={m.type} onInfo={saveInfo}/></Suspense>:<div className="empty-state"><FileText size={32}/><b>{file===undefined?'Loading file…':'No original file stored'}</b><p>{file===undefined?'':'This is a sample material, so there is no file to show.'}</p></div>}</div>
+    <div className="detail-grid viewer-grid"><div className="panel"><h3>Viewer</h3>{file?<Suspense fallback={<div className="viewer-loading" role="status"><i className="spin" aria-hidden="true"/> Loading viewer…</div>}><MaterialViewer file={file} kind={m.type} onInfo={saveInfo}/></Suspense>:<div className="empty-state"><FileText size={32}/><b>{file===undefined?'Loading original file…':fileError?'Could not open original file':'No original file available'}</b><p>{fileError||''}</p></div>}</div>
     <div className="panel"><h3>File details</h3><dl className="info-list">{rows.map(([k,v])=><React.Fragment key={k}><dt>{k}</dt><dd>{v}</dd></React.Fragment>)}</dl></div></div>
     <div className="quick-tools"><div className="panel quick-tool"><Sparkles/><h3>Generate reviewer</h3><p>Create organized notes from this material.</p><Button variant="soft" onClick={()=>go('/reviewers/create?material='+encodeURIComponent(m.id))}>Create reviewer</Button></div><div className="panel quick-tool"><BookOpen/><h3>Generate quiz</h3><p>Test your knowledge with practice questions.</p><Button variant="soft" onClick={()=>go('/quizzes/create')}>Create quiz</Button></div><div className="panel quick-tool"><BrainCircuit/><h3>Ask AI</h3><p>Get help understanding difficult concepts.</p><Button variant="soft" onClick={()=>go('/study-companion')}>Ask companion</Button></div></div>
     {del&&<ConfirmDialog icon={Trash2} title={`Delete "${m.name}"?`} body="This removes the file and its details from your library. This can't be undone." confirmLabel="Delete" onCancel={()=>setDel(false)} onConfirm={()=>{remove(m.id);toast('Material deleted');go('/materials')}}/>}</>;
