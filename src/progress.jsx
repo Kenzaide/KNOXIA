@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowUpRight, BookOpen, Check, CheckCircle2, Clock3, Flame, Layers, RotateCcw, Sparkles, Target, TrendingDown, TrendingUp, Undo2 } from 'lucide-react';
 import { Button, ConfirmDialog, SectionTitle } from './ui.jsx';
@@ -30,6 +30,15 @@ export default function StudyProgress() {
   const { reviewers: rv, decks: dk, quizzes: qz, streak, week, events } = pr;
   const rows = rv.rows.filter((r) => tab === 'all' || r.status === tab);
   const counts = { all: rv.total, done: rv.done, progress: rv.progress, new: rv.fresh };
+  const insights = useMemo(() => {
+    const quizRows = qz.quizzes || [];
+    const improving = quizRows.filter(q => q.delta != null && q.delta > 0).length;
+    const declining = quizRows.filter(q => q.delta != null && q.delta < 0).length;
+    const unmastered = Math.max(0, dk.cards - dk.known);
+    const activeDays = week.filter(d => d.count > 0).length;
+    const priority = declining > 0 ? 'Revisit quizzes where your latest score dropped.' : unmastered > 0 ? 'Practice flashcards you have not mastered yet.' : rv.total > rv.done ? 'Finish your remaining reviewers.' : 'Complete a quiz or flashcard session to build your learning history.';
+    return { improving, declining, unmastered, activeDays, priority };
+  }, [qz.quizzes, dk.cards, dk.known, week, rv.total, rv.done]);
   const peak = Math.max(1, ...week.map((d) => d.count)); const weekTotal = week.reduce((t, d) => t + d.count, 0); const weekSecs = week.reduce((t, d) => t + d.secs, 0);
   const toggle = (r, done) => { track.setReviewerDone(r, done); toast(done ? 'Reviewer marked as completed' : 'Marked as not completed'); };
   const confirmReset = () => { pr.log.reset(); setReset(false); logEvent('Study progress log reset'); toast('Study log reset'); };
@@ -44,6 +53,20 @@ export default function StudyProgress() {
       <Stat label="Quiz average" value={qz.avg === null ? '–' : qz.avg + '%'} note={qz.taken ? `${plural(qz.taken, 'quiz attempt')} · best ${qz.best}%` : 'No quizzes taken yet'} icon={Target} tone="purple" />
       <Stat label="Study streak" value={plural(streak.current, 'day')} note={`Best ${plural(streak.best, 'day')} · ${fmtTime(pr.secs) || '0m'} studied`} icon={Flame} tone="orange" />
     </div>
+
+    <section className="panel sp-section" aria-label="Learning analytics insights" style={{marginBottom:20}}>
+      <div className="list-head"><h3>Learning analytics</h3><span className="muted-sm">Based on your saved study activity</span></div>
+      <div className="stats-grid compact">
+        <Stat label="Active study days" value={`${insights.activeDays}/7`} note="Days with activity this week" icon={Flame} tone="orange"/>
+        <Stat label="Improving quizzes" value={insights.improving} note="Latest score above previous attempt" icon={TrendingUp} tone="green"/>
+        <Stat label="Scores to revisit" value={insights.declining} note="Latest score below previous attempt" icon={TrendingDown} tone="purple"/>
+        <Stat label="Cards to practice" value={insights.unmastered} note="Not yet marked as known" icon={Layers}/>
+      </div>
+      <div style={{marginTop:16,padding:'14px 16px',borderRadius:12,background:'var(--surface-2, rgba(37,99,235,.06))'}}>
+        <b style={{display:'block',marginBottom:5}}>Suggested next step</b>
+        <p className="muted" style={{margin:0}}>{insights.priority}</p>
+      </div>
+    </section>
 
     <div className="dashboard-grid sp-top">
       <section className="panel"><div className="list-head"><h3>Last 7 days</h3><span className="muted-sm">{weekTotal ? `${plural(weekTotal, 'activity')}${weekSecs ? ` · ${fmtTime(weekSecs)}` : ''}` : 'No activity yet'}</span></div>

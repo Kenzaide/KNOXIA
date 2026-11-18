@@ -28,6 +28,8 @@ export function LeaderboardsV2() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [metric, setMetric] = useState('xp');
+  const [scope, setScope] = useState('all');
+  const friends = useFriends();
   const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
@@ -58,7 +60,9 @@ export function LeaderboardsV2() {
     return () => { active = false; };
   }, [user?.id, refresh]);
 
-  const ranked = useMemo(() => rankPeople(rows, metric), [rows, metric]);
+  const friendIds = useMemo(() => new Set(friends.friends.map(f => f.person.id)), [friends.friends]);
+  const scopedRows = useMemo(() => scope === 'friends' ? rows.filter(p => p.me || friendIds.has(p.id)) : rows, [rows, scope, friendIds]);
+  const ranked = useMemo(() => rankPeople(scopedRows, metric), [scopedRows, metric]);
   const mine = ranked.find(p => p.me);
   const higher = mine && ranked[mine.rank - 2];
   return <>
@@ -69,6 +73,11 @@ export function LeaderboardsV2() {
         <option value="xp">Quiz XP</option>
         <option value="quizzes">Quizzes completed</option>
         <option value="avg">Quiz average (%)</option>
+      </select>
+      <label className="field-label" htmlFor="gm-scope">Show</label>
+      <select id="gm-scope" className="field gm-select" value={scope} onChange={e => setScope(e.target.value)}>
+        <option value="all">All students</option>
+        <option value="friends">Friends &amp; me</option>
       </select>
       <button type="button" className="btn outline" onClick={() => setRefresh(n => n + 1)}>Refresh</button>
     </div>
@@ -86,8 +95,11 @@ export function LeaderboardsV2() {
           <div className="gm-person"><span className="avatar sm">{p.name.slice(0, 2).toUpperCase()}</span><span><b>{p.name}{p.me ? ' (you)' : ''}</b><small>{p.quizzes} completed quizzes</small></span></div>
           <strong>{metric === 'avg' ? (p.avg == null ? '—' : p.avg + '%') : num(p[metric])}</strong>
         </div>)}
-        {!ranked.length && <p className="muted">No registered users yet.</p>}
+        {!ranked.length && <p className="muted">No ranked students in this view yet.</p>}
       </div>
+      {scope === 'friends' && !friends.ready && <p className="muted-sm">Loading friend connections…</p>}
+      {scope === 'friends' && friends.error && <p className="muted-sm" role="alert">{friends.error}</p>}
+      {scope === 'friends' && friends.ready && friendIds.size === 0 && <p className="muted-sm">You have no connected friends yet. <Link to="/friends?tab=find">Find friends</Link> to compare quiz performance.</p>}
       <p className="muted-sm gm-note">Only Supabase users appear. Quiz XP = 10 points per completed quiz + 1 per correct answer. Browser-only activities and scores are not included until they are synchronized.</p>
     </>}
   </>;
