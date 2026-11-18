@@ -242,6 +242,7 @@ export function FlashStudy() {
   const cards = order.map((cid) => byId.get(cid)).filter(Boolean); const n = cards.length;
   const done = n > 0 && i >= n; const card = cards[i];
   const knew = cards.filter((c) => marks[c.id] === true).length; const missed = cards.filter((c) => marks[c.id] === false);
+  const answered = knew + missed.length; const mastery = answered ? Math.round(knew / answered * 100) : 0; const progress = n ? Math.round(answered / n * 100) : 0;
 
   latest.current = { deck, cards, marks };
   const flush = () => {
@@ -267,21 +268,31 @@ export function FlashStudy() {
   if (!n && deck.cards.length) return <p className="muted" role="status">Preparing your study session…</p>;
   if (!n) return <Empty icon={Layers} title="This deck has no cards yet" text="Add a few cards, then come back to study."><Button icon={Plus} onClick={() => nav('/flashcards/' + deck.id)}>Add cards</Button></Empty>;
 
-  if (done) return <><SectionTitle title="Flashcard Study Session" subtitle={deck.title} />
-    <div className="study-center"><div className="panel study-card" role="status"><small>SESSION COMPLETE</small><h2>You knew {knew} of {n} cards</h2>
-      <p className="muted">{missed.length ? `${plural(missed.length, 'card')} marked “still learning”. Study just those next.` : 'Every card marked as known. Nice work.'}</p>
+  if (done) return <><SectionTitle title="Flashcard Study Results" subtitle={deck.title} />
+    <div className="study-center"><section className="panel fc-results" role="status">
+      <h2>Session complete!</h2><p className="muted">You studied all {n} cards in this session.</p>
+      <div className="fc-results-grid">
+        <div><strong>{n}</strong><span>Cards studied</span></div>
+        <div><strong>{knew}</strong><span>I knew it</span></div>
+        <div><strong>{missed.length}</strong><span>Still learning</span></div>
+        <div><strong>{mastery}%</strong><span>Recall rate</span></div>
+      </div>
+      <div className="study-progress"><span>Session complete</span><span>100%</span></div>
+      <div className="progress-track" role="progressbar" aria-valuenow={100} aria-valuemin={0} aria-valuemax={100} aria-label="Session progress"><span style={{width:'100%'}} /></div>
+      <p className="muted">{missed.length ? missed.length + ' cards need another review.' : 'You recalled every card!'}</p>
       <div className="friend-buttons">
-        {missed.length > 0 && <Btn icon={RotateCcw} onClick={() => start(sessionOrder(deck.cards, { shuffled, only: new Set(missed.map((c) => c.id)) }))}>Study missed ({missed.length})</Btn>}
+        {missed.length > 0 && <Btn icon={RotateCcw} onClick={() => start(sessionOrder(deck.cards, { shuffled, only: new Set(missed.map(c => c.id)) }))}>Study missed ({missed.length})</Btn>}
         <Btn v={missed.length ? 'outline' : 'primary'} icon={RotateCcw} onClick={() => start(sessionOrder(deck.cards, { shuffled }))}>Study all again</Btn>
-        <Btn v="outline" icon={Pencil} onClick={() => nav('/flashcards/' + deck.id)}>Edit deck</Btn>
-        <Btn v="outline" onClick={() => nav('/flashcards')}>Back to library</Btn></div></div></div></>;
-
+        <Btn v="outline" onClick={() => nav('/flashcards')}>Back to library</Btn>
+      </div><p className="muted fc-results-note">Results are for this session only; permanent mastery tracking is not yet enabled.</p>
+    </section></div></>;
   return <><SectionTitle title="Flashcard Study Session" subtitle={deck.title} action={<div className="head-actions">
       <Btn v={shuffled ? 'soft' : 'outline'} icon={Shuffle} aria-pressed={shuffled} onClick={() => start(sessionOrder(deck.cards, { shuffled: !shuffled }), !shuffled)}>{shuffled ? 'Shuffled' : 'Shuffle'}</Btn>
       <Btn v="outline" icon={RotateCcw} onClick={() => start(sessionOrder(deck.cards, { shuffled }))}>Restart</Btn></div>} />
     <div className="study-center">
-      <div className="study-progress"><span>Card {i + 1} of {n}</span><span>{Math.round((i / n) * 100)}% complete</span></div>
-      <div className="progress-track" role="progressbar" aria-valuenow={Math.round((i / n) * 100)} aria-valuemin="0" aria-valuemax="100" aria-label="Session progress"><span style={{ width: (i / n) * 100 + '%' }} /></div>
+      <div className="study-progress"><span>Card {i + 1} of {n}</span><span>{answered} studied · {progress}% complete</span></div>
+      <div className="progress-track" role="progressbar" aria-valuenow={progress} aria-valuemin="0" aria-valuemax="100" aria-label="Session progress"><span style={{ width: progress + '%' }} /></div>
+      <div className="fc-live-stats" aria-live="polite"><span>{knew} knew it</span><span>{missed.length} still learning</span><span>{n - answered} remaining</span></div>
       <button type="button" ref={cardRef} className={`fc-flip${flip ? ' flipped' : ''}`} onClick={() => setFlip((f) => !f)}>
         <span className="fc-inner">
           <span className="fc-face fc-front" aria-hidden={flip}><small>QUESTION · {deck.title}</small><span className="fc-text">{card.front}</span><em>Click or press Space to flip</em></span>
