@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Sparkles, BookOpen, RotateCcw, CheckCircle2, History, ArrowLeft } from 'lucide-react';
+import { Sparkles, RotateCcw, CheckCircle2, History, ArrowLeft } from 'lucide-react';
 import { SectionTitle } from './ui.jsx';
 import { useMaterials } from './materials.jsx';
 import { getFile } from './files.js';
@@ -53,7 +53,6 @@ export default function AIQuizzes() {
   const [generated, setGenerated] = useState([]);
   const [answers, setAnswers] = useState([]);
   const [submitted, setSubmitted] = useState(false);
-  const [missedOnly, setMissedOnly] = useState(false);
   const [sourceAttempt, setSourceAttempt] = useState(null);
 
   const path = window.location.pathname;
