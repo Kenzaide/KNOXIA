@@ -235,10 +235,12 @@ export function useDeckLibrary() {
     editCard(id, cardId, front, back) {
       const err = validateCard(front, back); if (err) return err;
       const f = cleanSide(front, MAX_FRONT), b = cleanSide(back, MAX_BACK);
+      const original = snapshot.current.find(d => d.id === id)?.cards.find(c => c.id === cardId);
+      const keepKnown = !!original && f === original.front && b === original.back && original.known === true;
       patch(id, d => ({ ...d, cards: d.cards.map(c => c.id === cardId
         ? { ...c, front: f, back: b, known: f === c.front && b === c.back ? c.known : false } : c) }));
       write(async () => {
-        const { error } = await supabase.from('flashcards').update({ front: f, back: b, known: f === deck.cards.find(c => c.id === cardId)?.front && b === deck.cards.find(c => c.id === cardId)?.back ? deck.cards.find(c => c.id === cardId)?.known === true : false }).eq('id', cardId).eq('deck_id', id);
+        const { error } = await supabase.from('flashcards').update({ front: f, back: b, known: keepKnown }).eq('id', cardId).eq('deck_id', id);
         if (error) throw error;
       });
       return '';
