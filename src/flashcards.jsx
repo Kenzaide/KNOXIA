@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowUpRight, Check, CheckCircle2, Clock3, Layers, Pencil, Play, Plus, RotateCcw, Shuffle, Trash2, X, AlertCircle } from 'lucide-react';
 import { Button, SectionTitle, ConfirmDialog } from './ui.jsx';
-import { toast, SUBJECTS } from './materials.jsx';
+import { toast, SUBJECTS, useMaterials } from './materials.jsx';
+import { getFile } from './files.js';
+import { supabase } from './lib/supabase.js';
 import { logEvent } from './data.js';
 import { track } from './progressStore.js'; // study progress (Patch 15)
 import {
@@ -27,6 +29,59 @@ export function FlashcardLibrary() {
   const nav = useNavigate(); const lib = useDeckLibrary(); const { decks } = lib;
   const [creating, setCreating] = useState(false); const [saving, setSaving] = useState(false); const [title, setTitle] = useState(''); const [subject, setSubject] = useState(SUBJECTS[0]); const [err, setErr] = useState('');
   const [del, setDel] = useState(null);
+  const { items: materials } = useMaterials();
+  const [aiOpen, setAiOpen] = useState(false);
+  const [mode, setMode] = useState('material');
+  const [materialId, setMaterialId] = useState('');
+  const [paste, setPaste] = useState('');
+  const [aiTitle, setAiTitle] = useState('');
+  const [aiSubject, setAiSubject] = useState(SUBJECTS[0]);
+  const [count, setCount] = useState(15);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [generated, setGenerated] = useState([]);
+  const generateAI = async e => {
+    e.preventDefault(); if (aiBusy) return;
+    setAiBusy(true); setAiError(''); setGenerated([]);
+    try {
+      let source = paste.trim();
+      if (mode === 'material') {
+        const m = materials.find(x => x.id === materialId);
+        if (!m) throw new Error('Select an uploaded material.');
+        const blob = await getFile(m.id);
+        if (!blob) throw new Error('The original file is missing.');
+        const extracted = await (await import('./extract.js')).extractMaterial(blob, m.type);
+        source = extracted.text || '';
+        if (extracted.pdfDoc?.destroy) await extracted.pdfDoc.destroy();
+        if (extracted.scanned || !source.trim()) throw new Error('No readable text found in this document.');
+      }
+      if (source.length < 100) throw new Error('Provide at least 100 characters of study content.');
+      const { data, error } = await supabase.functions.invoke('generate-flashcards', {
+        body: { text: source.slice(0, 28000), count, materialId: mode === 'material' ? materialId : null },
+      });
+      if (error) {
+        let message = error.message;
+        try { if (error.context?.json) message = (await error.context.json()).error || message; } catch { /* no response */ }
+        throw new Error(message);
+      }
+      if (!Array.isArray(data?.cards) || !data.cards.length) throw new Error(data?.error || 'No cards were generated.');
+      setGenerated(data.cards);
+    } catch (e) { setAiError(e?.message || 'Could not generate flashcards.'); }
+    finally { setAiBusy(false); }
+  };
+  const saveAI = async () => {
+    if (aiBusy || !generated.length) return;
+    setAiBusy(true); setAiError('');
+    try {
+      const selected = materials.find(m => m.id === materialId);
+      const title = aiTitle.trim() || (mode === 'material' ? (selected?.name || 'Material') + ' flashcards' : 'AI flashcards');
+      const id = await lib.createGenerated({ title, subject: aiSubject, cards: generated });
+      toast('AI flashcards saved');
+      nav('/flashcards/' + id);
+    } catch (e) { setAiError(e?.message || 'Could not save flashcards.'); }
+    finally { setAiBusy(false); }
+  };
+  
   const cards = decks.reduce((t, d) => t + d.cards.length, 0); const known = decks.reduce((t, d) => t + knownCount(d), 0);
 
   const create = async (e) => {
@@ -50,7 +105,27 @@ export function FlashcardLibrary() {
   return <>
     {lib.error && <div className="notice error" role="alert">{lib.error}</div>}
     {lib.loading && <p className="muted" role="status">Loading flashcards from Supabase…</p>}
-    <SectionTitle title="Flashcard Library" subtitle="Practice active recall and make knowledge stick." action={<Button icon={Plus} onClick={() => { setCreating((c) => !c); setErr(''); }}>Create deck</Button>} />
+    <SectionTitle title="Flashcard Library" subtitle="Practice active recall and make knowledge stick." action={<div className="head-actions"><Button variant="outline" icon={Plus} onClick={() => { setCreating((c) => !c); setErr(''); }}>Create deck</Button><Button icon={Layers} onClick={() => { setAiOpen(v => !v); setAiError(''); }}>Generate with AI</Button></div>} />
+    {aiOpen && <section className="panel fc-ai-panel" aria-label="AI flashcard generator">
+      <h3>Generate flashcards with Gemini</h3><p className="muted">Use an uploaded file or pasted notes. Preview before saving.</p>
+      <form onSubmit={generateAI}>
+        <div className="segmented" role="group" aria-label="Source">
+          <button type="button" className={mode === 'material' ? 'selected' : ''} onClick={() => { setMode('material'); setGenerated([]); }}>My materials</button>
+          <button type="button" className={mode === 'text' ? 'selected' : ''} onClick={() => { setMode('text'); setGenerated([]); }}>Paste text</button>
+        </div>
+        {mode === 'material' ? <label className="ufield"><span>Source material</span><select required value={materialId} onChange={e => { setMaterialId(e.target.value); setGenerated([]); }}><option value="">Select a material</option>{materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+          : <label className="ufield"><span>Study notes</span><textarea required rows={7} maxLength={28000} placeholder="Paste at least 100 characters of notes…" value={paste} onChange={e => { setPaste(e.target.value); setGenerated([]); }}/></label>}
+        <label className="ufield"><span>Deck title (optional)</span><input maxLength={MAX_DECK_TITLE} value={aiTitle} onChange={e => setAiTitle(e.target.value)} placeholder="e.g. Software Engineering Finals"/></label>
+        <label className="ufield"><span>Subject</span><select value={aiSubject} onChange={e => setAiSubject(e.target.value)}>{SUBJECTS.map(s => <option key={s}>{s}</option>)}</select></label>
+        <label className="ufield"><span>Number of cards</span><select value={count} onChange={e => { setCount(Number(e.target.value)); setGenerated([]); }}>{[5,10,15,20,30,40].map(n => <option key={n} value={n}>{n} cards</option>)}</select></label>
+        {aiError && <div className="notice error" role="alert"><AlertCircle size={16}/>{aiError}</div>}
+        <div className="form-actions"><Button type="submit" disabled={aiBusy || lib.loading}>{aiBusy ? 'Working…' : 'Generate flashcards'}</Button></div>
+      </form>
+      {generated.length > 0 && <div className="fc-ai-preview" aria-live="polite"><h3>Preview: {generated.length} cards</h3>
+        <ol>{generated.map((card,i) => <li key={i}><strong>{card.front}</strong><p>{card.back}</p></li>)}</ol>
+        <div className="form-actions"><Button variant="outline" onClick={() => setGenerated([])}>Discard</Button><Button disabled={aiBusy} onClick={saveAI}>{aiBusy ? 'Saving…' : 'Save deck to Supabase'}</Button></div>
+      </div>}
+    </section>}
     {creating && <form className="panel fc-create" onSubmit={create} noValidate aria-label="Create a deck">
       <label className="ufield"><span>Deck name</span><input autoFocus value={title} maxLength={MAX_DECK_TITLE} placeholder="e.g. Operating Systems midterm" onChange={(e) => { setTitle(e.target.value); setErr(''); }} /></label>
       <label className="ufield"><span>Subject</span><select value={subject} onChange={(e) => setSubject(e.target.value)}>{SUBJECTS.map((x) => <option key={x}>{x}</option>)}</select></label>

@@ -492,3 +492,15 @@ html.theme-fade *,html.theme-fade *::before,html.theme-fade *::after{transition:
  .rv-print-document .rv-reading-content h1,.rv-print-document .rv-reading-content h2,.rv-print-document .rv-reading-content h3,.rv-print-document .rv-reading-content h4{margin:14pt 0 7pt!important}
  .rv-print-document .rv-reading-content .rv-meta-row{margin-bottom:8pt!important}
 }
+
+/* AI flashcard generator */
+.fc-ai-panel{margin-bottom:22px;max-width:960px}
+.fc-ai-panel h3{margin:0 0 8px}
+.fc-ai-panel form{display:grid;gap:15px;margin-top:18px}
+.fc-ai-panel .segmented{justify-self:start}
+.fc-ai-panel .ufield{display:grid;gap:7px}
+.fc-ai-panel .ufield input,.fc-ai-panel .ufield select,.fc-ai-panel .ufield textarea{width:100%;max-width:100%;box-sizing:border-box}
+.fc-ai-preview{border-top:1px solid var(--border);margin-top:22px;padding-top:20px}
+.fc-ai-preview ol{display:grid;gap:12px;padding-left:22px}
+.fc-ai-preview li{padding:10px 12px;line-height:1.6;background:var(--soft);border-radius:10px;overflow-wrap:anywhere}
+.fc-ai-preview li p{margin:6px 0 0;color:var(--text-2)}
