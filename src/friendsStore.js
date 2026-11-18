@@ -72,15 +72,15 @@ export function usePeople() {
     let active = true;
     setPeople([]);
     if (!supabase || !user?.id) return () => { active = false; };
-    supabase.from('profiles').select('id,username,full_name,created_at')
-      .neq('id', user.id).order('created_at', { ascending: false }).then(({ data, error }) => {
+    supabase.from('profiles').select('id,username')
+      .neq('id', user.id).order('username', { ascending: true }).then(({ data, error }) => {
         if (!active) return;
         if (error) { console.error('Could not load KNOXIA users:', error.message); return; }
         setPeople((data || []).filter(p => p.username).map(p => ({
           id: p.id, username: p.username,
-          displayName: p.full_name || p.username, fullName: p.full_name || p.username,
-          initials: (p.full_name || p.username).slice(0, 2).toUpperCase(),
-          avatar: '', academic: '', createdAt: new Date(p.created_at || 0).getTime(),
+          displayName: p.username, fullName: p.username,
+          initials: p.username.slice(0, 2).toUpperCase(),
+          avatar: '', academic: '', createdAt: 0,
           sample: false,
         })));
       });
