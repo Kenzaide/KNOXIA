@@ -173,6 +173,33 @@ export function useDeckLibrary() {
       setDecks(snapshot.current);
       return deck.id;
     },
+    async createGenerated({ title, subject, cards }) {
+      if (loading || error) throw new Error(error || 'Flashcards are still loading.');
+      if (!owner || !supabase) throw new Error('Please sign in again.');
+      if (!cleanDeckTitle(title)) throw new Error('Give your deck a name.');
+      if (!Array.isArray(cards) || !cards.length || cards.length > 40) throw new Error('Invalid generated cards.');
+      if (snapshot.current.length >= MAX_DECKS) throw new Error('Deck limit reached.');
+      for (const card of cards) {
+        const problem = validateCard(card.front, card.back);
+        if (problem) throw new Error(problem);
+      }
+      const deck = makeDeck(title, subject, snapshot.current.length);
+      deck.cards = cards.map(card => makeCard(card.front, card.back));
+      const { error: deckError } = await supabase.from('flashcard_decks').insert({
+        id: deck.id, owner_id: owner, title: deck.title, subject: deck.subject,
+      });
+      if (deckError) throw deckError;
+      const { error: cardError } = await supabase.from('flashcards').insert(
+        deck.cards.map(card => ({ id: card.id, deck_id: deck.id, front: card.front, back: card.back }))
+      );
+      if (cardError) {
+        const { error: rollbackError } = await supabase.from('flashcard_decks').delete().eq('id', deck.id).eq('owner_id', owner);
+        throw new Error(cardError.message + (rollbackError ? '; cleanup failed: ' + rollbackError.message : ''));
+      }
+      snapshot.current = [deck, ...snapshot.current];
+      setDecks(snapshot.current);
+      return deck.id;
+    },
     details(id, { title, subject }) {
       if (!cleanDeckTitle(title)) return false;
       const next = patch(id, d => ({ ...d, title: cleanDeckTitle(title), subject: cleanLine(subject, MAX_SUBJECT) }));
