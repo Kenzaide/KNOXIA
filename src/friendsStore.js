@@ -8,28 +8,63 @@
  *
  * Swapping in a backend later: keep the exported function names and make them call your API.
  */
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { local } from './storage.js';
 import { useProfile, emailKey } from './accounts.js';
 import { useAuth } from './session.js';
 import { supabase } from './lib/supabase.js';
 import { KEYS, NOTES } from './data.js';
+import { getFriendRequests, requestFriendship, acceptFriendship, declineFriendship, cancelFriendshipRequest, removeAcceptedFriendship } from './lib/friendsApi.js';
 import {
   SAMPLE_PEOPLE, relation, friendsOf, incomingOf, outgoingOf,
   requestFriend, acceptRequest, declineRequest, cancelRequest, removeFriend,
 } from './friendsCalc.js';
 
-export const FRIENDS_KEY = 'knoxia-friendships';
-const NONE = []; // one shared empty list, so React sees an unchanged snapshot while nothing is saved
-const isList = Array.isArray;
-const saved = () => local.get(FRIENDS_KEY, NONE, isList);
-
-/** Every friendship record, shared by all accounts in this browser. Re-renders on any change (also from another tab). */
-export function useFriendships() {
-  const subscribe = useCallback((fn) => local.subscribe(FRIENDS_KEY, fn), []);
-  return useSyncExternalStore(subscribe, saved, () => NONE);
+export const FRIENDS_KEY = 'knoxia-friendships'; // Legacy key; no longer used for friend requests.
+const NONE = [];
+let remoteRecords = NONE;
+let activeUser = null;
+let loaded = false;
+let loadError = '';
+const subscribers = new Set();
+const notify = () => subscribers.forEach(fn => fn());
+const subscribe = (fn) => { subscribers.add(fn); return () => subscribers.delete(fn); };
+const snapshot = () => remoteRecords;
+const asRecord = row => ({
+  id: row.id, from: row.sender_id, to: row.receiver_id,
+  status: row.status, createdAt: Date.parse(row.created_at), respondedAt: null,
+});
+export async function refreshFriendships() {
+  if (!activeUser) return;
+  const uid = activeUser;
+  try {
+    const rows = await getFriendRequests();
+    if (activeUser !== uid) return;
+    remoteRecords = rows.filter(r => r.status !== 'declined').map(asRecord);
+    loadError = '';
+  } catch (e) {
+    if (activeUser !== uid) return;
+    loadError = e.message || 'Could not load friends.';
+    console.error('KNOXIA Friends:', e);
+  } finally {
+    if (activeUser === uid) { loaded = true; notify(); }
+  }
 }
-
+export function useFriendships() {
+  const { user } = useAuth();
+  const records = useSyncExternalStore(subscribe, snapshot, () => NONE);
+  useEffect(() => {
+    const uid = user?.id || null;
+    if (activeUser !== uid) {
+      activeUser = uid; remoteRecords = NONE; loaded = !uid; loadError = ''; notify();
+    }
+    if (!uid) return;
+    refreshFriendships();
+    const interval = setInterval(refreshFriendships, 10000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
+  return records;
+}
 /** Everyone who can be found and added: registered accounts (verified or demo) plus the sample people. */
 export function usePeople() {
   const { user } = useAuth();
@@ -65,7 +100,7 @@ export function useFriends() {
     const currentId = user?.id || me.id;
     const join = (list) => list.map((x) => ({ ...x, person: byId.get(x.otherId) })).filter((x) => x.person); // skips people who no longer exist
     return {
-      me, meId: currentId, ready: !!currentId, records, people,
+      me, meId: currentId, ready: !!currentId && loaded, error: loadError, records, people,
       friends: join(friendsOf(records, currentId)), incoming: join(incomingOf(records, currentId)), outgoing: join(outgoingOf(records, currentId)),
     };
   }, [me, records, people, user?.id]);
@@ -73,18 +108,19 @@ export function useFriends() {
 
 /** How the signed-in person stands with one other person, plus the request record between them, if any. */
 export function useRelation(otherId) {
-  const me = useProfile(); const records = useFriendships();
+  const me = useProfile(); const { user } = useAuth(); const records = useFriendships();
+  const myId = user?.id || me.id;
   return useMemo(() => {
-    const rel = relation(records, me.id, otherId);
-    const record = rel === 'none' || rel === 'self' ? null : records.find((r) => r && ((r.from === me.id && r.to === otherId) || (r.from === otherId && r.to === me.id))) || null;
+    const rel = relation(records, myId, otherId);
+    const record = rel === 'none' || rel === 'self' ? null : records.find((r) => r && ((r.from === myId && r.to === otherId) || (r.from === otherId && r.to === myId))) || null;
     return { me, rel, record };
-  }, [me, records, otherId]);
+  }, [me, myId, records, otherId]);
 }
 
 /** Number of friend requests waiting for the signed-in person (the badge in the sidebar). */
 export function useIncomingCount() {
-  const me = useProfile(); const records = useFriendships();
-  return useMemo(() => (me.id ? incomingOf(records, me.id).length : 0), [records, me.id]);
+  const { user } = useAuth(); const records = useFriendships();
+  return useMemo(() => (user?.id ? incomingOf(records, user.id).length : 0), [records, user?.id]);
 }
 
 /* ---------- Notifications ---------- */
@@ -105,38 +141,24 @@ export function dropNote(email, id) {
 }
 const requestNoteId = (recordId) => `fr-${recordId}-request`;
 
-/* ---------- Actions ---------- */
-// Each one reads the latest saved records, applies one rule from friendsCalc.js and saves only when it worked.
-function apply(fn) { const out = fn(saved()); if (out.ok) local.set(FRIENDS_KEY, out.records); return out; }
-const who = (p) => (p && p.displayName) || 'Someone';
-
-/** `me` asks `person` to be friends. Resolves like requestFriend: { ok, kind: 'sent' | 'accepted' } or { error }. */
-export function sendFriendRequest(me, person) {
-  const out = apply((r) => requestFriend(r, me.id, person.id));
-  if (!out.ok) return out;
-  if (out.kind === 'sent') addNote(person.email, { id: requestNoteId(out.record.id), t: `${who(me)} sent you a friend request`, s: 'Open Requests to accept or decline.', to: '/friends?tab=requests' });
-  else { // the other person had asked first (or is a sample person): the request they sent is settled, tell them
-    dropNote(me.email, requestNoteId(out.record.id));
-    addNote(person.email, { id: `fr-${out.record.id}-accepted`, t: `${who(me)} accepted your friend request`, s: 'You are now friends.', to: '/friends' });
+/* ---------- Supabase actions ---------- */
+const done = async (action) => {
+  try {
+    await action();
+    await refreshFriendships();
+    return { ok: true };
+  } catch (e) {
+    return { error: e.message || 'Friend action failed.' };
   }
-  return out;
-}
-export function acceptFriendRequest(me, person, requestId) {
-  const out = apply((r) => acceptRequest(r, me.id, requestId));
-  if (out.ok) {
-    dropNote(me.email, requestNoteId(requestId)); // answered, so it no longer needs your attention
-    addNote(person.email, { id: `fr-${requestId}-accepted`, t: `${who(me)} accepted your friend request`, s: 'You are now friends.', to: '/friends' });
-  }
-  return out;
-}
-export function declineFriendRequest(me, requestId) {
-  const out = apply((r) => declineRequest(r, me.id, requestId));
-  if (out.ok) dropNote(me.email, requestNoteId(requestId));
-  return out;
-}
-export function cancelFriendRequest(me, person, requestId) {
-  const out = apply((r) => cancelRequest(r, me.id, requestId));
-  if (out.ok) dropNote(person.email, requestNoteId(requestId)); // the request no longer exists, so its notification goes too
-  return out;
-}
-export const removeFriendship = (me, person) => apply((r) => removeFriend(r, me.id, person.id));
+};
+export const sendFriendRequest = (_me, person) => done(() => requestFriendship(person.id));
+export const acceptFriendRequest = (_me, _person, id) => done(() => acceptFriendship(id));
+export const declineFriendRequest = (_me, id) => done(() => declineFriendship(id));
+export const cancelFriendRequest = (_me, _person, id) => done(() => cancelFriendshipRequest(id));
+export const removeFriendship = (me, person) => {
+  const record = remoteRecords.find(r => r.status === 'accepted' && (
+    (r.from === (activeUser || me.id) && r.to === person.id) ||
+    (r.to === (activeUser || me.id) && r.from === person.id)
+  ));
+  return record ? done(() => removeAcceptedFriendship(record.id)) : Promise.resolve({ error: 'Friendship not found.' });
+};
