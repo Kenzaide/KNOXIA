@@ -12,7 +12,7 @@ import { ThemeToggle } from './theme.jsx';
 import { useAuth, accessFor, normalizePath, safeRedirect } from './session.js';
 import { useProfile, profileByUsername, useAccounts, buildProfile } from './accounts.js';
 import { UserAvatar, ProfileHeader, ProfileDetails } from './profile.jsx';
-import { Button, usePending, PageSkeleton, SectionTitle, ConfirmDialog } from './ui.jsx';
+import { Button, usePending, PageSkeleton, DashboardSkeleton, SectionTitle, ConfirmDialog } from './ui.jsx';
 import MaterialLibrary from './library.jsx';
 import CreateReviewer from './reviewer.jsx';
 import ReviewerLibrary from './reviewers.jsx';
@@ -226,7 +226,7 @@ function Dashboard() { const go=useGo();
     setSaid(reactions[clicks%4]); setClicks(c=>c+1);
   };
   const shown=focusing?{pose:'study',text:"Let's focus. I'll keep you company."}:(said||resting);
-  if(loading) return <PageSkeleton/>;
+  if(loading) return <DashboardSkeleton/>;
   return <>
     <section className="kn-hero">
       <div className="kn-hero-copy">
