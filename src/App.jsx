@@ -204,7 +204,7 @@ function Dashboard() { const go=useGo();
   const [said,setSaid]=useState(null); const [clicks,setClicks]=useState(0); const [focusing,setFocusing]=useState(false);
   const focus=useGlobalFocus();
   const hour=new Date().getHours(); const night=hour>=22||hour<5;
-  const today=dayKey(new Date()); const loggedToday=pr.events.filter(e=>dayKey(e.date)===today).reduce((n,e)=>n+(e.secs||0),0); const goal={done:Math.floor((loggedToday+(focus?.active?focus.elapsed:0))/60),total:60}; const left=Math.max(0,goal.total-goal.done); const pct=Math.min(100,Math.round(goal.done/goal.total*100));
+  const today=dayKey(new Date()); const loggedToday=pr.events.filter(e=>dayKey(e.date)===today).reduce((n,e)=>n+(e.secs||0),0); const goal={done:Math.floor((loggedToday+(focus?.pending||0))/60),total:60}; const left=Math.max(0,goal.total-goal.done); const pct=Math.min(100,Math.round(goal.done/goal.total*100));
   // Real numbers from Study Progress (Patch 15) once there is activity; sample values until then.
   const live=pr.hasActivity; const streak=live?pr.streak.current:0; const first=items[0];
   const resting=night?{pose:'sleepy',text:`It's late, ${firstName}. Review something short, then get some sleep.`}
