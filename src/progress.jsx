@@ -17,7 +17,7 @@ import { track, useStudyProgress } from './progressStore.js';
  */
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const when = (d) => new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-const KIND = { quiz: [Target, 'green'], flashcards: [Layers, 'purple'], reviewer: [Sparkles, 'blue'] };
+const KIND = { quiz: [Target, 'green'], flashcards: [Layers, 'purple'], reviewer: [Sparkles, 'blue'], focus: [Clock3, 'blue'] };
 const PILL = { done: 'status-pill active', progress: 'status-pill pending', new: 'status-pill' };
 const TABS = [['all', 'All'], ['done', 'Completed'], ['progress', 'In progress'], ['new', 'Not started']];
 
@@ -73,10 +73,10 @@ export default function StudyProgress() {
         <div className="bar-chart" role="img" aria-label={`Study activity over the last 7 days: ${week.map((d) => `${d.key} ${plural(d.count, 'activity')}`).join(', ')}`}>
           {week.map((d) => <div className="bar-column" key={d.key} title={`${d.key}: ${plural(d.count, 'activity')}`}><div className="bar-bg"><span style={{ height: d.count ? Math.max(8, (d.count / peak) * 100) + '%' : 0 }} /></div><small className={d.today ? 'sp-today' : ''}>{d.label}</small></div>)}
         </div>
-        <p className="muted sp-note">Counts flashcard sessions, quiz attempts and completed reviewers.</p></section>
+        <p className="muted sp-note">Counts focus sessions, flashcard sessions, quiz attempts and completed reviewers.</p></section>
       <section className="panel"><div className="list-head"><h3>Recent activity</h3></div>
-        {events.length === 0 ? <Hint action={<Button variant="soft" icon={Layers} onClick={() => nav('/flashcards')}>Study flashcards</Button>}>Finish a flashcard session, a quiz or a reviewer and it will show up here.</Hint> :
-          events.slice(0, 6).map((e) => { const [I, tone] = KIND[e.kind]; return <div className="generic-row" key={e.id}><div className={`activity-dot ${tone}`}><I size={16} /></div><div><b>{e.title}</b><small>{e.detail} · {when(e.date)}</small></div><Link className="link-btn" to={e.to} aria-label={`Open ${e.title}`}><ArrowUpRight size={16} /></Link></div>; })}</section>
+        {events.length === 0 ? <Hint action={<Button variant="soft" icon={Layers} onClick={() => nav('/flashcards')}>Study flashcards</Button>}>Finish a focus session, flashcard session, quiz or reviewer and it will show up here.</Hint> :
+          events.slice(0, 6).map((e) => { const [I, tone] = KIND[e.kind] || [Clock3, 'blue']; return <div className="generic-row" key={e.id}><div className={`activity-dot ${tone}`}><I size={16} /></div><div><b>{e.title}</b><small>{e.detail} · {when(e.date)}</small></div><Link className="link-btn" to={e.to} aria-label={`Open ${e.title}`}><ArrowUpRight size={16} /></Link></div>; })}</section>
     </div>
 
     <section className="panel list-panel sp-section"><div className="list-head"><h3>Reviewers</h3><Link className="link-btn" to="/reviewers" viewTransition>Manage reviewers <ArrowUpRight size={16} /></Link></div>
