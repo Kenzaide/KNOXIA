@@ -26,6 +26,11 @@ const clean = (p) => ({
 const write = (fn) => userData.update(KEY, (p) => fn(clean(p)), EMPTY);
 
 export const track = {
+  focus(secs) {
+    const duration = Math.max(0, Math.floor(Number(secs) || 0));
+    if (duration < 1) return;
+    write(p => ({ ...p, sessions: [{ id: uid(), kind: 'focus', title: 'Focus session', date: new Date().toISOString(), secs: duration }, ...p.sessions].slice(0, MAX_SESSIONS) }));
+  },
   /** Counts one visit to a reviewer. The first visit moves it from "Not started" to "In progress". */
   openReviewer(id) {
     if (!id) return;
