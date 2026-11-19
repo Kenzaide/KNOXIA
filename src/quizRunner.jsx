@@ -23,15 +23,26 @@ const KEYS = { a: 0, b: 1, c: 2, d: 3, 1: 0, 2: 1, 3: 2, 4: 3 };
 const Btn = ({ children, v = 'primary', icon: I, ...p }) => <button type="button" className={`btn ${v}`} {...p}>{I && <I size={16} />}<span>{children}</span></button>;
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
-export function QuizRunner({ qs, label = 'QUIZ', exitTo = '/dashboard', onFinish }) {
+export function QuizRunner({ qs, label = 'QUIZ', exitTo = '/dashboard', onFinish, timeLimitSeconds = 0 }) {
   const nav = useNavigate(); const hid = useId(); const total = qs.length;
   const [i, setI] = useState(0); const [ans, setAns] = useState(() => qs.map(() => null)); const [flags, setFlags] = useState(() => qs.map(() => false));
   const [reviewing, setReviewing] = useState(false); const [dlg, setDlg] = useState(null); const [secs, setSecs] = useState(0);
-  const started = useRef(Date.now()); const finished = useRef(false); const reviewHead = useRef(null);
+  const latestAnswers = useRef(ans); latestAnswers.current = ans; const started = useRef(Date.now()); const finished = useRef(false); const reviewHead = useRef(null);
   const q = qs[i]; const last = i === total - 1;
   const answered = ans.filter((x) => x !== null).length; const unanswered = total - answered; const flagged = flags.filter(Boolean).length;
 
   useEffect(() => { const t = setInterval(() => setSecs(Math.floor((Date.now() - started.current) / 1000)), 1000); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    if (!timeLimitSeconds) return;
+    const timer = setInterval(() => {
+      if (!finished.current && Math.floor((Date.now() - started.current) / 1000) >= timeLimitSeconds) {
+        finished.current = true;
+        clearInterval(timer);
+        onFinish(latestAnswers.current.slice(), {secs:timeLimitSeconds,flagged:0,timedOut:true});
+      }
+    }, 500);
+    return () => clearInterval(timer);
+  }, [timeLimitSeconds, onFinish]);
   // Closing or reloading the tab would lose the answers.
   useEffect(() => {
     if (!answered) return undefined;
