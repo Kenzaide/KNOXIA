@@ -175,7 +175,7 @@ export default function CreateReviewer() {
           <div className="notice error" role="alert"><AlertCircle size={16} />{error}</div>
           <div className="rv-actions"><Button variant="outline" icon={RotateCcw} onClick={generate}>Try again</Button></div></>
         : phase === 'done' && result ? <>
-          <Result result={result} />
+          <div className="rv-preview-scroll" tabIndex={0} role="region" aria-label="Generated reviewer content"><Result result={result} /></div>
           {stale && <div className="notice" role="status"><AlertCircle size={16} />You changed the settings. Regenerate to update this preview.</div>}
           <div className="rv-actions">
             {!stale && <Button icon={Save} onClick={save}>Save reviewer</Button>}
