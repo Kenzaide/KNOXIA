@@ -553,3 +553,17 @@ html.theme-fade *,html.theme-fade *::before,html.theme-fade *::after{transition:
 .kn-global-focus button:hover{filter:brightness(.95)}
 .kn-global-focus button:focus-visible{outline:2px solid var(--primary,#2563eb);outline-offset:2px}
 @media(max-width:600px){.kn-global-focus{left:12px;right:12px;bottom:12px;justify-content:center}}
+
+/* Themed, accessible confirmation dialog for Knowl conversation deletion. */
+.kn-confirm-overlay{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;padding:20px;background:rgba(12,24,47,.55);backdrop-filter:blur(3px)}
+.kn-confirm-dialog{width:min(100%,430px);padding:28px;border-radius:22px;background:var(--surface,#fff);color:var(--text,#122345);border:1px solid var(--border,#dce5f4);box-shadow:0 24px 70px rgba(0,0,0,.25)}
+.kn-confirm-icon{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:rgba(225,53,74,.1);color:#dc354c;margin-bottom:16px}
+.kn-confirm-dialog h2{font-size:21px;line-height:1.3;margin:0 0 10px;color:inherit}
+.kn-confirm-dialog p{font-size:14px;line-height:1.6;margin:0 0 24px;color:var(--muted,#65758d);overflow-wrap:anywhere}
+.kn-confirm-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px}
+.kn-confirm-actions button{min-height:42px;border-radius:11px;padding:10px 15px;font:inherit;font-weight:650;cursor:pointer}
+.kn-confirm-cancel{border:1px solid var(--border,#dce5f4);background:transparent;color:inherit}
+.kn-confirm-danger{border:1px solid #d92f49;background:#d92f49;color:white}
+.kn-confirm-actions button:disabled{opacity:.6;cursor:not-allowed}
+.kn-confirm-actions button:focus-visible{outline:3px solid var(--primary,#2563eb);outline-offset:3px}
+@media(max-width:480px){.kn-confirm-actions button{flex:1}}
