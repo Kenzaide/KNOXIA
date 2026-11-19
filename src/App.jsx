@@ -229,7 +229,7 @@ function Dashboard() { const go=useGo();
       <div className="kn-hero-copy">
         <h1>{greetingFor(hour)}, {firstName}</h1>
         <p className="kn-sub">{items.length} {items.length===1?'material is':'materials are'} ready to study.</p>
-        <div className="kn-goal"><div className="kn-goal-top"><b>Today's goal</b><span>{goal.done} of {goal.total} min</span></div><div className="goal-progress" role="progressbar" aria-valuenow={pct} aria-valuemin="0" aria-valuemax="100" aria-label="Daily goal"><span style={{width:pct+'%'}}/></div></div>
+        <div className="kn-goal"><div className="kn-goal-top"><b>Today's goal</b><span>{goal.done} of {goal.total} min{focus?.active ? ` · Focus ${Math.floor(focus.elapsed/60)}:${String(focus.elapsed%60).padStart(2,'0')}` : ''}</span></div><div className="goal-progress" role="progressbar" aria-valuenow={pct} aria-valuemin="0" aria-valuemax="100" aria-label="Daily goal"><span style={{width:pct+'%'}}/></div></div>
         <div className="kn-actions">
           <button type="button" className="btn primary" onClick={()=>focus?.active?focus.finish():focus?.start()} onMouseEnter={()=>setFocusing(true)} onMouseLeave={()=>setFocusing(false)} onFocus={()=>setFocusing(true)} onBlur={()=>setFocusing(false)}><Zap size={16}/><span>{focus?.active?`Finish focus (${Math.floor(focus.elapsed/60)}:${String(focus.elapsed%60).padStart(2,'0')})`:'Start a focus session'}</span></button>
           <button type="button" className="btn outline" onClick={()=>go('/materials/upload')}><Plus size={16}/><span>Add materials</span></button>
