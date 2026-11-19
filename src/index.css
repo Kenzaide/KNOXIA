@@ -539,3 +539,9 @@ html.theme-fade *,html.theme-fade *::before,html.theme-fade *::after{transition:
 @keyframes kn-skeleton-enter{from{opacity:0}to{opacity:1}}
 @media(max-width:850px){.kn-skeleton-hero{padding:28px;min-height:300px}.kn-skeleton-hero-copy{width:100%}.kn-skeleton-hero-owl{display:none}.kn-skeleton-dashboard-grid{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.kn-skeleton::after{animation:none}.kn-loading-page,.kn-dashboard-skeleton{animation:none}}
+
+/* Consistent return navigation on editor and creation pages. */
+.kn-page-back{display:inline-flex;align-items:center;gap:8px;width:max-content;max-width:100%;font-size:13px;font-weight:650;color:var(--primary,#2563eb);text-decoration:none;margin-bottom:12px;padding:7px 10px;border-radius:10px;transition:background .15s ease,color .15s ease}
+.kn-page-back:hover{background:var(--surface,#eef4ff);text-decoration:none}
+.kn-page-back:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+@media print{.kn-page-back{display:none!important}}
