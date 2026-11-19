@@ -115,6 +115,7 @@ export function activityEvents(sessions, attempts) {
     if (!s || !time(s.date)) return;
     if (s.kind === 'flashcards') out.push({ id: `s${s.id}`, kind: 'flashcards', title: s.title || 'Flashcard deck', date: s.date, secs: num(s.secs), to: s.refId ? `/flashcards/${s.refId}/study` : '/flashcards',
       detail: s.total ? `Knew ${num(s.correct)} of ${s.total} cards` : 'Studied cards' });
+    else if (s.kind === 'focus') out.push({ id: `s${s.id}`, kind: 'focus', title: 'Focus session', date: s.date, secs: num(s.secs), to: '/dashboard', detail: 'Focused study time' });
     else if (s.kind === 'reviewer') out.push({ id: `s${s.id}`, kind: 'reviewer', title: s.title || 'Reviewer', date: s.date, secs: 0, to: s.refId ? `/reviewers/${s.refId}` : '/reviewers', detail: 'Marked as completed' });
   });
   (Array.isArray(attempts) ? attempts : []).forEach((a) => {
