@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ThemePicker } from './theme.jsx';
-import { Bookmark, FolderInput, Sparkles, Layers, CheckCircle2, Trophy, Crown, Flame, Clock3, Target, Bell, ShieldCheck, Activity, Plus, Trash2, Send, Play, Pause, RotateCcw, Check, Download, Printer, Users, Zap, BookOpen, Medal, ArrowUpRight, Lock, CalendarDays, Swords } from 'lucide-react';
+import { Bookmark, FolderInput, Sparkles, Layers, CheckCircle2, Trophy, Crown, Flame, Clock3, Target, Bell, ShieldCheck, Activity, Plus, Trash2, Send, Play, Pause, RotateCcw, Check, Download, Printer, Users, Zap, BookOpen, Medal, ArrowUpRight, ArrowLeft, Lock, CalendarDays, Swords } from 'lucide-react';
 import { toast } from './materials.jsx';
 import { useProfile } from './accounts.js';
 import { ProfileEditor } from './profile.jsx';
@@ -14,7 +14,7 @@ import { MAX_TITLE, MAX_FOLDER, cleanTitle, folderOf, folderCounts, resolveFolde
 import { BANK, CHALLENGES, BOARD, useNotes, useReviewers, useChallenges, usePlan, useSettings, useReports, useLogs, pushLS, logEvent } from './data.js';
 
 const Btn = ({ children, v = 'primary', icon: I, ...p }) => <button type="button" className={`btn ${v}`} {...p}>{I && <I size={16} />}<span>{children}</span></button>;
-const Head = ({ title, sub, action }) => <div className="section-title"><div><h2>{title}</h2>{sub && <p>{sub}</p>}</div>{action}</div>;
+const Head = ({ title, sub, action, backTo, backLabel = 'Back' }) => <div className="section-title"><div>{backTo && <Link className="kn-page-back" to={backTo}><ArrowLeft size={17}/><span>{backLabel}</span></Link>}<h2>{title}</h2>{sub && <p>{sub}</p>}</div>{action}</div>;
 const Stat = ({ label, value, note, icon: I, tone = '' }) => <div className="stat-card"><div className={`stat-icon ${tone}`}><I size={18} /></div><div className="stat-copy"><span>{label}</span><strong>{value}</strong><small>{note}</small></div></div>;
 const Row = ({ tone = 'blue', icon: I, title, sub, children, ...p }) => <div className="generic-row" {...p}><div className={`activity-dot ${tone}`}><I size={16} /></div><div><b>{title}</b><small>{sub}</small></div>{children}</div>;
 const Empty = ({ icon: I, title, text, action }) => <div className="empty-state"><I size={32} /><b>{title}</b><p>{text}</p>{action}</div>;
@@ -103,7 +103,7 @@ export function ReviewerEditor() {
   const bookmark = () => { lib.setBookmark(r.id, !r.favorite); toast(r.favorite ? 'Bookmark removed' : 'Reviewer bookmarked'); };
   const move = v => { const name = resolveFolder(v, lib.items); lib.move(r.id, name); setDlg(null); toast(name ? `Moved to “${name}”` : 'Moved out of folders'); };
   const del = () => { lib.remove(r.id); track.forgetReviewers(r.id); logEvent(`Reviewer deleted: ${r.title.slice(0, 80)}`); toast('Reviewer deleted'); nav('/reviewers'); };
-  return <><Head title="Reviewer Details / Editor" sub={`${r.style} · from ${r.file}${fo ? ` · in ${fo}` : ''}`} action={<div className="head-actions">
+  return <><Head backTo="/reviewers" backLabel="Back to My Reviewers" title="Reviewer Details / Editor" sub={`${r.style} · from ${r.file}${fo ? ` · in ${fo}` : ''}`} action={<div className="head-actions">
       <Btn v={done ? 'soft' : 'outline'} icon={CheckCircle2} aria-pressed={done} onClick={toggleDone}>{done ? 'Completed' : 'Mark as completed'}</Btn>
       <Btn v="outline" icon={r.favorite ? BookmarkOn : Bookmark} aria-pressed={!!r.favorite} onClick={bookmark}>{r.favorite ? 'Bookmarked' : 'Bookmark'}</Btn>
       <Btn v="outline" icon={FolderInput} onClick={() => setDlg('move')}>{fo ? 'Move' : 'Add to folder'}</Btn>
