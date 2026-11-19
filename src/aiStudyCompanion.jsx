@@ -24,6 +24,7 @@ export default function AIStudyCompanion() {
  const [messages, setMessages] = useState([]);
  const [draft, setDraft] = useState('');
  const [busy, setBusy] = useState(false);
+ const [deleteTarget, setDeleteTarget] = useState(null);
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState('');
  const [refresh, setRefresh] = useState(0);
@@ -54,13 +55,14 @@ export default function AIStudyCompanion() {
  const newChat = () => { if (busy) return; setId(null); setMaterialId(''); setMessages([]); setError(''); };
  const open = (c) => { if (busy) return; setId(c.id); setMaterialId(c.material_id || ''); setError(''); };
  const remove = async (c) => {
-  if (busy || !window.confirm('Delete this conversation permanently?')) return;
+  if (busy) return;
   setBusy(true); setError('');
   try {
    const { data: { user } } = await supabase.auth.getUser();
    if (!user) throw new Error('Please sign in.');
    await getData(supabase.from('companion_conversations').delete().eq('id', c.id).eq('user_id', user.id));
    if (id === c.id) { setId(null); setMessages([]); setMaterialId(''); }
+   setDeleteTarget(null);
    setRefresh((n) => n + 1);
   } catch (e) { setError(e.message); } finally { setBusy(false); }
  };
@@ -159,10 +161,21 @@ export default function AIStudyCompanion() {
         <span className="muted" style={{fontSize:11,lineHeight:1.3}}>{historyDate(c.updated_at)}{c.id===id?' · Current chat':''}</span>
        </span>
       </button>
-      <button type="button" disabled={busy} onClick={()=>remove(c)} title={'Delete '+(c.title||'conversation')} aria-label={'Delete '+(c.title||'conversation')} style={{flexShrink:0,display:'grid',placeItems:'center',width:32,height:32,border:0,borderRadius:8,background:'transparent',color:'#7185a4',cursor:busy?'not-allowed':'pointer'}}><Trash2 size={16}/></button>
+      <button type="button" disabled={busy} onClick={()=>setDeleteTarget(c)} title={'Delete '+(c.title||'conversation')} aria-label={'Delete '+(c.title||'conversation')} style={{flexShrink:0,display:'grid',placeItems:'center',width:32,height:32,border:0,borderRadius:8,background:'transparent',color:'#7185a4',cursor:busy?'not-allowed':'pointer'}}><Trash2 size={16}/></button>
      </div>)}
     </div>
    </div>
   </div>
+  {deleteTarget && <div className="kn-confirm-overlay" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setDeleteTarget(null)}}>
+   <div className="kn-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="kn-delete-title" aria-describedby="kn-delete-description">
+    <div className="kn-confirm-icon"><Trash2 size={23}/></div>
+    <h2 id="kn-delete-title">Delete conversation?</h2>
+    <p id="kn-delete-description">“{deleteTarget.title || 'Untitled conversation'}” will be permanently deleted. This action cannot be undone.</p>
+    <div className="kn-confirm-actions">
+     <button type="button" className="kn-confirm-cancel" disabled={busy} onClick={()=>setDeleteTarget(null)}>Keep conversation</button>
+     <button type="button" className="kn-confirm-danger" disabled={busy} onClick={()=>remove(deleteTarget)}>{busy?'Deleting…':'Delete conversation'}</button>
+    </div>
+   </div>
+  </div>}
  </>;
 }
