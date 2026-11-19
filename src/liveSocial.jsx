@@ -64,18 +64,18 @@ export function LiveRoomDetail(){
  {room.owner_id===user.id?<Btn onClick={del}>Delete room</Btn>:<Btn onClick={leave}>Leave room</Btn>}</div></div>}</>;
 }
 export function LiveChallenges(){
- const {user}=useAuth();const friends=useFriends();const [opponent,setOpponent]=useState(''),[title,setTitle]=useState('Study quiz battle'),[error,setError]=useState(''),[materials,setMaterials]=useState([]),[materialId,setMaterialId]=useState(''),[generating,setGenerating]=useState(false);
+ const {user}=useAuth();const friends=useFriends();const [opponent,setOpponent]=useState(''),[title,setTitle]=useState('Study quiz battle'),[error,setError]=useState(''),[materials,setMaterials]=useState([]),[materialId,setMaterialId]=useState(''),[generating,setGenerating]=useState(false),[difficulty,setDifficulty]=useState('medium'),[count,setCount]=useState(5),[limit,setLimit]=useState(0),[tab,setTab]=useState('active');
  const query=useCallback(q=>q.or('creator_id.eq.'+user.id+',opponent_id.eq.'+user.id).order('created_at',{ascending:false}),[user?.id]);
  const {rows,error:loadError,refresh}=useRows('study_challenges_live',query);
  const people=friends.friends.map(x=>x.person).filter(p=>p.id&&p.id!==user?.id&&!String(p.id).startsWith('sample:'));
  useEffect(()=>{if(!supabase||!user?.id)return;let active=true;supabase.from('materials').select('*').eq('owner_id',user.id).then(({data,error})=>{if(!active)return;if(error)setError(error.message);else setMaterials(data||[])});return()=>{active=false}},[user?.id]);
  async function create(e){e.preventDefault();if(!materialId||!opponent||generating)return;setGenerating(true);setError('');
  try{
-  const {data:generated,error:aiError}=await supabase.functions.invoke('generate-challenge',{body:{materialId}});
+  const {data:generated,error:aiError}=await supabase.functions.invoke('generate-challenge',{body:{materialId,difficulty,questionCount:count}});
   if(aiError)throw new Error(generated?.error||aiError.message||'Could not generate questions');
   if(generated?.error)throw new Error(generated.error);
-  if(!Array.isArray(generated?.questions)||generated.questions.length!==5)throw new Error('AI returned an invalid quiz.');
-  const {error:saveError}=await supabase.from('study_challenges_live').insert({creator_id:user.id,opponent_id:opponent,title:title.trim(),question_set:generated.questions});
+  if(!Array.isArray(generated?.questions)||generated.questions.length!==count)throw new Error('AI returned an invalid quiz.');
+  const {error:saveError}=await supabase.from('study_challenges_live').insert({creator_id:user.id,opponent_id:opponent,title:title.trim(),question_set:generated.questions,difficulty,time_limit_minutes:limit});
   if(saveError)throw saveError;refresh();
  }catch(err){setError(err.message||'Challenge creation failed.')}finally{setGenerating(false)}}
  return <><div className="section-title"><div><h2>Friend Challenges</h2><p>Challenge a friend using AI questions generated from your uploaded study material.</p></div></div>
@@ -83,11 +83,13 @@ export function LiveChallenges(){
  <input className="field" value={title} maxLength={100} minLength={3} onChange={e=>setTitle(e.target.value)} required/>
  <label className="field-label" htmlFor="challenge-material">Study material</label><select id="challenge-material" className="field" value={materialId} onChange={e=>setMaterialId(e.target.value)} required><option value="">Choose an uploaded material</option>{materials.map(m=><option key={m.id} value={m.id}>{m.title||m.name||'Untitled material'}</option>)}</select>
  {materials.length===0&&<p>No uploaded materials found. <Link to="/materials/upload">Upload a material</Link> first.</p>}
+ <div style={{display:'flex',gap:12,flexWrap:'wrap'}}><label>Difficulty <select className="field" value={difficulty} onChange={e=>setDifficulty(e.target.value)}><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></label><label>Questions <select className="field" value={count} onChange={e=>setCount(Number(e.target.value))}>{[5,10,15,20].map(n=><option key={n} value={n}>{n}</option>)}</select></label><label>Time limit <select className="field" value={limit} onChange={e=>setLimit(Number(e.target.value))}>{[0,5,10,15,20,30,45,60].map(n=><option key={n} value={n}>{n?n+' minutes':'No limit'}</option>)}</select></label></div>
  <label className="field-label" htmlFor="challenge-friend">Opponent</label><select id="challenge-friend" className="field" value={opponent} onChange={e=>setOpponent(e.target.value)} required><option value="">Choose a friend</option>{people.map(p=><option value={p.id} key={p.id}>{p.displayName||p.username}</option>)}</select>
  {people.length===0&&<p>No connected friends yet. <Link to="/friends">Find friends</Link> first.</p>}
  <button type="submit" className="btn primary" disabled={!opponent||!materialId||generating}>{generating?'Generating questions…':'Generate & send challenge' }</button></form>
  {(error||loadError)&&<p className="notice error" role="alert">{error||loadError}</p>}
- <div className="panel list-panel">{rows.length===0?<p style={{padding:20}}>No challenges yet.</p>:rows.map(c=><div className="generic-row" key={c.id}><div><b>{c.title}</b><small>{c.creator_id===user.id?'You challenged a friend':'A friend challenged you'} · {time(c.created_at)}</small><p>{c.creator_score==null?'Creator pending':'Creator: '+c.creator_score+'/5'} · {c.opponent_score==null?'Opponent pending':'Opponent: '+c.opponent_score+'/5'}</p></div><Link className="btn primary" to={'/challenges/'+c.id+'/play'}>Play</Link></div>)}</div></>;
+ <div style={{display:'flex',gap:8,margin:'16px 0'}}><Btn onClick={()=>setTab('active')}>Active</Btn><Btn onClick={()=>setTab('history')}>History</Btn><Link className="btn outline" to="/challenges/leaderboard">Challenge leaderboard</Link></div>
+ <div className="panel list-panel">{rows.filter(c=>tab==='history'?(c.creator_score!=null&&c.opponent_score!=null):(c.creator_score==null||c.opponent_score==null)).length===0?<p style={{padding:20}}>No challenges yet.</p>:rows.filter(c=>tab==='history'?(c.creator_score!=null&&c.opponent_score!=null):(c.creator_score==null||c.opponent_score==null)).map(c=><div className="generic-row" key={c.id}><div><b>{c.title}</b><small>{c.creator_id===user.id?'You challenged a friend':'A friend challenged you'} · {time(c.created_at)}</small><p><small>{c.difficulty||'medium'} · {c.question_set.length} questions · {c.time_limit_minutes?c.time_limit_minutes+' min':'Untimed'}</small></p><p>{c.creator_score==null?'Creator pending':'Creator: '+c.creator_score+'/'+c.question_set.length} · {c.opponent_score==null?'Opponent pending':'Opponent: '+c.opponent_score+'/'+c.question_set.length}</p></div><Link className="btn primary" to={'/challenges/'+c.id+'/play'}>Play</Link></div>)}</div></>;
 }
 export function LiveChallengePlay(){
  const {id}=useParams(),{user}=useAuth();const [challenge,setChallenge]=useState(null),[error,setError]=useState(''),[result,setResult]=useState(null);
@@ -95,9 +97,21 @@ export function LiveChallengePlay(){
  if(error)return <p className="notice error">{error}</p>;
  if(!challenge)return <p>Loading challenge…</p>;
  const mine=challenge.creator_id===user.id?'creator_score':'opponent_score';
- async function finish(answers){const score=answers.filter((a,i)=>a===challenge.question_set[i][2]).length;
- const {error}=await supabase.from('study_challenges_live').update({[mine]:score}).eq('id',id);
- if(error)setError(error.message);else{setResult(score);setChallenge(c=>({...c,[mine]:score}));}}
- return <><div className="section-title"><div><h2>{challenge.title}</h2><p>Five-question friend battle</p></div><Link to="/challenges">Back to challenges</Link></div>
- {result!==null||challenge[mine]!==null?<div className="panel" style={{padding:24}}><h3>Your score: {result??challenge[mine]} / 5</h3><p>{challenge.creator_score!=null&&challenge.opponent_score!=null?('Final result: '+challenge.creator_score+'–'+challenge.opponent_score+' · '+(challenge.creator_score===challenge.opponent_score?'Draw':(challenge.creator_score>challenge.opponent_score?challenge.creator_id:challenge.opponent_id)===user.id?'You won!':'Your friend won.')):'Waiting for the other participant. This page updates automatically.'}</p><Link to="/challenges">See all challenges</Link></div>:<QuizRunner qs={challenge.question_set} label="FRIEND CHALLENGE" onFinish={finish}/>}</>;
+ async function finish(answers){const {data,error}=await supabase.rpc('submit_study_challenge',{p_challenge_id:id,p_answers:answers});if(error)setError(error.message);else{setResult(data.score);setChallenge(c=>({...c,[mine]:data.score}));}}
+ return <><div className="section-title"><div><h2>{challenge.title}</h2><p>{challenge.question_set.length} questions · {challenge.difficulty||'medium'} · {challenge.time_limit_minutes?challenge.time_limit_minutes+' minute limit':'Untimed'}</p></div><Link to="/challenges">Back to challenges</Link></div>
+ {result!==null||challenge[mine]!==null?<div className="panel" style={{padding:24}}><h3>Your score: {result??challenge[mine]} / {challenge.question_set.length}</h3><p>{challenge.creator_score!=null&&challenge.opponent_score!=null?('Final result: '+challenge.creator_score+'–'+challenge.opponent_score+' · '+(challenge.creator_score===challenge.opponent_score?'Draw':(challenge.creator_score>challenge.opponent_score?challenge.creator_id:challenge.opponent_id)===user.id?'You won!':'Your friend won.')):'Waiting for the other participant. This page updates automatically.'}</p><Link to="/challenges">See all challenges</Link></div>:<ChallengeTimedQuiz key={challenge.id} challenge={challenge} onFinish={finish}/>}</>;
+}
+
+function ChallengeTimedQuiz({challenge,onFinish}){
+ const [remaining,setRemaining]=useState(challenge.time_limit_minutes*60);
+
+ useEffect(()=>{if(!challenge.time_limit_minutes)return;const start=Date.now();const timer=setInterval(()=>{const left=Math.max(0,challenge.time_limit_minutes*60-Math.floor((Date.now()-start)/1000));setRemaining(left);if(left===0)clearInterval(timer)},1000);return()=>clearInterval(timer)},[challenge.id,challenge.time_limit_minutes]);
+ return <>{challenge.time_limit_minutes>0&&<p role="timer" style={{fontWeight:700}}>Time remaining: {Math.floor(remaining/60)}:{String(remaining%60).padStart(2,'0')}</p>}<QuizRunner qs={challenge.question_set} label="FRIEND CHALLENGE" exitTo="/challenges" timeLimitSeconds={challenge.time_limit_minutes*60} onFinish={onFinish}/></>;
+}
+export function ChallengeLeaderboard(){
+ const [rows,setRows]=useState([]),[error,setError]=useState(''),[loading,setLoading]=useState(true);
+ useEffect(()=>{let active=true;supabase.rpc('knoxia_challenge_leaderboard').then(({data,error})=>{if(!active)return;if(error)setError(error.message);else setRows(data||[]);setLoading(false)});return()=>{active=false}},[]);
+ return <><div className="section-title"><div><h2>Challenge leaderboard</h2><p>XP from completed challenges, wins and draws. Real accounts only.</p></div><Link to="/challenges">Back to challenges</Link></div>
+ {error&&<p className="notice error" role="alert">{error}</p>}
+ {loading?<p>Loading rankings…</p>:<div className="panel" style={{padding:20}}><table style={{width:'100%',textAlign:'left'}}><thead><tr><th>Rank</th><th>Student</th><th>Played</th><th>Wins</th><th>Draws</th><th>Accuracy</th><th>Challenge XP</th></tr></thead><tbody>{rows.map((r,i)=><tr key={r.user_id}><td>#{i+1}</td><td>{r.display_name}</td><td>{r.played}</td><td>{r.wins}</td><td>{r.draws}</td><td>{r.accuracy??0}%</td><td>{r.challenge_xp}</td></tr>)}</tbody></table>{!rows.length&&<p>No challenge attempts yet.</p>}</div>}</>;
 }
