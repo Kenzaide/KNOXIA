@@ -104,12 +104,9 @@ export function LiveChallengePlay(){
 
 function ChallengeTimedQuiz({challenge,onFinish}){
  const [remaining,setRemaining]=useState(challenge.time_limit_minutes*60);
- const [expired,setExpired]=useState(false);
- useEffect(()=>{if(!challenge.time_limit_minutes)return;const start=Date.now();const timer=setInterval(()=>{const left=Math.max(0,challenge.time_limit_minutes*60-Math.floor((Date.now()-start)/1000));setRemaining(left);if(left===0){setExpired(true);clearInterval(timer)}},1000);return()=>clearInterval(timer)},[challenge.id,challenge.time_limit_minutes]);
- // The current QuizRunner owns its answer state. Until it supports a timed auto-submit,
- // expiry locks the UI but cannot grade unanswered answers; server-side deadlines are a follow-up.
- if(expired)return <div className="panel" style={{padding:24}}><h3>Time expired</h3><p>This attempt was not submitted. Return to Challenges and retry. Server-enforced timing is not yet enabled.</p><Link to="/challenges">Back to challenges</Link></div>;
- return <>{challenge.time_limit_minutes>0&&<p role="timer" style={{fontWeight:700}}>Time remaining: {Math.floor(remaining/60)}:{String(remaining%60).padStart(2,'0')}</p>}<QuizRunner qs={challenge.question_set} label="FRIEND CHALLENGE" exitTo="/challenges" onFinish={onFinish}/></>;
+
+ useEffect(()=>{if(!challenge.time_limit_minutes)return;const start=Date.now();const timer=setInterval(()=>{const left=Math.max(0,challenge.time_limit_minutes*60-Math.floor((Date.now()-start)/1000));setRemaining(left);if(left===0)clearInterval(timer)},1000);return()=>clearInterval(timer)},[challenge.id,challenge.time_limit_minutes]);
+ return <>{challenge.time_limit_minutes>0&&<p role="timer" style={{fontWeight:700}}>Time remaining: {Math.floor(remaining/60)}:{String(remaining%60).padStart(2,'0')}</p>}<QuizRunner qs={challenge.question_set} label="FRIEND CHALLENGE" exitTo="/challenges" timeLimitSeconds={challenge.time_limit_minutes*60} onFinish={onFinish}/></>;
 }
 export function ChallengeLeaderboard(){
  const [rows,setRows]=useState([]),[error,setError]=useState(''),[loading,setLoading]=useState(true);
