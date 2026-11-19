@@ -22,7 +22,8 @@ import AIQuizzes from './aiQuizzes.jsx';
 import AIStudyCompanion from './aiStudyCompanion.jsx';
 import { QuizResults, QuizHistory, QuizMissed } from './quizResults.jsx';
 import StudyProgress from './progress.jsx';
-import { useStudyProgress } from './progressStore.js';
+import { useStudyProgress, track } from './progressStore.js';
+import { dayKey } from './progressCalc.js';
 import { fmtTime } from './progressCalc.js';
 import { Friends, FriendAction, SuggestedPeople } from './friends.jsx';
 import Feed from './feed.jsx';
@@ -200,8 +201,13 @@ const greetingFor=h=>h<5?'Still up':h<12?'Good morning':h<18?'Good afternoon':'G
 function Dashboard() { const go=useGo();
   const {items}=useMaterials(); const loading=usePending(); const {firstName}=useProfile(); const pr=useStudyProgress();
   const [said,setSaid]=useState(null); const [clicks,setClicks]=useState(0); const [focusing,setFocusing]=useState(false);
+  const [focusRunning,setFocusRunning]=useState(false); const [focusSecs,setFocusSecs]=useState(0); const focusStart=useRef(null); const focusSaved=useRef(0);
+  useEffect(()=>{if(!focusRunning)return;const id=setInterval(()=>setFocusSecs(Math.floor((Date.now()-focusStart.current)/1000)),1000);return()=>clearInterval(id)},[focusRunning]);
+  const finishFocus=()=>{if(!focusRunning)return;const elapsed=Math.max(0,Math.floor((Date.now()-focusStart.current)/1000));const delta=Math.max(0,elapsed-focusSaved.current);if(delta)track.focus(delta);focusSaved.current=0;focusStart.current=null;setFocusRunning(false);setFocusSecs(0);};
+  useEffect(()=>()=>{if(focusStart.current){const delta=Math.max(0,Math.floor((Date.now()-focusStart.current)/1000)-focusSaved.current);if(delta)track.focus(delta);}},[]);
+  const startFocus=()=>{focusStart.current=Date.now();focusSaved.current=0;setFocusSecs(0);setFocusRunning(true);};
   const hour=new Date().getHours(); const night=hour>=22||hour<5;
-  const goal={done:0,total:60}; const left=Math.max(0,goal.total-goal.done); const pct=Math.round(goal.done/goal.total*100);
+  const today=dayKey(new Date()); const loggedToday=pr.events.filter(e=>dayKey(e.date)===today).reduce((n,e)=>n+(e.secs||0),0); const goal={done:Math.floor((loggedToday+(focusRunning?focusSecs:0))/60),total:60}; const left=Math.max(0,goal.total-goal.done); const pct=Math.min(100,Math.round(goal.done/goal.total*100));
   // Real numbers from Study Progress (Patch 15) once there is activity; sample values until then.
   const live=pr.hasActivity; const streak=live?pr.streak.current:0; const first=items[0];
   const resting=night?{pose:'sleepy',text:`It's late, ${firstName}. Review something short, then get some sleep.`}
@@ -228,7 +234,7 @@ function Dashboard() { const go=useGo();
         <p className="kn-sub">{items.length} {items.length===1?'material is':'materials are'} ready to study.</p>
         <div className="kn-goal"><div className="kn-goal-top"><b>Today's goal</b><span>{goal.done} of {goal.total} min</span></div><div className="goal-progress" role="progressbar" aria-valuenow={pct} aria-valuemin="0" aria-valuemax="100" aria-label="Daily goal"><span style={{width:pct+'%'}}/></div></div>
         <div className="kn-actions">
-          <button type="button" className="btn primary" onClick={()=>go('/study-companion')} onMouseEnter={()=>setFocusing(true)} onMouseLeave={()=>setFocusing(false)} onFocus={()=>setFocusing(true)} onBlur={()=>setFocusing(false)}><Zap size={16}/><span>Start a focus session</span></button>
+          <button type="button" className="btn primary" onClick={()=>focusRunning?finishFocus():startFocus()} onMouseEnter={()=>setFocusing(true)} onMouseLeave={()=>setFocusing(false)} onFocus={()=>setFocusing(true)} onBlur={()=>setFocusing(false)}><Zap size={16}/><span>{focusRunning?`Finish focus (${Math.floor(focusSecs/60)}:${String(focusSecs%60).padStart(2,'0')})`:'Start a focus session'}</span></button>
           <button type="button" className="btn outline" onClick={()=>go('/materials/upload')}><Plus size={16}/><span>Add materials</span></button>
         </div>
       </div>
