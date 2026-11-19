@@ -524,3 +524,18 @@ html.theme-fade *,html.theme-fade *::before,html.theme-fade *::after{transition:
 .builder-layout>.preview-panel .rv-preview-scroll .rv-result{min-width:0;overflow-wrap:anywhere;}
 .builder-layout>.preview-panel>.rv-actions{width:100%;flex-shrink:0;padding-top:14px;margin-top:12px;border-top:1px solid var(--border,#e4e8f0);background:var(--card,#fff);}
 @media(max-width:800px){.builder-layout>.preview-panel{max-height:min(680px,75dvh);}.builder-layout>.preview-panel .rv-preview-scroll{padding-right:4px;}}
+
+/* Shared loading states: match actual card dimensions instead of floating placeholders. */
+.kn-loading-page,.kn-dashboard-skeleton{width:100%;min-width:0;animation:kn-skeleton-enter .2s ease-out}
+.kn-skeleton{position:relative;overflow:hidden;background:var(--border,#e2e8f0);opacity:.68}
+.kn-skeleton::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.34),transparent);animation:kn-skeleton-shimmer 1.7s ease-in-out infinite}
+.kn-skeleton-surface{min-width:0;background:var(--card,#fff);border:1px solid var(--border,#e2e8f0);border-radius:28px;padding:24px;display:flex;flex-direction:column;gap:14px}
+.kn-skeleton-hero{min-height:420px;padding:42px;display:flex;align-items:center;justify-content:space-between;gap:32px;background:var(--bg-dce8ff,#dce8ff);border-radius:30px;margin-bottom:26px}
+.kn-skeleton-hero-copy{width:min(58%,620px);display:flex;flex-direction:column;align-items:flex-start;gap:16px}
+.kn-skeleton-hero-owl{flex:0 1 250px}
+.kn-skeleton-dashboard-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:24px}
+.kn-skeleton-list-row{display:flex;align-items:center;gap:14px;padding:12px 0;border-top:1px solid var(--border,#e2e8f0)}
+@keyframes kn-skeleton-shimmer{to{transform:translateX(100%)}}
+@keyframes kn-skeleton-enter{from{opacity:0}to{opacity:1}}
+@media(max-width:850px){.kn-skeleton-hero{padding:28px;min-height:300px}.kn-skeleton-hero-copy{width:100%}.kn-skeleton-hero-owl{display:none}.kn-skeleton-dashboard-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.kn-skeleton::after{animation:none}.kn-loading-page,.kn-dashboard-skeleton{animation:none}}
