@@ -8,7 +8,35 @@ export function Button({children,variant='primary',icon:Icon,onClick,type='butto
 // Stand-in for data fetching: shows skeletons briefly until a real API is connected.
 export function usePending(ms=450) { const [p,setP]=useState(true); useEffect(()=>{const t=setTimeout(()=>setP(false),ms);return()=>clearTimeout(t)},[ms]); return p; }
 
-export function PageSkeleton({cards=false}) { return <div aria-busy="true" aria-label="Loading"><div className="skel" style={{height:28,width:240,marginBottom:12}}/><div className="skel" style={{height:16,width:340,marginBottom:24}}/><div className={cards?'material-grid':'stats-grid'}>{Array.from({length:cards?6:4}).map((_,i)=><div className="skel skel-card" key={i} style={{height:cards?176:88}}/>)}</div></div>; }
+export function Skeleton({width='100%',height=16,radius=10,style={}}) {
+  return <span className="skel kn-skeleton" aria-hidden="true" style={{display:'block',width,height,borderRadius:radius,flexShrink:0,...style}}/>;
+}
+export function PageSkeleton({cards=false}) {
+  return <div className="kn-loading-page" role="status" aria-label="Loading page" aria-busy="true">
+    <Skeleton width="min(240px,55%)" height={28}/>
+    <Skeleton width="min(360px,75%)" height={16} style={{marginTop:12,marginBottom:24}}/>
+    <div className={cards?'material-grid':'stats-grid'}>{Array.from({length:cards?6:4}).map((_,i)=><div className="kn-skeleton-surface" key={i}><Skeleton width="42%" height={16}/><Skeleton width="72%" height={12}/><Skeleton width="55%" height={12}/></div>)}</div>
+  </div>;
+}
+export function DashboardSkeleton() {
+  return <div className="kn-dashboard-skeleton" role="status" aria-label="Loading dashboard" aria-busy="true">
+    <div className="kn-skeleton-hero">
+      <div className="kn-skeleton-hero-copy">
+        <Skeleton width="min(390px,90%)" height={42} radius={14}/>
+        <Skeleton width="min(260px,75%)" height={18}/>
+        <div style={{marginTop:24,maxWidth:450,width:'100%'}}><Skeleton width="100%" height={14}/><Skeleton width="100%" height={9} radius={20} style={{marginTop:12}}/></div>
+        <div style={{display:'flex',gap:12,marginTop:22}}><Skeleton width={190} height={46}/><Skeleton width={145} height={46}/></div>
+      </div>
+      <div className="kn-skeleton-hero-owl"><Skeleton width={240} height={210} radius={35}/></div>
+    </div>
+    <div className="kn-skeleton-dashboard-grid">
+      {[0,1].map(k=><div className="kn-skeleton-surface" key={k}>
+        <Skeleton width="45%" height={26}/><Skeleton width="65%" height={15} style={{marginBottom:20}}/>
+        {[0,1,2].map(i=><div className="kn-skeleton-list-row" key={i}><Skeleton width={42} height={42} radius={12}/><div style={{flex:1}}><Skeleton width="60%" height={15}/><Skeleton width="42%" height={12} style={{marginTop:10}}/></div></div>)}
+      </div>)}
+    </div>
+  </div>;
+}
 
 export function SectionTitle({title,subtitle,action}) { return <div className="section-title"><div><h2>{title}</h2>{subtitle&&<p>{subtitle}</p>}</div>{action}</div>; }
 
