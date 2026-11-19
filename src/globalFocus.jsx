@@ -8,6 +8,7 @@ export const useGlobalFocus = () => useContext(FocusContext);
 export function GlobalFocusProvider({ children }) {
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [pending, setPending] = useState(0);
   const runningRef = useRef(false);
   const lastTick = useRef(null);
   const unsaved = useRef(0);
@@ -17,6 +18,7 @@ export function GlobalFocusProvider({ children }) {
     if (unsaved.current > 0) {
       track.focus(unsaved.current);
       unsaved.current = 0;
+      setPending(0);
     }
   };
   const tick = () => {
@@ -26,6 +28,7 @@ export function GlobalFocusProvider({ children }) {
     if (!delta) return;
     lastTick.current += delta * 1000;
     unsaved.current += delta;
+    setPending(unsaved.current);
     setElapsed(v => v + delta);
   };
   const pause = () => {
@@ -68,7 +71,7 @@ export function GlobalFocusProvider({ children }) {
       flush();
     };
   }, []);
-  const value = { running, active, elapsed, start, pause, finish };
+  const value = { running, active, elapsed, pending, start, pause, finish };
   const clock = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;
   return <FocusContext.Provider value={value}>
     {children}
